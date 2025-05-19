@@ -1,22 +1,33 @@
-<nav>
-    <div class="logo">Pacto del Loto</div>
-    <button class="menu-toggle" aria-label="Abrir menú">&#9776;</button>
-    <ul class="menu" role="menu">
-      <li><a href="#" role="menuitem" tabindex="0">Inicio</a></li>
-      <li><a href="#" role="menuitem" tabindex="0">Quiénes Somos</a></li>
-      <li><a href="#" role="menuitem" tabindex="0">Eventos</a></li>
-      <li><a href="#" role="menuitem" tabindex="0">Proyectos</a></li>
-      <li><a href="#" role="menuitem" tabindex="0">Contacto</a></li>
-    </ul>
-  </nav>
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
+  <div class="container-fluid">
+    <a class="navbar-brand d-flex align-items-center text-white" href="#">
+      <img src="public/media/img/logo.png" alt="Logo" width="60" height="40" class="rounded-circle">
+      <strong>Pacto del Loto</strong>
+    </a>
 
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPacto" aria-controls="navbarPacto" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
 
-  <script>
-    // Toggle menú hamburguesa para móviles
-    const toggleBtn = document.querySelector('.menu-toggle');
-    const menu = document.querySelector('.menu');
-  
-    toggleBtn.addEventListener('click', () => {
-      menu.classList.toggle('show');
-    });
-  </script>
+    <div class="collapse navbar-collapse justify-content-center" id="navbarPacto">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link active" aria-current="page" href="#">Inicio</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Actividades</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="https://www.instagram.com/pacto_del_loto/">Eventos</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Quiénes somos</a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="d-none d-lg-block">
+      <a href="https://linktr.ee/pactodelloto" class="btn btn-contacto">Contáctanos</a>
+    </div>
+  </div>
+</nav>

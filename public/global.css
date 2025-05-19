@@ -1,0 +1,44 @@
+.navbar-custom {
+      background-color: #2c2c54;
+    }
+
+    .navbar-brand img {
+      margin-right: 10px;
+    }
+
+    .navbar-nav .nav-link {
+      color: #f5f6fa !important;
+      margin: 0 12px;
+      font-weight: 500;
+      position: relative;
+      transition: color 0.3s ease;
+    }
+
+    .navbar-nav .nav-link::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 2px;
+      left: 50%;
+      bottom: 0;
+      background-color: #f8c291;
+      transition: 0.3s;
+      transform: translateX(-50%);
+    }
+
+    .navbar-nav .nav-link:hover::after {
+      width: 60%;
+    }
+
+    .btn-contacto {
+      background-color: #f8c291;
+      border: none;
+      color: #2c2c54;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    .btn-contacto:hover {
+      background-color: #e58e26;
+      color: #fff;
+    }
