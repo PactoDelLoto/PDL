@@ -1,0 +1,22 @@
+<nav>
+    <div class="logo">Pacto del Loto</div>
+    <button class="menu-toggle" aria-label="Abrir menú">&#9776;</button>
+    <ul class="menu" role="menu">
+      <li><a href="#" role="menuitem" tabindex="0">Inicio</a></li>
+      <li><a href="#" role="menuitem" tabindex="0">Quiénes Somos</a></li>
+      <li><a href="#" role="menuitem" tabindex="0">Eventos</a></li>
+      <li><a href="#" role="menuitem" tabindex="0">Proyectos</a></li>
+      <li><a href="#" role="menuitem" tabindex="0">Contacto</a></li>
+    </ul>
+  </nav>
+
+
+  <script>
+    // Toggle menú hamburguesa para móviles
+    const toggleBtn = document.querySelector('.menu-toggle');
+    const menu = document.querySelector('.menu');
+  
+    toggleBtn.addEventListener('click', () => {
+      menu.classList.toggle('show');
+    });
+  </script>

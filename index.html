@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pacto del Loto - Asociación Cultural</title>
+
+<!-- Enlace al CSS local de Bootstrap -->
+<link href="public/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+
+
+
+<style>
+  /* Reset básico */
+  * {
+    margin: 0; padding: 0; box-sizing: border-box;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f8fa;
+    color: #333;
+  }
+  header {
+    background-color: #2c3e50;
+    padding: 0.8rem 1.2rem;
+  }
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .logo {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #ecf0f1;
+    letter-spacing: 1.2px;
+    user-select: none;
+  }
+  ul.menu {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+  }
+  ul.menu li a {
+    color: #ecf0f1;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+  }
+  ul.menu li a:hover,
+  ul.menu li a:focus {
+    color: #1abc9c;
+    outline: none;
+  }
+
+  /* Responsive: menú hamburguesa */
+  @media (max-width: 600px) {
+    nav {
+      flex-wrap: wrap;
+    }
+    ul.menu {
+      width: 100%;
+      flex-direction: column;
+      display: none;
+      margin-top: 0.8rem;
+      background: #34495e;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+    }
+    ul.menu.show {
+      display: flex;
+    }
+    ul.menu li {
+      margin: 0.5rem 0;
+    }
+    .menu-toggle {
+      display: block;
+      cursor: pointer;
+      user-select: none;
+      color: #ecf0f1;
+      font-size: 1.6rem;
+      border: none;
+      background: none;
+    }
+  }
+  /* Oculta el toggle en pantallas grandes */
+  .menu-toggle {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<header>
+
+  <!-- Navbar plantilla -->
+  <div id="navbar-placeholder"></div>
+
+</header>
+
+<body>
+  <!--<img src="https://i.imgur.com/mqM7KFo.png" alt="Descripción de la imagen" />-->
+
+  <img src="img.png" alt="Descripción de la imagen" />
+</body>
+
+<!-- Enlace al JS local de Bootstrap -->
+<script src="public/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+
+
+
+<script>
+  // Cargar navbar.html en el div
+  fetch('resources/layouts/navbar.html')
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('navbar-placeholder').innerHTML = html;
+    });
+</script>
+
+</body>
+</html>
