@@ -100,7 +100,7 @@ window.renderUserNavbarActions = async function() {
     const surname = user.user_metadata?.surname || '';
     html = `
       <a href="#" class="me-2 text-white text-decoration-none user-email-link">
-        <i class="fa fa-user-circle"></i> ${name} ${surname} <span class="text-secondary">(${user.email})</span>
+        <i class="fa fa-user-circle"></i> ${name} ${surname}
       </a>
       <button title="Cerrar sesión" class="btn btn-link text-white p-0 logout-link" style="vertical-align: middle;">
         <i class="fa fa-right-from-bracket"></i>
