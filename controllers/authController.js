@@ -11,7 +11,7 @@ const supabase = window.supabase?.createClient
 async function login(email, password) {
   const { error, user, session } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    alert('Error de inicio de sesión: ' + error.message);
+    showAlert('Error de inicio de sesión: ' + error.message, 'danger');
     return false;
   }
   // Redirige al index directamente tras login exitoso
@@ -33,10 +33,10 @@ async function register(email, password, name, surname) {
     }
   });
   if (error) {
-    alert('Error al registrar: ' + error.message);
+    showAlert('Error al registrar: ' + error.message, 'danger');
     return false;
   }
-  alert('Registro exitoso, revisa tu correo');
+  showAlert('Registro exitoso. Ya puedes iniciar sesión.', 'success');
   return true;
 }
 
@@ -52,13 +52,13 @@ window.handleEmailConfirmation = async function() {
       refresh_token
     });
     if (error) {
-      alert('Hubo un problema al confirmar tu correo: ' + error.message);
+      showAlert('Hubo un problema al confirmar tu correo: ' + error.message, 'danger');
     } else {
-      alert('¡Correo confirmado correctamente! Ya puedes iniciar sesión.');
+      showAlert('¡Correo confirmado correctamente! Ya puedes iniciar sesión.', 'success');
     }
   } else {
     // Si no hay token, muestra mensaje
-    alert('No se ha podido confirmar el correo. Intenta de nuevo desde el enlace de tu email.');
+    showAlert('No se ha podido confirmar el correo. Intenta de nuevo desde el enlace de tu email.', 'danger');
   }
 }
 
@@ -166,3 +166,21 @@ document.addEventListener('DOMContentLoaded', () => {
     emailRedirectTo: 'http://localhost:5500/resources/views/confirm-email.html'
   }
 });*/
+
+function showAlert(message, type = 'danger', timeout = 4000) {
+  const container = document.getElementById('alert-container');
+  if (!container) return;
+  const alert = document.createElement('div');
+  alert.className = `alert alert-${type} alert-dismissible fade show`;
+  alert.role = 'alert';
+  alert.innerHTML = `
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+  `;
+  container.appendChild(alert);
+  setTimeout(() => {
+    alert.classList.remove('show');
+    alert.classList.add('hide');
+    setTimeout(() => alert.remove(), 300);
+  }, timeout);
+}

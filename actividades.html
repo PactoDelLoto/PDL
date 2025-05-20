@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pacto del Loto - Asociación Cultural</title>
+<link rel="icon" type="image/png" href="public/media/img/logo.ico" />
+
+<!-- Enlace al CSS local de Bootstrap -->
+<link href="public/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+
+<!-- Enlace al CSS local de Bootstrap -->
+<link href="public/global.css" rel="stylesheet" />
+
+<!-- Enlace al CSS local de DataTables -->
+<!-- <link href="public/datatables/dataTables.min.css" rel="stylesheet" />-->
+
+<!-- Enlace a Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+  <!-- Añade esto justo dentro del <body>, arriba del contenido principal -->
+  <div id="alert-container" class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 2000; min-width: 300px; max-width: 90vw;"></div>
+
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center text-white" href="#">
+          <img src="public/media/img/logo.png" alt="Logo" width="60" height="40" class="rounded-circle">
+          <strong>Pacto del Loto</strong>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPacto" aria-controls="navbarPacto" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-center" id="navbarPacto">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="page" href="index.html">Inicio</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Actividades</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" target="_blank" href="https://www.instagram.com/pacto_del_loto/">Eventos</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Quiénes somos</a>
+            </li>
+          </ul>
+          <div id="user-navbar-actions-mobile" class="d-lg-none mt-3"></div>
+        </div>
+
+        <div id="user-navbar-actions" class="d-none d-lg-block"></div>
+      </div>
+    </nav>
+
+  </header>
+
+  <!-- Formulario Google -->
+  <div class="container d-flex justify-content-center align-items-center my-5">
+    <div class="card shadow-lg w-100" style="max-width: 900px;">
+      <div class="card-body p-5">
+        <h3 class="mb-4 text-center">Formulario de inscripción a actividades</h3>
+        <div class="mb-4 text-center text-muted">
+          Rellena el siguiente formulario para inscribirte en las actividades.
+        </div>
+        <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScYSN8JUarE2Lb5VUWsMOAQPvv_XmgWG6KJ_PXNtkaUJ_LdCQ/viewform?embedded=true"
+          width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="background: #fff; border-radius: 8px;">
+          Cargando…
+        </iframe>
+      </div>
+    </div>
+  </div>
+  
+</body>
+
+<!--properties-->
+<script src="controllers/properties.js"></script>
+
+<!-- Enlace al JS local de Bootstrap -->
+<script src="public/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+
+<!-- Enlace al JS local de jQuery -->
+<script src="public/jquery-3.7.1.min.js"></script>
+
+<!-- Enlace al JS local de DataTables 
+<script src="public/datatables/datatables.min.js"></script>-->
+
+<!-- Controladores-->
+<script src="controllers/admin/sociosController.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="controllers/authController.js"></script>
+
+
+<script>
+  // Cargar navbar.html en el div
+  /*fetch('resources/layouts/navbar.html')
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('navbar-placeholder').innerHTML = html;
+    });*/
+</script>
+
+</body>
+</html>
