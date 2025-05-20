@@ -23,9 +23,38 @@
 
 <body>
   <header>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center text-white" href="#">
+          <img src="public/media/img/logo.png" alt="Logo" width="60" height="40" class="rounded-circle">
+          <strong>Pacto del Loto</strong>
+        </a>
 
-    <!-- Navbar plantilla -->
-    <div id="navbar-placeholder"></div>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPacto" aria-controls="navbarPacto" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-center" id="navbarPacto">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="page" href="#">Inicio</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Actividades</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="https://www.instagram.com/pacto_del_loto/">Eventos</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Quiénes somos</a>
+            </li>
+          </ul>
+          <div id="user-navbar-actions-mobile" class="d-lg-none mt-3"></div>
+        </div>
+
+        <div id="user-navbar-actions" class="d-none d-lg-block"></div>
+      </div>
+    </nav>
 
   </header>
 
@@ -210,7 +239,8 @@
   </div>
 </body>
 
-<!--pruebapush-->
+<!--properties-->
+<script src="../../controllers/properties.js"></script>
 
 <!-- Enlace al JS local de Bootstrap -->
 <script src="public/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
@@ -223,15 +253,17 @@
 
 <!-- Controladores-->
 <script src="controllers/admin/sociosController.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="../../controllers/authController.js"></script>
 
 
 <script>
   // Cargar navbar.html en el div
-  fetch('resources/layouts/navbar.html')
+  /*fetch('resources/layouts/navbar.html')
     .then(res => res.text())
     .then(html => {
       document.getElementById('navbar-placeholder').innerHTML = html;
-    });
+    });*/
 </script>
 
 </body>
