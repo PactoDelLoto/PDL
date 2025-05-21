@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pacto del Loto - Asociación Cultural</title>
+<link rel="icon" type="image/png" href="public/media/img/logo.ico" />
+
+<!-- Enlace al CSS local de Bootstrap -->
+<link href="public/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+
+<!-- Enlace al CSS local de Bootstrap -->
+<link href="public/global.css" rel="stylesheet" />
+
+<!-- Enlace al CSS local de DataTables -->
+<!-- <link href="public/datatables/dataTables.min.css" rel="stylesheet" />-->
+
+<!-- Enlace a Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+  <!-- Añade esto justo dentro del <body>, arriba del contenido principal -->
+  <div id="alert-container" class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 2000; min-width: 300px; max-width: 90vw;"></div>
+
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center text-white" href="index.html">
+          <img src="public/media/img/logo.png" alt="Logo" width="60" height="40" class="rounded-circle">
+          <strong>Pacto del Loto</strong>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPacto" aria-controls="navbarPacto" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-center" id="navbarPacto">
+          <ul class="navbar-nav" id="navbar-links"></ul>
+          <div id="user-navbar-actions-mobile" class="d-lg-none mt-3"></div>
+        </div>
+
+        <div id="user-navbar-actions" class="d-none d-lg-block"></div>
+      </div>
+    </nav>
+
+  </header>
+
+  <!-- Listado de socios -->
+  <div class="container my-5">
+    <h2 class="mb-4">Listado de Socios</h2>
+
+    <!-- Filtros de búsqueda para socios -->
+    <div class="row mb-3">
+      <div class="col-md-4 mb-2">
+        <input type="text" id="buscadorSocios" class="form-control" placeholder="Buscar por nombre o apellido">
+      </div>
+      <div class="col-md-2 mb-2">
+        <select id="filtroAnio" class="form-select">
+          <option value="">Año</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
+        </select>
+      </div>
+      <div class="col-md-2 mb-2">
+        <select id="filtroMes" class="form-select">
+          <option value="">Mes</option>
+          <option value="enero">Enero</option>
+          <option value="febrero">Febrero</option>
+          <option value="marzo">Marzo</option>
+          <option value="abril">Abril</option>
+          <option value="mayo">Mayo</option>
+          <option value="junio">Junio</option>
+          <option value="julio">Julio</option>
+          <option value="agosto">Agosto</option>
+          <option value="septiembre">Septiembre</option>
+          <option value="octubre">Octubre</option>
+          <option value="noviembre">Noviembre</option>
+          <option value="diciembre">Diciembre</option>
+        </select>
+      </div>
+      <div class="col-md-4 mb-2 d-flex gap-2">
+        <button id="btnSociosActuales" class="btn btn-primary w-100">Mostrar socios al corriente de pago</button>
+        <button id="btnLimpiarFiltros" class="btn btn-secondary w-100">
+          <i class="fa-solid fa-filter-circle-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table id="tablaSocios" class="table table-striped table-bordered align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Número</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Teléfono</th>
+            <th>Último mes pagado</th>
+            <th>Último año pagado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Ana</td>
+            <td>García</td>
+            <td>612345678</td>
+            <td>abril</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Carlos</td>
+            <td>Pérez</td>
+            <td>698765432</td>
+            <td>marzo</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Lucía</td>
+            <td>López</td>
+            <td>634567890</td>
+            <td>mayo</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Manuel</td>
+            <td>Ruiz</td>
+            <td>622334455</td>
+            <td>abril</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Elena</td>
+            <td>Martínez</td>
+            <td>611223344</td>
+            <td>febrero</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td>Javier</td>
+            <td>Sánchez</td>
+            <td>699887766</td>
+            <td>diciembre</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td>María</td>
+            <td>Fernández</td>
+            <td>633221144</td>
+            <td>junio</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td>Pedro</td>
+            <td>Gómez</td>
+            <td>655443322</td>
+            <td>enero</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td>Laura</td>
+            <td>Moreno</td>
+            <td>677889900</td>
+            <td>julio</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td>David</td>
+            <td>Navarro</td>
+            <td>688776655</td>
+            <td>septiembre</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td>Sara</td>
+            <td>Romero</td>
+            <td>699112233</td>
+            <td>diciembre</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td>Raúl</td>
+            <td>Jiménez</td>
+            <td>644556677</td>
+            <td>marzo</td>
+            <td>2024</td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td>Patricia</td>
+            <td>Ortega</td>
+            <td>655667788</td>
+            <td>noviembre</td>
+            <td>2024</td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td>Alberto</td>
+            <td>Castro</td>
+            <td>677778899</td>
+            <td>octubre</td>
+            <td>2025</td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td>Isabel</td>
+            <td>Vega</td>
+            <td>688889900</td>
+            <td>agosto</td>
+            <td>2025</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  </section>
+
+  <footer class="text-light py-4">
+    <div class="container text-center">
+      <ul class="list-inline mb-2" id="footer-links"></ul>
+      <div class="small">&copy; Pacto del Loto 2025</div>
+    </div>
+  </footer>
+
+<!-- scripts y cierre de body/html -->
+</body>
+</html>

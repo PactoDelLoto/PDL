@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pacto del Loto - Asociación Cultural</title>
+<link rel="icon" type="image/png" href="public/media/img/logo.ico" />
+
+<!-- Enlace al CSS local de Bootstrap -->
+<link href="public/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+
+<!-- Enlace al CSS local de Bootstrap -->
+<link href="public/global.css" rel="stylesheet" />
+
+<!-- Enlace al CSS local de DataTables -->
+<!-- <link href="public/datatables/dataTables.min.css" rel="stylesheet" />-->
+
+<!-- Enlace a Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+  <!-- Añade esto justo dentro del <body>, arriba del contenido principal -->
+  <div id="alert-container" class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 2000; min-width: 300px; max-width: 90vw;"></div>
+
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center text-white" href="index.html">
+          <img src="public/media/img/logo.png" alt="Logo" width="60" height="40" class="rounded-circle">
+          <strong>Pacto del Loto</strong>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPacto" aria-controls="navbarPacto" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-center" id="navbarPacto">
+          <ul class="navbar-nav" id="navbar-links"></ul>
+          <div id="user-navbar-actions-mobile" class="d-lg-none mt-3"></div>
+        </div>
+
+        <div id="user-navbar-actions" class="d-none d-lg-block"></div>
+      </div>
+    </nav>
+
+  </header>
+
+  <!-- Jumbotron de ventajas de hacerse socio -->
+  <section class="py-5 bg-light">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h1 class="display-5 fw-bold mb-3">¡Hazte socio de Pacto del Loto!</h1>
+        <p class="lead">Disfruta de todas estas ventajas exclusivas para socios:</p>
+      </div>
+      <div class="row g-4 justify-content-center">
+        <div class="col-12 col-sm-6 col-md-3">
+          <div class="card h-100 border-0 shadow-sm text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-users fa-2x text-primary"></i>
+            </div>
+            <h5 class="fw-bold">Comunidad</h5>
+            <p class="small mb-0">Forma parte de una comunidad activa de jugadores y aficionados.</p>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <div class="card h-100 border-0 shadow-sm text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-dice-d20 fa-2x text-success"></i>
+            </div>
+            <h5 class="fw-bold">Eventos exclusivos</h5>
+            <p class="small mb-0">Participa en torneos, ligas y eventos solo para socios.</p>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <div class="card h-100 border-0 shadow-sm text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-percent fa-2x text-warning"></i>
+            </div>
+            <h5 class="fw-bold">Descuentos</h5>
+            <p class="small mb-0">Accede a descuentos en material, inscripciones y tiendas colaboradoras.</p>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <div class="card h-100 border-0 shadow-sm text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-chess-knight fa-2x text-danger"></i>
+            </div>
+            <h5 class="fw-bold">Juegos de mesa y rol</h5>
+            <p class="small mb-0">Acceso a una amplia ludoteca y partidas organizadas.</p>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <div class="card h-100 border-0 shadow-sm text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-crown fa-2x text-info"></i>
+            </div>
+            <h5 class="fw-bold">Premios y sorteos</h5>
+            <p class="small mb-0">Participa en sorteos y gana premios exclusivos para socios.</p>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <div class="card h-100 border-0 shadow-sm text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-handshake-angle fa-2x text-secondary"></i>
+            </div>
+            <h5 class="fw-bold">Colaboraciones</h5>
+            <p class="small mb-0">Colabora en la organización de actividades y proyectos.</p>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <div class="card h-100 border-0 shadow-sm text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-certificate fa-2x text-primary"></i>
+            </div>
+            <h5 class="fw-bold">Certificados</h5>
+            <p class="small mb-0">Obtén certificados de participación y logros en actividades.</p>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <div class="card h-100 border-0 shadow-sm text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-heart fa-2x text-danger"></i>
+            </div>
+            <h5 class="fw-bold">Buen ambiente</h5>
+            <p class="small mb-0">Disfruta de un ambiente sano, inclusivo y divertido.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Formulario de inscripción (iframe) -->
+  <section class="py-5 bg-white">
+    <div class="container">
+      <div class="text-center mb-4">
+        <h2 class="fw-bold">Formulario de inscripción</h2>
+        <p>Rellena el siguiente formulario para hacerte socio de Pacto del Loto:</p>
+      </div>
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+          <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScYSN8JUarE2Lb5VUWsMOAQPvv_XmgWG6KJ_PXNtkaUJ_LdCQ/viewform?embedded=true"
+            width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="background: #fff; border-radius: 8px;">
+            Cargando…
+          </iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="text-light py-4">
+    <div class="container text-center">
+      <ul class="list-inline mb-2" id="footer-links"></ul>
+      <div class="small">&copy; Pacto del Loto 2025</div>
+    </div>
+  </footer>
+
+  <!-- Scripts al final, pero dentro del body -->
+  <script src="controllers/navigation.js"></script>
+  <script>
+    // Navbar dinámico
+    const navbarLinks = window.NAVIGATION_LINKS || [];
+    const navbarUl = document.getElementById('navbar-links');
+    if (navbarUl) {
+      navbarUl.innerHTML = navbarLinks.map(link => `
+        <li class="nav-item">
+          <a class="nav-link${window.location.pathname.endsWith(link.href) ? ' active' : ''}" 
+             href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
+            ${link.label}
+          </a>
+        </li>
+      `).join('');
+    }
+
+    // Footer dinámico
+    const footerLinks = window.FOOTER_LINKS || [];
+    const footerUl = document.getElementById('footer-links');
+    if (footerUl) {
+      footerUl.innerHTML = footerLinks.map(link => `
+        <li class="list-inline-item mx-2">
+          <a class="text-light text-decoration-none" 
+             href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
+            ${link.label}
+          </a>
+        </li>
+      `).join('');
+    }
+  </script>
+  <!-- ...otros scripts... -->
+</body>
+</html>

@@ -28,7 +28,7 @@
   <header>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
       <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center text-white" href="#">
+        <a class="navbar-brand d-flex align-items-center text-white" href="index.html">
           <img src="public/media/img/logo.png" alt="Logo" width="60" height="40" class="rounded-circle">
           <strong>Pacto del Loto</strong>
         </a>
@@ -38,24 +38,13 @@
         </button>
 
         <div class="collapse navbar-collapse justify-content-center" id="navbarPacto">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link active" aria-current="page" href="index.html">Inicio</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#">Actividades</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" target="_blank" href="https://www.instagram.com/pacto_del_loto/">Eventos</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#">Quiénes somos</a>
-            </li>
-          </ul>
+          <ul class="navbar-nav" id="navbar-links"></ul>
           <div id="user-navbar-actions-mobile" class="d-lg-none mt-3"></div>
         </div>
 
-        <div id="user-navbar-actions" class="d-none d-lg-block"></div>
+        <div id="user-navbar-actions" class="d-none d-lg-block">
+          <a href="user-login.html" class="btn btn-primary">Registro/Iniciar sesión</a>
+        </div>
       </div>
     </nav>
 
@@ -76,35 +65,43 @@
       </div>
     </div>
   </div>
-  
-</body>
 
-<!--properties-->
-<script src="controllers/properties.js"></script>
-
-<!-- Enlace al JS local de Bootstrap -->
-<script src="public/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
-
-<!-- Enlace al JS local de jQuery -->
-<script src="public/jquery-3.7.1.min.js"></script>
-
-<!-- Enlace al JS local de DataTables 
-<script src="public/datatables/datatables.min.js"></script>-->
-
-<!-- Controladores-->
-<script src="controllers/admin/sociosController.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script src="controllers/authController.js"></script>
-
-
+  <footer class="text-light py-4">
+    <div class="container text-center">
+      <ul class="list-inline mb-2" id="footer-links"></ul>
+      <div class="small">&copy; Pacto del Loto 2025</div>
+    </div>
+  </footer>
+<script src="controllers/navigation.js"></script>
 <script>
-  // Cargar navbar.html en el div
-  /*fetch('resources/layouts/navbar.html')
-    .then(res => res.text())
-    .then(html => {
-      document.getElementById('navbar-placeholder').innerHTML = html;
-    });*/
-</script>
+  // Navbar dinámico
+  const navbarLinks = window.NAVIGATION_LINKS || [];
+  const navbarUl = document.getElementById('navbar-links');
+  if (navbarUl) {
+    navbarUl.innerHTML = navbarLinks.map(link => `
+      <li class="nav-item">
+        <a class="nav-link${window.location.pathname.endsWith(link.href) ? ' active' : ''}" 
+           href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
+          ${link.label}
+        </a>
+      </li>
+    `).join('');
+  }
 
+  // Footer dinámico
+  const footerLinks = window.FOOTER_LINKS || [];
+  const footerUl = document.getElementById('footer-links');
+  if (footerUl) {
+    footerUl.innerHTML = footerLinks.map(link => `
+      <li class="list-inline-item mx-2">
+        <a class="text-light text-decoration-none" 
+           href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
+          ${link.label}
+        </a>
+      </li>
+    `).join('');
+  }
+</script>
+<!-- scripts y cierre de body/html -->
 </body>
 </html>

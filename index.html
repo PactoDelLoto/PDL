@@ -28,7 +28,7 @@
   <header>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
       <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center text-white" href="#">
+        <a class="navbar-brand d-flex align-items-center text-white" href="index.html">
           <img src="public/media/img/logo.png" alt="Logo" width="60" height="40" class="rounded-circle">
           <strong>Pacto del Loto</strong>
         </a>
@@ -38,20 +38,7 @@
         </button>
 
         <div class="collapse navbar-collapse justify-content-center" id="navbarPacto">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link active" aria-current="page" href="#">Inicio</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="actividades.html">Actividades</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" target="_blank" href="https://www.instagram.com/pacto_del_loto/">Eventos</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#">Quiénes somos</a>
-            </li>
-          </ul>
+          <ul class="navbar-nav" id="navbar-links"></ul>
           <div id="user-navbar-actions-mobile" class="d-lg-none mt-3"></div>
         </div>
 
@@ -61,185 +48,65 @@
 
   </header>
 
-  <!-- Listado de socios -->
-  <div class="container my-5">
-    <h2 class="mb-4">Listado de Socios</h2>
-
-    <!-- Filtros de búsqueda para socios -->
-    <div class="row mb-3">
-      <div class="col-md-4 mb-2">
-        <input type="text" id="buscadorSocios" class="form-control" placeholder="Buscar por nombre o apellido">
-      </div>
-      <div class="col-md-2 mb-2">
-        <select id="filtroAnio" class="form-select">
-          <option value="">Año</option>
-          <option value="2025">2025</option>
-          <option value="2024">2024</option>
-          <option value="2023">2023</option>
-        </select>
-      </div>
-      <div class="col-md-2 mb-2">
-        <select id="filtroMes" class="form-select">
-          <option value="">Mes</option>
-          <option value="enero">Enero</option>
-          <option value="febrero">Febrero</option>
-          <option value="marzo">Marzo</option>
-          <option value="abril">Abril</option>
-          <option value="mayo">Mayo</option>
-          <option value="junio">Junio</option>
-          <option value="julio">Julio</option>
-          <option value="agosto">Agosto</option>
-          <option value="septiembre">Septiembre</option>
-          <option value="octubre">Octubre</option>
-          <option value="noviembre">Noviembre</option>
-          <option value="diciembre">Diciembre</option>
-        </select>
-      </div>
-      <div class="col-md-4 mb-2 d-flex gap-2">
-        <button id="btnSociosActuales" class="btn btn-primary w-100">Mostrar socios al corriente de pago</button>
-        <button id="btnLimpiarFiltros" class="btn btn-secondary w-100">
-          <i class="fa-solid fa-filter-circle-xmark"></i>
-        </button>
+  <!-- Carrusel PDL -->
+  
+  <div id="carouselExampleIndicators" class="carousel slide" data-bs-ride="carousel">
+  <div class="carousel-indicators">
+    <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+    <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="1" aria-label="Slide 2"></button>
+    <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="2" aria-label="Slide 3"></button>
+  </div>
+  <div class="carousel-inner">
+    <div class="carousel-item active">
+      <img class="d-block w-100" src="public/media/img/image1.jpg" alt="First slide">
+      <div class="carousel-caption d-flex flex-column justify-content-center align-items-center h-100">
+        <h2 class="fw-bold display-5" style="color: #f5f6fa;">
+          Pacto del Loto
+        </h2>
+        <p class="lead mt-2" style="color: #f5f6fa;">
+          Asociación gaditana de juegos de cartas TCG, miniaturas y Rol
+        </p>
       </div>
     </div>
-
-    <div class="table-responsive">
-      <table id="tablaSocios" class="table table-striped table-bordered align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th>Número</th>
-            <th>Nombre</th>
-            <th>Apellido</th>
-            <th>Teléfono</th>
-            <th>Último mes pagado</th>
-            <th>Último año pagado</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>1</td>
-            <td>Ana</td>
-            <td>García</td>
-            <td>612345678</td>
-            <td>abril</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>2</td>
-            <td>Carlos</td>
-            <td>Pérez</td>
-            <td>698765432</td>
-            <td>marzo</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>3</td>
-            <td>Lucía</td>
-            <td>López</td>
-            <td>634567890</td>
-            <td>mayo</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>4</td>
-            <td>Manuel</td>
-            <td>Ruiz</td>
-            <td>622334455</td>
-            <td>abril</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>5</td>
-            <td>Elena</td>
-            <td>Martínez</td>
-            <td>611223344</td>
-            <td>febrero</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>6</td>
-            <td>Javier</td>
-            <td>Sánchez</td>
-            <td>699887766</td>
-            <td>diciembre</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>7</td>
-            <td>María</td>
-            <td>Fernández</td>
-            <td>633221144</td>
-            <td>junio</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>8</td>
-            <td>Pedro</td>
-            <td>Gómez</td>
-            <td>655443322</td>
-            <td>enero</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>9</td>
-            <td>Laura</td>
-            <td>Moreno</td>
-            <td>677889900</td>
-            <td>julio</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>10</td>
-            <td>David</td>
-            <td>Navarro</td>
-            <td>688776655</td>
-            <td>septiembre</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>11</td>
-            <td>Sara</td>
-            <td>Romero</td>
-            <td>699112233</td>
-            <td>diciembre</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>12</td>
-            <td>Raúl</td>
-            <td>Jiménez</td>
-            <td>644556677</td>
-            <td>marzo</td>
-            <td>2024</td>
-          </tr>
-          <tr>
-            <td>13</td>
-            <td>Patricia</td>
-            <td>Ortega</td>
-            <td>655667788</td>
-            <td>noviembre</td>
-            <td>2024</td>
-          </tr>
-          <tr>
-            <td>14</td>
-            <td>Alberto</td>
-            <td>Castro</td>
-            <td>677778899</td>
-            <td>octubre</td>
-            <td>2025</td>
-          </tr>
-          <tr>
-            <td>15</td>
-            <td>Isabel</td>
-            <td>Vega</td>
-            <td>688889900</td>
-            <td>agosto</td>
-            <td>2025</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="carousel-item">
+      <img class="d-block w-100" src="public/media/img/image2.jpg" alt="Second slide">
+      <div class="carousel-caption d-flex flex-column justify-content-center align-items-center h-100">
+        <h2 class="fw-bold display-5" style="color: #f5f6fa;">
+          Pacto del Loto
+        </h2>
+        <p class="lead mt-2" style="color: #f5f6fa;">
+          Asociación gaditana de juegos de cartas TCG, miniaturas y Rol
+        </p>
+      </div>
+    </div>
+    <div class="carousel-item">
+      <img class="d-block w-100" src="public/media/img/image3.jpg" alt="Third slide">
+      <div class="carousel-caption d-flex flex-column justify-content-center align-items-center h-100">
+        <h2 class="fw-bold display-5" style="color: #f5f6fa;">
+          Pacto del Loto
+        </h2>
+        <p class="lead mt-2" style="color: #f5f6fa;">
+          Asociación gaditana de juegos de cartas TCG, miniaturas y Rol
+        </p>
+      </div>
     </div>
   </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Anterior</span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Siguiente</span>
+  </button>
+</div>
+
+<footer class="text-light py-4">
+  <div class="container text-center">
+    <ul class="list-inline mb-2" id="footer-links"></ul>
+    <div class="small">&copy; Pacto del Loto 2025</div>
+  </div>
+</footer>
 </body>
 
 <!--properties-->
@@ -255,18 +122,41 @@
 <script src="public/datatables/datatables.min.js"></script>-->
 
 <!-- Controladores-->
-<script src="controllers/admin/sociosController.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script src="controllers/authController.js"></script>
+<script src="controllers/pathHelper.js"></script>
 
+<!-- Navegacion -->
 
+<script src="controllers/navigation.js"></script>
 <script>
-  // Cargar navbar.html en el div
-  /*fetch('resources/layouts/navbar.html')
-    .then(res => res.text())
-    .then(html => {
-      document.getElementById('navbar-placeholder').innerHTML = html;
-    });*/
+  // Navbar dinámico
+  const navbarLinks = window.NAVIGATION_LINKS || [];
+  const navbarUl = document.getElementById('navbar-links');
+  if (navbarUl) {
+    navbarUl.innerHTML = navbarLinks.map(link => `
+      <li class="nav-item">
+        <a class="nav-link${window.location.pathname.endsWith(link.href) ? ' active' : ''}" 
+           href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
+          ${link.label}
+        </a>
+      </li>
+    `).join('');
+  }
+
+  // Footer dinámico
+  const footerLinks = window.FOOTER_LINKS || [];
+  const footerUl = document.getElementById('footer-links');
+  if (footerUl) {
+    footerUl.innerHTML = footerLinks.map(link => `
+      <li class="list-inline-item mx-2">
+        <a class="text-light text-decoration-none" 
+           href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
+          ${link.label}
+        </a>
+      </li>
+    `).join('');
+  }
 </script>
 
 </body>

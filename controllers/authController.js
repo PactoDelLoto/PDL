@@ -108,7 +108,7 @@ window.renderUserNavbarActions = async function() {
     `;
   } else {
     html = `
-      <a href="resources/views/user-login.html" class="btn btn-primary">Registro/Iniciar sesión</a>
+      <a href="user-login.html" class="btn btn-primary">Registro/Iniciar sesión</a>
     `;
   }
 

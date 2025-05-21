@@ -1,3 +1,21 @@
+html, body {
+  height: 100%;
+  min-height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+footer {
+  margin-top: auto;
+  background-color: #2c2c54 !important;
+  color: #f5f6fa !important;
+  border-top: 1px solid #22224a;
+}
+
 .navbar-custom {
       background-color: #2c2c54;
     }
@@ -41,4 +59,18 @@
     .btn-contacto:hover {
       background-color: #e58e26;
       color: #fff;
+    }
+
+    /* Carrusel responsivo y centrado */
+    #carouselExampleIndicators {
+      max-height: 90vh;
+      min-height: 350px;
+      overflow: hidden;
+    }
+    #carouselExampleIndicators .carousel-item img {
+      height: 90vh;
+      min-height: 350px;
+      width: 100%;
+      object-fit: cover;
+      object-position: center;
     }
