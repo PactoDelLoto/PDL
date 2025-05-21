@@ -15,7 +15,7 @@ async function login(email, password) {
     return false;
   }
   // Redirige al index directamente tras login exitoso
-  window.location.href = "../../index.html";
+  window.location.href = "index.html";
   return true;
 }
 
