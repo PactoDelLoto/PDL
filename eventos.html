@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Eventos - Pacto del Loto</title>
+  <link rel="icon" type="image/png" href="public/media/img/logo.ico" />
+  <link href="public/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="public/global.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .event-card {
+      border-radius: 0.7rem;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      transition: transform 0.18s, box-shadow 0.18s;
+      height: 100%;
+      background: #fff;
+      position: relative;
+      min-height: 320px;
+      max-width: 260px;
+      margin: 0 auto;
+    }
+    .event-card:hover {
+      transform: translateY(-4px) scale(1.025);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.13);
+      z-index: 2;
+    }
+    .event-img {
+      width: 100%;
+      aspect-ratio: 3/5;
+      object-fit: cover;
+      background: #eee;
+      transition: filter 0.18s;
+      max-height: 180px;
+    }
+    .event-card:hover .event-img {
+      filter: brightness(0.88) blur(0.5px);
+    }
+    .event-info {
+      padding: 0.7rem 0.7rem 0.4rem 0.7rem;
+    }
+    .event-title {
+      font-size: 1.05rem;
+      font-weight: bold;
+      margin-bottom: 0.2rem;
+      color: #6c63ff;
+      line-height: 1.2;
+    }
+    .event-date {
+      font-size: 0.89rem;
+      color: #888;
+      margin-bottom: 0.3rem;
+    }
+    .event-extra {
+      font-size: 0.89rem;
+      color: #444;
+      min-height: 2em;
+    }
+    .event-hover-details {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      background: rgba(40,40,60,0.93);
+      color: #fff;
+      padding: 0.7rem 0.7rem 0.5rem 0.7rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s;
+      font-size: 0.93rem;
+      min-height: 3.5em;
+    }
+    .event-card:hover .event-hover-details {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .event-pagination .page-link {
+      color: #6c63ff;
+    }
+    .event-pagination .active .page-link {
+      background: #6c63ff;
+      border-color: #6c63ff;
+      color: #fff;
+    }
+    .event-search-bar {
+      max-width: 350px;
+      font-size: 0.97rem;
+      padding: 0.35rem 0.7rem;
+    }
+    @media (max-width: 575px) {
+      .event-info { padding: 0.5rem 0.3rem 0.3rem 0.3rem; }
+      .event-hover-details { font-size: 0.89rem; }
+      .event-card { max-width: 98vw; min-height: 220px; }
+      .event-img { max-height: 110px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center text-white" href="index.html">
+          <img src="public/media/img/logo.png" alt="Logo" width="60" height="40" class="rounded-circle">
+          <strong>Pacto del Loto</strong>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPacto" aria-controls="navbarPacto" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-center" id="navbarPacto">
+          <ul class="navbar-nav" id="navbar-links"></ul>
+          <div id="user-navbar-actions-mobile" class="d-lg-none mt-3"></div>
+        </div>
+        <div id="user-navbar-actions" class="d-none d-lg-block"></div>
+      </div>
+    </nav>
+  </header>
+
+  <section class="container py-5">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+      <h1 class="fw-bold mb-0"><i class="fa-solid fa-calendar-days text-primary me-2"></i>Eventos</h1>
+      <div class="d-flex gap-2 align-items-center">
+        <input type="search" class="form-control event-search-bar" id="event-search" placeholder="Buscar evento, fecha, tipo...">
+        <select class="form-select ms-2" id="event-page-size" style="width: auto; min-width: 120px;">
+          <option value="10" selected>10 por página</option>
+          <option value="12">12 por página</option>
+          <option value="16">16 por página</option>
+          <option value="20">20 por página</option>
+        </select>
+      </div>
+    </div>
+    <div id="eventos-catalogo" class="row g-4"></div>
+    <nav class="event-pagination d-flex justify-content-center mt-4">
+      <ul class="pagination" id="event-pagination"></ul>
+    </nav>
+  </section>
+
+  <footer class="text-light py-4 mt-5">
+    <div class="container text-center">
+      <ul class="list-inline mb-2" id="footer-links"></ul>
+      <div class="small">&copy; Pacto del Loto 2025</div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="controllers/navigation.js"></script>
+  <script src="controllers/authController.js"></script>
+  <script src="controllers/admin/eventosController.js"></script>
+</body>
+</html>

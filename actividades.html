@@ -42,9 +42,7 @@
           <div id="user-navbar-actions-mobile" class="d-lg-none mt-3"></div>
         </div>
 
-        <div id="user-navbar-actions" class="d-none d-lg-block">
-          <a href="user-login.html" class="btn btn-primary">Registro/Iniciar sesión</a>
-        </div>
+        <div id="user-navbar-actions" class="d-none d-lg-block"></div>
       </div>
     </nav>
 
@@ -72,36 +70,11 @@
       <div class="small">&copy; Pacto del Loto 2025</div>
     </div>
   </footer>
-<script src="controllers/navigation.js"></script>
-<script>
-  // Navbar dinámico
-  const navbarLinks = window.NAVIGATION_LINKS || [];
-  const navbarUl = document.getElementById('navbar-links');
-  if (navbarUl) {
-    navbarUl.innerHTML = navbarLinks.map(link => `
-      <li class="nav-item">
-        <a class="nav-link${window.location.pathname.endsWith(link.href) ? ' active' : ''}" 
-           href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
-          ${link.label}
-        </a>
-      </li>
-    `).join('');
-  }
 
-  // Footer dinámico
-  const footerLinks = window.FOOTER_LINKS || [];
-  const footerUl = document.getElementById('footer-links');
-  if (footerUl) {
-    footerUl.innerHTML = footerLinks.map(link => `
-      <li class="list-inline-item mx-2">
-        <a class="text-light text-decoration-none" 
-           href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
-          ${link.label}
-        </a>
-      </li>
-    `).join('');
-  }
-</script>
-<!-- scripts y cierre de body/html -->
+  <!-- scripts -->
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+   <script src="controllers/authController.js"></script>
+    <script src="controllers/navigation.js"></script>
+    <!-- scripts y cierre de body/html -->
 </body>
 </html>

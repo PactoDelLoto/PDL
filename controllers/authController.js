@@ -87,49 +87,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-window.renderUserNavbarActions = async function() {
-  const userActionsDesktop = document.getElementById('user-navbar-actions');
-  const userActionsMobile = document.getElementById('user-navbar-actions-mobile');
-  if (!window.supabase) return;
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  let html = '';
-  if (user) {
-    const name = user.user_metadata?.name || '';
-    const surname = user.user_metadata?.surname || '';
-    html = `
-      <a href="#" class="me-2 text-white text-decoration-none user-email-link">
-        <i class="fa fa-user-circle"></i> ${name} ${surname}
-      </a>
-      <button title="Cerrar sesión" class="btn btn-link text-white p-0 logout-link" style="vertical-align: middle;">
-        <i class="fa fa-right-from-bracket"></i>
-      </button>
-    `;
-  } else {
-    html = `
-      <a href="user-login.html" class="btn btn-primary">Registro/Iniciar sesión</a>
-    `;
+function renderUserNavbar(user) {
+  // Escritorio
+  const userActions = document.getElementById('user-navbar-actions');
+  if (userActions) {
+    userActions.innerHTML = user
+      ? `<span class="text-light me-3"><i class="fa fa-user"></i> ${user.name}</span>
+         <a href="resources/views/user-logout.html" class="btn btn-outline-light btn-sm">Cerrar sesión</a>`
+      : `<a href="user-login.html" class="btn btn-primary">Registro/Iniciar sesión</a>`;
   }
 
-  if (userActionsDesktop) userActionsDesktop.innerHTML = html;
-  if (userActionsMobile) userActionsMobile.innerHTML = html;
-
-  // Añade el evento logout en ambos
-  setTimeout(() => {
-    document.querySelectorAll('.logout-link').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await supabase.auth.signOut();
-        location.reload();
-      });
-    });
-  }, 0);
-};
+  // Móvil
+  const userActionsMobile = document.getElementById('user-navbar-actions-mobile');
+  if (userActionsMobile) {
+    userActionsMobile.innerHTML = user
+      ? `<span class="text-light me-3"><i class="fa fa-user"></i> ${user.name}</span>
+         <a href="resources/views/user-logout.html" class="btn btn-outline-light btn-sm w-100 mt-2">Cerrar sesión</a>`
+      : `<a href="user-login.html" class="btn btn-primary w-100">Registro/Iniciar sesión</a>`;
+  }
+}
 
 // Llama automáticamente a la función en cada carga de página
-document.addEventListener('DOMContentLoaded', () => {
-  window.renderUserNavbarActions();
+document.addEventListener('DOMContentLoaded', async () => {
+  // Obtiene el usuario actual de Supabase
+  const { data: { user } } = await supabase.auth.getUser();
+  // Si tienes datos extra en user.user_metadata, puedes usar user.user_metadata.name
+  renderUserNavbar(user ? { name: user.user_metadata?.name || user.email } : null);
 });
 
 // Login con Google

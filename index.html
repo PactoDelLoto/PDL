@@ -125,39 +125,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script src="controllers/authController.js"></script>
 <script src="controllers/pathHelper.js"></script>
-
-<!-- Navegacion -->
-
 <script src="controllers/navigation.js"></script>
-<script>
-  // Navbar dinámico
-  const navbarLinks = window.NAVIGATION_LINKS || [];
-  const navbarUl = document.getElementById('navbar-links');
-  if (navbarUl) {
-    navbarUl.innerHTML = navbarLinks.map(link => `
-      <li class="nav-item">
-        <a class="nav-link${window.location.pathname.endsWith(link.href) ? ' active' : ''}" 
-           href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
-          ${link.label}
-        </a>
-      </li>
-    `).join('');
-  }
-
-  // Footer dinámico
-  const footerLinks = window.FOOTER_LINKS || [];
-  const footerUl = document.getElementById('footer-links');
-  if (footerUl) {
-    footerUl.innerHTML = footerLinks.map(link => `
-      <li class="list-inline-item mx-2">
-        <a class="text-light text-decoration-none" 
-           href="${link.external ? link.href : link.href}"${link.external ? ' target="_blank"' : ''}>
-          ${link.label}
-        </a>
-      </li>
-    `).join('');
-  }
-</script>
 
 </body>
 </html>

@@ -17,17 +17,17 @@
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-  <script src="../../controllers/authController.js"></script>
   <script>
-    // Espera a que supabase esté disponible
-    document.addEventListener('DOMContentLoaded', function() {
-      if (window.supabase) {
-        window.supabase.auth.signOut().finally(function() {
-          window.location.href = "../../index.html";
-        });
-      } else {
-        window.location.href = "../../index.html";
-      }
+    // Inicializa Supabase SOLO para logout
+    const SUPABASE_URL = 'https://pfoxsrkocufbqjimtuvh.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmb3hzcmtvY3VmYnFqaW10dXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3Mjg0MjUsImV4cCI6MjA2MzMwNDQyNX0.6oJmysXYjoNLpN7H6Oa9_WQ8FTCVyRKXw7zsns2GvZc';
+    const supabase = window.supabase?.createClient
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+      : window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await supabase.auth.signOut();
+      window.location.href = "../../index.html";
     });
   </script>
 </body>
