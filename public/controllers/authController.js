@@ -26,6 +26,34 @@ window.isUserAdmin = function() {
 };
 
 /**
+ * Checks if the currently logged-in user is a "socio".
+ * @returns {Promise<boolean>} A promise that resolves to true if the user is a socio, false otherwise.
+ */
+window.isUserSocio = function() {
+    return new Promise((resolve) => {
+        const user = auth.currentUser;
+        if (!user) {
+            resolve(false);
+            return;
+        }
+
+        const userRef = db.collection('usuarios').doc(user.uid);
+        userRef.get().then(doc => {
+            // Un socio puede ser admin o no, así que solo verificamos isSocio
+            if (doc.exists && doc.data().isSocio === true) {
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+        }).catch(error => {
+            console.error("Error al verificar el estado de socio:", error);
+            resolve(false); // Resolve to false on error to prevent unauthorized access
+        });
+    });
+};
+
+
+/**
  * Observador del estado de autenticación de Firebase.
  * Se ejecuta cuando la página carga y cada vez que el estado de autenticación cambia.
  */

@@ -32,17 +32,24 @@ async function populateNavbarLinks(isLoggedIn) {
 
     if (isLoggedIn) {
         const isAdmin = await window.isUserAdmin();
+        const isSocio = await window.isUserSocio();
+
+        if (isSocio) {
+            links.push({ text: 'Inventario', href: '/inventario.html' });
+        }
         if (isAdmin) {
             links.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
         }
     }
 
     const navbarList = document.getElementById('navbar-links');
-    navbarList.innerHTML = links.map(link => `
-        <li class="nav-item">
-            <a class="nav-link ${window.location.pathname === link.href ? 'active' : ''}" href="${link.href}">${link.text}</a>
-        </li>
-    `).join('');
+    if (navbarList) {
+        navbarList.innerHTML = links.map(link => `
+            <li class="nav-item">
+                <a class="nav-link ${window.location.pathname === link.href ? 'active' : ''}" href="${link.href}">${link.text}</a>
+            </li>
+        `).join('');
+    }
 }
 
 function populateFooterLinks() {

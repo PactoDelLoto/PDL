@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // == Helper Functions ==
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    function isSocio() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true;
+    }
+
+    // == RULES FOR USERS COLLECTION ==
+    match /usuarios/{userId} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth.uid == userId || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // == RULES FOR INVENTORY COLLECTION ==
+    match /inventario/{itemId} {
+      allow read, write: if isSocio();
+    }
+
+    // == RULES FOR INVENTORY CATEGORIES COLLECTION ==
+    match /categoriasInventario/{catId} {
+        // Members can read categories to populate the dropdown.
+        // Only admins can create/update/delete categories.
+        allow read: if isSocio();
+        allow write: if isAdmin();
+    }
+  }
+}

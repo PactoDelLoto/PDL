@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacto del Loto - Gestión de Inventario y Préstamos</title>
+    <style>
+        /* Design System CSS */
+        :root {
+            /* Primitive Color Tokens */
+            --color-white: rgba(255, 255, 255, 1);
+            --color-black: rgba(0, 0, 0, 1);
+            --color-cream-50: rgba(252, 252, 249, 1);
+            --color-cream-100: rgba(255, 255, 253, 1);
+            --color-gray-200: rgba(245, 245, 245, 1);
+            --color-gray-300: rgba(167, 169, 169, 1);
+            --color-gray-400: rgba(119, 124, 124, 1);
+            --color-slate-500: rgba(98, 108, 113, 1);
+            --color-brown-600: rgba(94, 82, 64, 1);
+            --color-charcoal-700: rgba(31, 33, 33, 1);
+            --color-charcoal-800: rgba(38, 40, 40, 1);
+            --color-slate-900: rgba(19, 52, 59, 1);
+            --color-teal-300: rgba(50, 184, 198, 1);
+            --color-teal-400: rgba(45, 166, 178, 1);
+            --color-teal-500: rgba(33, 128, 141, 1);
+            --color-teal-600: rgba(29, 116, 128, 1);
+            --color-teal-700: rgba(26, 104, 115, 1);
+            --color-teal-800: rgba(41, 150, 161, 1);
+            --color-red-400: rgba(255, 84, 89, 1);
+            --color-red-500: rgba(192, 21, 47, 1);
+            --color-orange-400: rgba(230, 129, 97, 1);
+            --color-orange-500: rgba(168, 75, 47, 1);
+
+            /* Pacto del Loto Brand Colors */
+            --color-loto-primary: #1B8DB8;
+            --color-loto-dark: #2C2C2C;
+            --color-loto-cyan: #00A6B5;
+            --color-loto-green: #6BA547;
+            --color-loto-orange: #D8664C;
+            --color-loto-beige: #D4C4A8;
+            
+            /* RGB versions for opacity control */
+            --color-loto-primary-rgb: 27, 141, 184;
+            --color-loto-dark-rgb: 44, 44, 44;
+            --color-loto-cyan-rgb: 0, 166, 181;
+            --color-loto-green-rgb: 107, 165, 71;
+            --color-loto-orange-rgb: 216, 102, 76;
+            --color-loto-beige-rgb: 212, 196, 168;
+
+            /* RGB versions for opacity control */
+            --color-brown-600-rgb: 94, 82, 64;
+            --color-teal-500-rgb: 33, 128, 141;
+            --color-slate-900-rgb: 19, 52, 59;
+            --color-slate-500-rgb: 98, 108, 113;
+            --color-red-500-rgb: 192, 21, 47;
+            --color-red-400-rgb: 255, 84, 89;
+            --color-orange-500-rgb: 168, 75, 47;
+            --color-orange-400-rgb: 230, 129, 97;
+
+            /* Background color tokens (Light Mode - Loto Brand) */
+            --color-bg-1: rgba(var(--color-loto-primary-rgb), 0.08); /* Light blue */
+            --color-bg-2: rgba(var(--color-loto-green-rgb), 0.08); /* Light green */
+            --color-bg-3: rgba(var(--color-loto-orange-rgb), 0.08); /* Light orange */
+            --color-bg-4: rgba(var(--color-loto-cyan-rgb), 0.08); /* Light cyan */
+            --color-bg-5: rgba(var(--color-loto-beige-rgb), 0.15); /* Light beige */
+            --color-bg-6: rgba(var(--color-loto-dark-rgb), 0.05); /* Light dark */
+            --color-bg-7: rgba(236, 72, 153, 0.08); /* Light pink */
+            --color-bg-8: rgba(6, 182, 212, 0.08); /* Light cyan */
+
+            /* Semantic Color Tokens (Light Mode) - Loto Brand */
+            --color-background: var(--color-cream-50);
+            --color-surface: var(--color-cream-100);
+            --color-text: var(--color-loto-dark);
+            --color-text-secondary: var(--color-slate-500);
+            --color-primary: var(--color-loto-primary);
+            --color-primary-hover: var(--color-loto-cyan);
+            --color-primary-active: #0E6B7A;
+            --color-secondary: rgba(var(--color-loto-primary-rgb), 0.12);
+            --color-secondary-hover: rgba(var(--color-loto-primary-rgb), 0.2);
+            --color-secondary-active: rgba(var(--color-loto-primary-rgb), 0.25);
+            --color-border: rgba(var(--color-loto-primary-rgb), 0.2);
+            --color-btn-primary-text: var(--color-cream-50);
+            --color-card-border: rgba(var(--color-loto-primary-rgb), 0.12);
+            --color-card-border-inner: rgba(var(--color-loto-primary-rgb), 0.12);
+            --color-error: var(--color-red-500);
+            --color-success: var(--color-teal-500);
+            --color-warning: var(--color-orange-500);
+            --color-info: var(--color-slate-500);
+            --color-focus-ring: rgba(var(--color-loto-primary-rgb), 0.4);
+            --color-select-caret: rgba(var(--color-slate-900-rgb), 0.8);
+
+            /* Common style patterns */
+            --focus-ring: 0 0 0 3px var(--color-focus-ring);
+            --focus-outline: 2px solid var(--color-primary);
+            --status-bg-opacity: 0.15;
+            --status-border-opacity: 0.25;
+            --select-caret-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23134252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            --select-caret-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+
+            /* RGB versions for opacity control */
+            --color-success-rgb: 33, 128, 141;
+            --color-error-rgb: 192, 21, 47;
+            --color-warning-rgb: 168, 75, 47;
+            --color-info-rgb: 98, 108, 113;
+
+            /* Typography */
+            --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-family-mono: "Berkeley Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            --font-size-xs: 11px;
+            --font-size-sm: 12px;
+            --font-size-base: 14px;
+            --font-size-md: 14px;
+            --font-size-lg: 16px;
+            --font-size-xl: 18px;
+            --font-size-2xl: 20px;
+            --font-size-3xl: 24px;
+            --font-size-4xl: 30px;
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 550;
+            --font-weight-bold: 600;
+            --line-height-tight: 1.2;
+            --line-height-normal: 1.5;
+            --letter-spacing-tight: -0.01em;
+
+            /* Spacing */
+            --space-0: 0;
+            --space-1: 1px;
+            --space-2: 2px;
+            --space-4: 4px;
+            --space-6: 6px;
+            --space-8: 8px;
+            --space-10: 10px;
+            --space-12: 12px;
+            --space-16: 16px;
+            --space-20: 20px;
+            --space-24: 24px;
+            --space-32: 32px;
+
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-base: 8px;
+            --radius-md: 10px;
+            --radius-lg: 12px;
+            --radius-full: 9999px;
+
+            /* Shadows */
+            --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+            --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+
+            /* Animation */
+            --duration-fast: 150ms;
+            --duration-normal: 250ms;
+            --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+
+            /* Layout */
+            --container-sm: 640px;
+            --container-md: 768px;
+            --container-lg: 1024px;
+            --container-xl: 1280px;
+        }
+
+        /* Base styles */
+        html {
+            font-size: var(--font-size-base);
+            font-family: var(--font-family-base);
+            line-height: var(--line-height-normal);
+            color: var(--color-text);
+            background-color: var(--color-background);
+            -webkit-font-smoothing: antialiased;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        *, *::before, *::after {
+            box-sizing: inherit;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            margin: 0;
+            font-weight: var(--font-weight-semibold);
+            line-height: var(--line-height-tight);
+            color: var(--color-text);
+            letter-spacing: var(--letter-spacing-tight);
+        }
+
+        h1 { font-size: var(--font-size-4xl); }
+        h2 { font-size: var(--font-size-3xl); }
+        h3 { font-size: var(--font-size-2xl); }
+        h4 { font-size: var(--font-size-xl); }
+        h5 { font-size: var(--font-size-lg); }
+        h6 { font-size: var(--font-size-md); }
+
+        p {
+            margin: 0 0 var(--space-16) 0;
+        }
+
+        a {
+            color: var(--color-primary);
+            text-decoration: none;
+            transition: color var(--duration-fast) var(--ease-standard);
+        }
+
+        a:hover {
+            color: var(--color-primary-hover);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-8) var(--space-16);
+            border-radius: var(--radius-base);
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            line-height: 1.5;
+            cursor: pointer;
+            transition: all var(--duration-normal) var(--ease-standard);
+            border: none;
+            text-decoration: none;
+            position: relative;
+        }
+
+        .btn:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        .btn--primary {
+            background: var(--color-primary);
+            color: var(--color-btn-primary-text);
+        }
+
+        .btn--primary:hover {
+            background: var(--color-primary-hover);
+        }
+
+        .btn--primary:active {
+            background: var(--color-primary-active);
+        }
+
+        .btn--secondary {
+            background: var(--color-secondary);
+            color: var(--color-text);
+        }
+
+        .btn--secondary:hover {
+            background: var(--color-secondary-hover);
+        }
+
+        .btn--secondary:active {
+            background: var(--color-secondary-active);
+        }
+
+        .btn--outline {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+        }
+
+        .btn--outline:hover {
+            background: var(--color-secondary);
+        }
+
+        .btn--sm {
+            padding: var(--space-4) var(--space-12);
+            font-size: var(--font-size-sm);
+            border-radius: var(--radius-sm);
+        }
+
+        .btn--lg {
+            padding: var(--space-10) var(--space-20);
+            font-size: var(--font-size-lg);
+            border-radius: var(--radius-md);
+        }
+
+        .btn--full-width {
+            width: 100%;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Form elements */
+        .form-control {
+            display: block;
+            width: 100%;
+            padding: var(--space-8) var(--space-12);
+            font-size: var(--font-size-md);
+            line-height: 1.5;
+            color: var(--color-text);
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+        }
+
+        select.form-control {
+            padding: var(--space-8) var(--space-12);
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: var(--select-caret-light);
+            background-repeat: no-repeat;
+            background-position: right var(--space-12) center;
+            background-size: 16px;
+            padding-right: var(--space-32);
+        }
+
+        .form-control:focus {
+            border-color: var(--color-primary);
+            outline: var(--focus-outline);
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: var(--space-8);
+            font-weight: var(--font-weight-medium);
+            font-size: var(--font-size-sm);
+        }
+
+        .form-group {
+            margin-bottom: var(--space-16);
+        }
+
+        /* Card component */
+        .card {
+            background-color: var(--color-surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-card-border);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: box-shadow var(--duration-normal) var(--ease-standard);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .card__body {
+            padding: var(--space-16);
+        }
+
+        .card__header, .card__footer {
+            padding: var(--space-16);
+            border-bottom: 1px solid var(--color-card-border-inner);
+        }
+
+        /* Status indicators */
+        .status {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--space-6) var(--space-12);
+            border-radius: var(--radius-full);
+            font-weight: var(--font-weight-medium);
+            font-size: var(--font-size-sm);
+        }
+
+        .status--success {
+            background-color: rgba(var(--color-success-rgb, 33, 128, 141), var(--status-bg-opacity));
+            color: var(--color-success);
+            border: 1px solid rgba(var(--color-success-rgb, 33, 128, 141), var(--status-border-opacity));
+        }
+
+        .status--error {
+            background-color: rgba(var(--color-error-rgb, 192, 21, 47), var(--status-bg-opacity));
+            color: var(--color-error);
+            border: 1px solid rgba(var(--color-error-rgb, 192, 21, 47), var(--status-border-opacity));
+        }
+
+        .status--warning {
+            background-color: rgba(var(--color-warning-rgb, 168, 75, 47), var(--status-bg-opacity));
+            color: var(--color-warning);
+            border: 1px solid rgba(var(--color-warning-rgb, 168, 75, 47), var(--status-border-opacity));
+        }
+
+        .status--info {
+            background-color: rgba(var(--color-info-rgb, 98, 108, 113), var(--status-bg-opacity));
+            color: var(--color-info);
+            border: 1px solid rgba(var(--color-info-rgb, 98, 108, 113), var(--status-border-opacity));
+        }
+
+        /* Container layout */
+        .container {
+            width: 100%;
+            margin-right: auto;
+            margin-left: auto;
+            padding-right: var(--space-16);
+            padding-left: var(--space-16);
+        }
+
+        @media (min-width: 640px) {
+            .container { max-width: var(--container-sm); }
+        }
+        @media (min-width: 768px) {
+            .container { max-width: var(--container-md); }
+        }
+        @media (min-width: 1024px) {
+            .container { max-width: var(--container-lg); }
+        }
+        @media (min-width: 1280px) {
+            .container { max-width: var(--container-xl); }
+        }
+
+        /* Utility classes */
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-4 { gap: var(--space-4); }
+        .gap-8 { gap: var(--space-8); }
+        .gap-16 { gap: var(--space-16); }
+        .m-0 { margin: 0; }
+        .mt-8 { margin-top: var(--space-8); }
+        .mb-8 { margin-bottom: var(--space-8); }
+        .mx-8 { margin-left: var(--space-8); margin-right: var(--space-8); }
+        .my-8 { margin-top: var(--space-8); margin-bottom: var(--space-8); }
+        .p-0 { padding: 0; }
+        .py-8 { padding-top: var(--space-8); padding-bottom: var(--space-8); }
+        .px-8 { padding-left: var(--space-8); padding-right: var(--space-8); }
+        .py-16 { padding-top: var(--space-16); padding-bottom: var(--space-16); }
+        .px-16 { padding-left: var(--space-16); padding-right: var(--space-16); }
+        .block { display: block; }
+        .hidden { display: none; }
+
+        /* Accessibility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        :focus-visible {
+            outline: var(--focus-outline);
+            outline-offset: 2px;
+        }
+
+        /* Custom application styles */
+        
+        /* Disabled select options */
+        select.form-control option:disabled {
+            color: var(--color-text-secondary);
+            background-color: var(--color-secondary);
+        }
+        .app-header {
+            background: linear-gradient(135deg, var(--color-loto-primary), var(--color-loto-cyan));
+            color: white;
+            padding: var(--space-24) 0;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-24);
+            flex-wrap: wrap;
+        }
+        
+        .app-logo {
+            height: 80px;
+            width: auto;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 3px solid rgba(255,255,255,0.2);
+        }
+        
+        .title-section {
+            text-align: center;
+        }
+        
+        .app-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: float 20s linear infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translate(-50px, -50px); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .app-title {
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+            margin: 0;
+            position: relative;
+            z-index: 1;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .lotus-icon {
+            font-size: 2.5rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .app-subtitle {
+            font-size: var(--font-size-lg);
+            opacity: 0.95;
+            margin-top: var(--space-8);
+            position: relative;
+            z-index: 1;
+            font-weight: var(--font-weight-medium);
+        }
+
+        .nav-tabs {
+            display: flex;
+            border-bottom: 2px solid var(--color-border);
+            background-color: var(--color-surface);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: var(--space-16) var(--space-24);
+            text-align: center;
+            background: transparent;
+            border: none;
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            transition: all var(--duration-normal) var(--ease-standard);
+            position: relative;
+        }
+
+        .nav-tab.active {
+            color: var(--color-loto-primary);
+            background: linear-gradient(135deg, rgba(var(--color-loto-primary-rgb), 0.1), rgba(var(--color-loto-cyan-rgb), 0.1));
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-loto-primary), var(--color-loto-cyan));
+        }
+
+        .nav-tab:hover:not(.active) {
+            background-color: var(--color-secondary);
+        }
+
+        .tab-content {
+            padding: var(--space-24);
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .search-box {
+            margin-bottom: var(--space-24);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-card-border);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--color-surface);
+        }
+
+        .table th,
+        .table td {
+            padding: var(--space-12) var(--space-16);
+            text-align: left;
+            border-bottom: 1px solid var(--color-card-border-inner);
+        }
+
+        .table th {
+            background-color: var(--color-bg-1);
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .table th:hover {
+            background-color: var(--color-secondary);
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--color-bg-1);
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: var(--space-8);
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity var(--duration-normal) var(--ease-standard), visibility var(--duration-normal) var(--ease-standard);
+        }
+
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: var(--space-24);
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(-20px);
+            transition: transform var(--duration-normal) var(--ease-standard);
+        }
+
+        .modal.show .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-24);
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: var(--font-size-xl);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: var(--font-size-2xl);
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--color-text);
+        }
+
+        .alert {
+            padding: var(--space-12) var(--space-16);
+            border-radius: var(--radius-base);
+            margin-bottom: var(--space-16);
+            border-left: 4px solid;
+        }
+
+        .alert--success {
+            background-color: rgba(var(--color-success-rgb), 0.1);
+            border-left-color: var(--color-success);
+            color: var(--color-success);
+        }
+
+        .alert--error {
+            background-color: rgba(var(--color-error-rgb), 0.1);
+            border-left-color: var(--color-error);
+            color: var(--color-error);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--space-32);
+            color: var(--color-text-secondary);
+        }
+
+        .empty-state h3 {
+            color: var(--color-text-secondary);
+            margin-bottom: var(--space-16);
+        }
+
+        .loan-section {
+            margin-bottom: var(--space-32);
+        }
+
+        .loan-section h3 {
+            margin-bottom: var(--space-16);
+            padding-bottom: var(--space-8);
+            border-bottom: 2px solid var(--color-primary);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-16);
+        }
+
+        /* Category badges */
+        .category-badge {
+            display: inline-block;
+            padding: var(--space-4) var(--space-10);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-semibold);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .category-juego {
+            background-color: rgba(var(--color-loto-green-rgb), 0.15);
+            color: var(--color-loto-green);
+            border: 1px solid rgba(var(--color-loto-green-rgb), 0.3);
+        }
+        
+        .category-material {
+            background-color: rgba(var(--color-loto-primary-rgb), 0.15);
+            color: var(--color-loto-primary);
+            border: 1px solid rgba(var(--color-loto-primary-rgb), 0.3);
+        }
+        
+        .category-merchandising {
+            background-color: rgba(var(--color-loto-orange-rgb), 0.15);
+            color: var(--color-loto-orange);
+            border: 1px solid rgba(var(--color-loto-orange-rgb), 0.3);
+        }
+        
+        .category-caja-funda {
+            background-color: rgba(var(--color-loto-beige-rgb), 0.25);
+            color: var(--color-loto-dark);
+            border: 1px solid rgba(var(--color-loto-beige-rgb), 0.5);
+        }
+        
+        /* Enhanced card hover effects */
+        .card {
+            transition: all var(--duration-normal) var(--ease-standard);
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(var(--color-loto-primary-rgb), 0.15);
+        }
+        
+        /* Enhanced table styling */
+        .table th {
+            background: linear-gradient(135deg, rgba(var(--color-loto-primary-rgb), 0.1), rgba(var(--color-loto-cyan-rgb), 0.1));
+            color: var(--color-loto-dark);
+            border-bottom: 2px solid var(--color-loto-primary);
+        }
+        
+        .table tbody tr:hover {
+            background: linear-gradient(135deg, rgba(var(--color-loto-primary-rgb), 0.05), rgba(var(--color-loto-cyan-rgb), 0.05));
+        }
+        
+        /* Enhanced button styles */
+        .btn--primary {
+            background: linear-gradient(135deg, var(--color-loto-primary), var(--color-loto-cyan));
+            box-shadow: 0 2px 4px rgba(var(--color-loto-primary-rgb), 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn--primary:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn--primary:hover:before {
+            left: 100%;
+        }
+        
+        .btn--primary:hover {
+            background: linear-gradient(135deg, var(--color-loto-cyan), var(--color-loto-primary));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(var(--color-loto-primary-rgb), 0.3);
+        }
+        
+        /* Save indicator animation */
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            20%, 80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        .save-indicator {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--color-loto-green), #4ade80);
+            color: white;
+            padding: var(--space-8) var(--space-16);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            z-index: 1002;
+            animation: fadeInOut 2s ease-in-out;
+            box-shadow: 0 4px 12px rgba(var(--color-loto-green-rgb), 0.3);
+        }
+        
+        /* Status indicators with brand colors */
+        .status--warning {
+            background-color: rgba(var(--color-loto-orange-rgb), 0.15);
+            color: var(--color-loto-orange);
+            border: 1px solid rgba(var(--color-loto-orange-rgb), 0.3);
+        }
+        
+        .status--success {
+            background-color: rgba(var(--color-loto-green-rgb), 0.15);
+            color: var(--color-loto-green);
+            border: 1px solid rgba(var(--color-loto-green-rgb), 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .nav-tab {
+                padding: var(--space-12) var(--space-16);
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: var(--space-16);
+            }
+            
+            .app-logo {
+                height: 60px;
+            }
+            
+            .app-title {
+                font-size: var(--font-size-2xl);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <div class="container">
+            <h1 class="app-title">
+                <span class="lotus-icon">🪷</span>
+                PACTO DEL LOTO
+                <span class="lotus-icon">🪷</span>
+            </h1>
+            <p class="app-subtitle">Sistema de Gestión de Inventario &amp; Préstamos</p>
+        </div>
+    </div>
+
+    <!-- Data persistence info banner -->
+    <div style="background: linear-gradient(45deg, rgba(var(--color-loto-green-rgb), 0.1), rgba(var(--color-loto-cyan-rgb), 0.1)); padding: var(--space-12) 0; text-align: center; border-bottom: 1px solid rgba(var(--color-loto-primary-rgb), 0.2);">
+        <div class="container">
+            <span style="color: var(--color-loto-dark); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);">
+                💾 <strong>Persistencia Mejorada:</strong> Los datos se guardan automáticamente en memoria de sesión. Permanecen hasta que cierres esta pestaña del navegador.
+            </span>
+        </div>
+    </div>
+
+    <nav class="nav-tabs">
+        <button class="nav-tab active" onclick="switchTab('inventario')">📦 Inventario General</button>
+        <button class="nav-tab" onclick="switchTab('prestamos')">📋 Préstamos</button>
+        <button class="nav-tab" onclick="showResetDialog()">🔄 Resetear Datos</button>
+    </nav>
+
+    <div class="container tab-content">
+        <!-- Inventario Section -->
+        <div id="inventario-section" class="section active">
+            <div class="flex justify-between items-center mb-8" style="margin-bottom: var(--space-24);">
+                <h2>Inventario General</h2>
+                <button class="btn btn--primary btn--lg" onclick="openAddItemModal()">➕ Añadir Artículo</button>
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="search-input" class="form-control" placeholder="🔍 Buscar artículos..." oninput="filterInventory()">
+            </div>
+
+            <div class="table-container">
+                <table class="table" id="inventory-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('nombre')">Nombre 🔄</th>
+                            <th onclick="sortTable('categoria')">Categoría 🔄</th>
+                            <th onclick="sortTable('cantidad')">Cantidad / Disponibles 🔄</th>
+                            <th style="width: 150px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-tbody">
+                        <!-- Inventory items will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="inventory-empty" class="empty-state hidden">
+                <h3 style="color: var(--color-loto-primary);">📦 No hay artículos en el inventario</h3>
+                <p>Comienza añadiendo tu primer artículo al inventario.</p>
+            </div>
+        </div>
+
+        <!-- Préstamos Section -->
+        <div id="prestamos-section" class="section">
+            <h2 style="margin-bottom: var(--space-24);">Gestión de Préstamos</h2>
+
+            <!-- Crear Préstamo Form -->
+            <div class="card" style="margin-bottom: var(--space-32);">
+                <div class="card__body">
+                    <h3 style="margin-bottom: var(--space-16); color: var(--color-loto-primary);">🎮 Crear Nuevo Préstamo de Juego</h3>
+                    <div class="alert alert--info" style="margin-bottom: var(--space-16);">
+                        ℹ️ Solo se pueden prestar artículos de la categoría JUEGO. El stock disponible se muestra junto al nombre del juego.
+                    </div>
+                    <form id="loan-form" onsubmit="createLoan(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="loan-item">Juego</label>
+                                <select id="loan-item" class="form-control" required>
+                                    <option value="">Seleccionar juego...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="loan-person">Nombre de la persona</label>
+                                <input type="text" id="loan-person" class="form-control" required placeholder="Introduce el nombre...">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn--primary btn--lg" id="create-loan-btn">✅ Crear Préstamo</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Préstamos Activos -->
+            <div class="loan-section">
+                <h3 style="color: var(--color-loto-orange);">⏳ Préstamos Activos</h3>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Artículo</th>
+                                <th>Persona</th>
+                                <th>Fecha y Hora</th>
+                                <th>Estado</th>
+                                <th style="width: 150px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="active-loans-tbody">
+                            <!-- Active loans will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="active-loans-empty" class="empty-state">
+                    <h3 style="color: var(--color-loto-orange);">⏳ No hay préstamos activos</h3>
+                    <p>Todos los préstamos han sido devueltos.</p>
+                </div>
+            </div>
+
+            <!-- Historial Completo -->
+            <div class="loan-section">
+                <h3 style="color: var(--color-loto-cyan);">📊 Historial Completo</h3>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Artículo</th>
+                                <th>Persona</th>
+                                <th>Fecha y Hora</th>
+                                <th>Estado</th>
+                                <th style="width: 150px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-loans-tbody">
+                            <!-- All loans will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="all-loans-empty" class="empty-state">
+                    <h3 style="color: var(--color-loto-cyan);">📊 No hay préstamos registrados</h3>
+                    <p>Crea tu primer préstamo para ver el historial.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Add/Edit Item -->
+    <div id="item-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Añadir Artículo</h3>
+                <button class="close-btn" onclick="closeItemModal()">&times;</button>
+            </div>
+            <form id="item-form" onsubmit="saveItem(event)">
+                <div class="form-group">
+                    <label class="form-label" for="item-name">Nombre</label>
+                    <input type="text" id="item-name" class="form-control" required placeholder="Nombre del artículo...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="item-category">Categoría</label>
+                    <input type="text" id="item-category" class="form-control" required placeholder="Categoría del artículo...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="item-quantity">Cantidad</label>
+                    <input type="text" id="item-quantity" class="form-control" required placeholder="Cantidad disponible...">
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn--primary" id="save-btn">💾 Guardar</button>
+                    <button type="button" class="btn btn--outline" onclick="closeItemModal()">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset confirmation modal -->
+    <div id="reset-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">🔄 Resetear Datos Iniciales</h3>
+                <button class="close-btn" onclick="closeResetModal()">&times;</button>
+            </div>
+            <div style="margin-bottom: var(--space-24);">
+                <p>⚠️ <strong>¡Atención!</strong> Esta acción eliminará todos los datos guardados (inventario personalizado y préstamos) y restaurará el inventario inicial.</p>
+                <p>Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn--outline" onclick="resetData()">🔄 Confirmar Reset</button>
+                <button class="btn btn--primary" onclick="closeResetModal()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert container -->
+    <div id="alert-container" style="position: fixed; top: 20px; right: 20px; z-index: 1001; width: 300px;"></div>
+
+    <script>
+        // Application State
+        let inventory = [];
+        let loans = [];
+        let currentEditId = null;
+        let sortDirection = {};
+
+        // Initial inventory data
+        const initialInventory = [
+            { nombre: "CAJA FUNDA NORMAL", categoria: "CAJA FUNDA", cantidad: "8" },
+            { nombre: "LLAVEROS", categoria: "MERCHANDISING", cantidad: "30 APROX" },
+            { nombre: "LOTOS PEQUEÑOS", categoria: "MERCHANDISING", cantidad: "6" },
+            { nombre: "FUNDA FOLIOS (PAQUETE)", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "FUNDAS JUEGO MESA 57X89", categoria: "MATERIAL", cantidad: "2" },
+            { nombre: "FUNDAS JUEGO MESA 63X88", categoria: "MATERIAL", cantidad: "5" },
+            { nombre: "FUNDAS JUEGO MESA 66X93", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "CAJA MODERN: HORIZONS III", categoria: "MATERIAL", cantidad: "1+6 SOBRES" },
+            { nombre: "MANTELES", categoria: "MATERIAL", cantidad: "16" },
+            { nombre: "ESTANDARTE GRANDE", categoria: "MATERIAL", cantidad: "5" },
+            { nombre: "ESTANDARTE PEQUEÑO", categoria: "MATERIAL", cantidad: "9" },
+            { nombre: "CABALLETE", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "RELOJ CRONÓMETRO", categoria: "MATERIAL", cantidad: "2" },
+            { nombre: "QR", categoria: "MATERIAL", cantidad: "8" },
+            { nombre: "FOLIOS", categoria: "MATERIAL", cantidad: "-------" },
+            { nombre: "TV", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "LADRÓN/ALARGADERA", categoria: "MATERIAL", cantidad: "2" },
+            { nombre: "BOMBA AGUA", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "ROLLO TEFLON", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "CULTOS INNOMBRABLES: PANTALLA MASTER", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "PERFECT SIZE", categoria: "MATERIAL", cantidad: "2" },
+            { nombre: "SELLO PACTO", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "TAPETE BELLA", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "TIRA DADOS", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "TAPETES WARHAMMER", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "TAPETES AZULES GRANDES", categoria: "MATERIAL", cantidad: "3" },
+            { nombre: "CAJA STAR WARS", categoria: "MATERIAL", cantidad: "2" },
+            { nombre: "BARAJA ESPAÑOLA", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "UNMATCHED: BATTLE OF LEGENDS VOLUMEN 1", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "BLOOD BOWL: EDICION 2ª TEMPORADA", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "RUN BONES", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "SUSHI GO", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "FANTASMA BLITZ", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "THREE WISHES", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "COUPÉ X", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "BOOMI BUSTERS", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "LA ALCACHOFA", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "CATAN", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "THROW THROW BURRITO", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "MONOPOLY", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "BLOOD BOWL", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "SCATTERGORIES", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "DRAFTOSAURIUS", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "DICE FLICK", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "PARADISE", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "EL SEÑOR DE LOS ANILLOS", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "REGNUM", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "RUN BONES: LA BRISA SANGUINEA", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "RUN BONES: LA TEMIBLE MALDICION DE MAZLI", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "ATTACK TITAN: LA ULTIMA BATALLA", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "LIBRO LIMINAL", categoria: "JUEGO", cantidad: "1" },
+            { nombre: "CAJA FUNDA", categoria: "MATERIAL", cantidad: "5" },
+            { nombre: "CAJA DADOS", categoria: "MATERIAL", cantidad: "5" },
+            { nombre: "BOLSA DADOS", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "PANTALLA CON CABLE DE CORRIENTE Y PINES", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "IMPRESORA CON CABLE DE PINES", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "TECLADO CON CABLE DE PINES", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "RATON USB", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "ALTAVOZ CON CABLE CORRIENTE Y CONECTORES JACK", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "TABLA CON RUEDAS", categoria: "MATERIAL", cantidad: "1" },
+            { nombre: "BARRA SONIDO", categoria: "MATERIAL", cantidad: "1" }
+        ];
+
+        // ROBUST SESSION-BASED DATA PERSISTENCE
+        // Data persists throughout the browser session (until tab is closed)
+        let sessionDataStore = {
+            initialized: false,
+            inventario: null,
+            prestamos: null,
+            lastSave: null
+        };
+
+        function saveToSessionStorage() {
+            try {
+                console.log('💾 Guardando datos en memoria de sesión...', { 
+                    inventory: inventory.length, 
+                    loans: loans.length,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Save to session memory (persists until tab close)
+                sessionDataStore.inventario = JSON.stringify(inventory);
+                sessionDataStore.prestamos = JSON.stringify(loans);
+                sessionDataStore.lastSave = new Date().toISOString();
+                sessionDataStore.initialized = true;
+                
+                console.log('✅ Datos guardados correctamente en memoria de sesión');
+                showSaveIndicator();
+                
+                // Debug info
+                console.log('📊 Estado actual:', {
+                    'Artículos en inventario': inventory.length,
+                    'Total préstamos': loans.length,
+                    'Préstamos activos': loans.filter(l => !l.devuelto).length,
+                    'Última actualización': sessionDataStore.lastSave
+                });
+                
+            } catch (error) {
+                console.error('❌ Error saving data:', error);
+                showAlert('Error al guardar los datos en memoria.', 'error');
+            }
+        }
+
+        function loadFromSessionStorage() {
+            try {
+                console.log('📂 Cargando datos desde memoria de sesión...');
+                
+                // Check if we have session data
+                if (sessionDataStore.initialized && sessionDataStore.inventario && sessionDataStore.prestamos) {
+                    console.log('✅ Datos encontrados en memoria de sesión');
+                    
+                    // Parse and load inventory
+                    const savedInventory = JSON.parse(sessionDataStore.inventario);
+                    const savedLoans = JSON.parse(sessionDataStore.prestamos);
+                    
+                    if (Array.isArray(savedInventory) && Array.isArray(savedLoans)) {
+                        inventory = savedInventory;
+                        loans = savedLoans;
+                        
+                        console.log('✅ Datos cargados correctamente:', {
+                            'Inventario': inventory.length + ' artículos',
+                            'Préstamos': loans.length + ' registros',
+                            'Préstamos activos': loans.filter(l => !l.devuelto).length,
+                            'Última actualización': sessionDataStore.lastSave
+                        });
+                        
+                        return true;
+                    }
+                }
+                
+                // No session data found, load initial data
+                console.log('🔄 No se encontraron datos en memoria, cargando datos iniciales');
+                inventory = initialInventory.map((item, index) => ({ id: index + 1, ...item }));
+                loans = [];
+                
+                // Initialize session storage
+                saveToSessionStorage();
+                
+                return false;
+                
+            } catch (error) {
+                console.error('❌ Error loading session data:', error);
+                showAlert('Error al cargar datos. Se usarán los datos iniciales.', 'error');
+                
+                // Fallback to initial data
+                inventory = initialInventory.map((item, index) => ({ id: index + 1, ...item }));
+                loans = [];
+                saveToSessionStorage();
+                
+                return false;
+            }
+        }
+        
+        // Alias function for backwards compatibility
+        function saveToStorage() {
+            saveToSessionStorage();
+        }
+        
+        function loadFromStorage() {
+            return loadFromSessionStorage();
+        }
+
+        function showSaveIndicator() {
+            const indicator = document.createElement('div');
+            indicator.innerHTML = '✅ Datos guardados';
+            indicator.className = 'save-indicator';
+            
+            document.body.appendChild(indicator);
+            setTimeout(() => {
+                if (indicator.parentNode) {
+                    indicator.parentNode.removeChild(indicator);
+                }
+            }, 2000);
+        }
+
+        // Initialize application
+        function initApp() {
+            // Show loading state
+            console.log('🚀 Iniciando aplicación Pacto del Loto...');
+            showAlert('🎲 Cargando inventario y préstamos...', 'info');
+            
+            // Load data from storage or use initial data
+            const loaded = loadFromStorage();
+            
+            renderInventory();
+            renderLoans();
+            updateLoanItemSelector();
+            
+            if (loaded) {
+                showAlert('✅ Datos cargados correctamente desde la sesión anterior', 'success');
+                console.log('✅ Aplicación inicializada con datos guardados');
+            } else {
+                showAlert('🎆 ¡Bienvenido! Iniciando con el inventario base de Pacto del Loto', 'success');
+                console.log('🎆 Aplicación inicializada con datos base');
+            }
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(tabName + '-section').classList.add('active');
+        }
+
+        // Inventory functions
+        function renderInventory() {
+            const tbody = document.getElementById('inventory-tbody');
+            const emptyState = document.getElementById('inventory-empty');
+            
+            if (inventory.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                document.querySelector('.table-container').style.display = 'none';
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            document.querySelector('.table-container').style.display = 'block';
+
+            tbody.innerHTML = inventory.map(item => {
+                let quantityDisplay = escapeHtml(item.cantidad);
+                
+                // For JUEGO items, show available stock with category color
+                if (item.categoria === 'JUEGO') {
+                    const availableStock = getAvailableStock(item);
+                    const totalStock = parseQuantity(item.cantidad);
+                    
+                    if (totalStock > 0) {
+                        const stockStatus = availableStock > 0 ? 
+                            `<span style="color: var(--color-loto-green); font-weight: 500;">✅ Disponible: ${availableStock} de ${totalStock}</span>` :
+                            `<span style="color: var(--color-loto-orange); font-weight: 500;">⚠️ Sin stock (${totalStock} prestados)</span>`;
+                        quantityDisplay = `${escapeHtml(item.cantidad)}<br><small>${stockStatus}</small>`;
+                    }
+                }
+                
+                // Add category icons
+                // Add category icons for filtered display
+                let categoryIcon = '';
+                switch(item.categoria) {
+                    case 'JUEGO': categoryIcon = '🎲'; break;
+                    case 'MATERIAL': categoryIcon = '📎'; break;
+                    case 'MERCHANDISING': categoryIcon = '🎁'; break;
+                    case 'CAJA FUNDA': categoryIcon = '📦'; break;
+                    default: categoryIcon = '📝';
+                }
+                
+                return `
+                    <tr>
+                        <td>${escapeHtml(item.nombre)}</td>
+                        <td><span class="category-badge category-${item.categoria.toLowerCase().replace(/\s+/g, '-')}">${categoryIcon} ${escapeHtml(item.categoria)}</span></td>
+                        <td>${quantityDisplay}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn--sm btn--outline" onclick="editItem(${item.id})" title="Editar">
+                                    ✏️
+                                </button>
+                                <button class="btn btn--sm btn--outline" onclick="deleteItem(${item.id})" title="Eliminar">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterInventory() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filteredInventory = inventory.filter(item => 
+                item.nombre.toLowerCase().includes(searchTerm) ||
+                item.categoria.toLowerCase().includes(searchTerm) ||
+                item.cantidad.toLowerCase().includes(searchTerm)
+            );
+
+            const tbody = document.getElementById('inventory-tbody');
+            
+            if (filteredInventory.length === 0 && searchTerm) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">🔍 No se encontraron artículos que coincidan con la búsqueda</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredInventory.map(item => {
+                let quantityDisplay = escapeHtml(item.cantidad);
+                
+                // For JUEGO items, show available stock
+                if (item.categoria === 'JUEGO') {
+                    const availableStock = getAvailableStock(item);
+                    const totalStock = parseQuantity(item.cantidad);
+                    
+                    if (totalStock > 0) {
+                        const stockStatus = availableStock > 0 ? 
+                            `<span style="color: var(--color-loto-green); font-weight: 500;">✅ Disponible: ${availableStock} de ${totalStock}</span>` :
+                            `<span style="color: var(--color-loto-orange); font-weight: 500;">⚠️ Sin stock (${totalStock} prestados)</span>`;
+                        quantityDisplay = `${escapeHtml(item.cantidad)}<br><small>${stockStatus}</small>`;
+                    }
+                }
+                
+                return `
+                    <tr>
+                        <td>${escapeHtml(item.nombre)}</td>
+                        <td>${escapeHtml(item.categoria)}</td>
+                        <td>${quantityDisplay}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn--sm btn--outline" onclick="editItem(${item.id})" title="Editar">
+                                    ✏️
+                                </button>
+                                <button class="btn btn--sm btn--outline" onclick="deleteItem(${item.id})" title="Eliminar">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function sortTable(column) {
+            const direction = sortDirection[column] === 'asc' ? 'desc' : 'asc';
+            sortDirection[column] = direction;
+
+            inventory.sort((a, b) => {
+                let valueA = a[column].toString().toLowerCase();
+                let valueB = b[column].toString().toLowerCase();
+                
+                if (direction === 'asc') {
+                    return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+                } else {
+                    return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+                }
+            });
+
+            renderInventory();
+            filterInventory(); // Reapply filter if active
+        }
+
+        function openAddItemModal() {
+            currentEditId = null;
+            document.getElementById('modal-title').textContent = 'Añadir Artículo';
+            document.getElementById('save-btn').innerHTML = '💾 Guardar';
+            document.getElementById('item-form').reset();
+            document.getElementById('item-modal').classList.add('show');
+        }
+
+        function editItem(id) {
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+
+            currentEditId = id;
+            document.getElementById('modal-title').textContent = 'Editar Artículo';
+            document.getElementById('save-btn').innerHTML = '💾 Actualizar';
+            document.getElementById('item-name').value = item.nombre;
+            document.getElementById('item-category').value = item.categoria;
+            document.getElementById('item-quantity').value = item.cantidad;
+            document.getElementById('item-modal').classList.add('show');
+        }
+
+        function closeItemModal() {
+            document.getElementById('item-modal').classList.remove('show');
+            currentEditId = null;
+        }
+
+        function saveItem(event) {
+            event.preventDefault();
+            
+            const nombre = document.getElementById('item-name').value.trim();
+            const categoria = document.getElementById('item-category').value.trim();
+            const cantidad = document.getElementById('item-quantity').value.trim();
+
+            if (!nombre || !categoria || !cantidad) {
+                showAlert('Por favor, completa todos los campos.', 'error');
+                return;
+            }
+
+            if (currentEditId) {
+                // Edit existing item
+                const itemIndex = inventory.findIndex(i => i.id === currentEditId);
+                if (itemIndex !== -1) {
+                    inventory[itemIndex] = { ...inventory[itemIndex], nombre, categoria, cantidad };
+                    saveToStorage();
+                    updateLoanItemSelector(); // Update dropdown if category changed
+                    showAlert('Artículo actualizado y guardado correctamente.', 'success');
+                }
+            } else {
+                // Add new item
+                const newId = Math.max(...inventory.map(i => i.id), 0) + 1;
+                inventory.push({ id: newId, nombre, categoria, cantidad });
+                saveToStorage();
+                showAlert('Artículo añadido y guardado correctamente.', 'success');
+            }
+
+            renderInventory();
+            updateLoanItemSelector();
+            closeItemModal();
+        }
+
+        function deleteItem(id) {
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+
+            if (confirm(`¿Estás seguro de que quieres eliminar "${item.nombre}"?`)) {
+                inventory = inventory.filter(i => i.id !== id);
+                saveToStorage();
+                renderInventory();
+                updateLoanItemSelector();
+                showAlert('Artículo eliminado y guardado correctamente.', 'success');
+            }
+        }
+
+        // Stock calculation functions
+        function parseQuantity(cantidad) {
+            if (!cantidad || cantidad === '-------') return 0;
+            
+            // Handle "30 APROX" format
+            const approxMatch = cantidad.match(/^(\d+)\s*APROX$/i);
+            if (approxMatch) {
+                return parseInt(approxMatch[1]);
+            }
+            
+            // Handle "1+6 SOBRES" format - use first number
+            const plusMatch = cantidad.match(/^(\d+)\+/);
+            if (plusMatch) {
+                return parseInt(plusMatch[1]);
+            }
+            
+            // Handle plain numbers
+            const numberMatch = cantidad.match(/^(\d+)$/);
+            if (numberMatch) {
+                return parseInt(numberMatch[1]);
+            }
+            
+            return 0; // Default to 0 for non-parseable quantities
+        }
+        
+        function getActiveLoansCount(itemId) {
+            return loans.filter(loan => loan.articuloId === itemId && !loan.devuelto).length;
+        }
+        
+        function getAvailableStock(item) {
+            const totalQuantity = parseQuantity(item.cantidad);
+            const activeLoansCount = getActiveLoansCount(item.id);
+            return Math.max(0, totalQuantity - activeLoansCount);
+        }
+
+        // Loans functions
+        function updateLoanItemSelector() {
+            const select = document.getElementById('loan-item');
+            const currentValue = select.value;
+            
+            // Filter to only show JUEGO category items
+            const gameItems = inventory.filter(item => item.categoria === 'JUEGO');
+            
+            select.innerHTML = '<option value="">Seleccionar juego...</option>' +
+                gameItems.map(item => {
+                    const availableStock = getAvailableStock(item);
+                    const stockText = availableStock > 0 ? 
+                        `(Disponible: ${availableStock})` : 
+                        '(Sin stock)';
+                    const disabled = availableStock === 0 ? 'disabled' : '';
+                    
+                    return `<option value="${item.id}" ${disabled}>${escapeHtml(item.nombre)} ${stockText}</option>`;
+                }).join('');
+            
+            if (currentValue && gameItems.find(i => i.id == currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
+        function createLoan(event) {
+            event.preventDefault();
+            
+            const itemId = parseInt(document.getElementById('loan-item').value);
+            const persona = document.getElementById('loan-person').value.trim();
+
+            if (!itemId || !persona) {
+                showAlert('Por favor, completa todos los campos.', 'error');
+                return;
+            }
+
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) {
+                showAlert('Artículo no encontrado.', 'error');
+                return;
+            }
+            
+            // Check if item is a game
+            if (item.categoria !== 'JUEGO') {
+                showAlert('Solo se pueden prestar artículos de la categoría JUEGO.', 'error');
+                return;
+            }
+            
+            // Check stock availability
+            const availableStock = getAvailableStock(item);
+            if (availableStock <= 0) {
+                showAlert('No hay stock disponible de este artículo', 'error');
+                return;
+            }
+
+            const newLoan = {
+                id: Math.max(...loans.map(l => l.id), 0) + 1,
+                articuloId: itemId,
+                articuloNombre: item.nombre,
+                articuloCategoria: item.categoria,
+                persona: persona,
+                fechaHora: new Date().toISOString(),
+                devuelto: false
+            };
+
+            loans.push(newLoan);
+            saveToStorage();
+            document.getElementById('loan-form').reset();
+            renderLoans();
+            updateLoanItemSelector(); // Update stock availability in dropdown
+            renderInventory(); // Update inventory display
+            showAlert('Préstamo creado y guardado correctamente.', 'success');
+        }
+
+        function markAsReturned(loanId) {
+            const loan = loans.find(l => l.id === loanId);
+            if (loan) {
+                loan.devuelto = true;
+                saveToStorage();
+                renderLoans();
+                updateLoanItemSelector(); // Update stock availability in dropdown
+                renderInventory(); // Update inventory display
+                showAlert('Préstamo marcado como devuelto y guardado.', 'success');
+            }
+        }
+
+        function renderLoans() {
+            // Active loans
+            const activeLoans = loans.filter(l => !l.devuelto).sort((a, b) => new Date(b.fechaHora) - new Date(a.fechaHora));
+            const activeTbody = document.getElementById('active-loans-tbody');
+            const activeEmpty = document.getElementById('active-loans-empty');
+
+            if (activeLoans.length === 0) {
+                activeTbody.innerHTML = '';
+                activeEmpty.style.display = 'block';
+            } else {
+                activeEmpty.style.display = 'none';
+                activeTbody.innerHTML = activeLoans.map(loan => `
+                    <tr>
+                        <td>${escapeHtml(loan.articuloNombre)}</td>
+                        <td>${escapeHtml(loan.persona)}</td>
+                        <td>${formatDateTime(loan.fechaHora)}</td>
+                        <td><span class="status status--warning">Pendiente</span></td>
+                        <td>
+                            <button class="btn btn--sm btn--primary" onclick="markAsReturned(${loan.id})" title="Marcar como devuelto">
+                                ✅
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // All loans
+            const allLoans = loans.sort((a, b) => new Date(b.fechaHora) - new Date(a.fechaHora));
+            const allTbody = document.getElementById('all-loans-tbody');
+            const allEmpty = document.getElementById('all-loans-empty');
+
+            if (allLoans.length === 0) {
+                allTbody.innerHTML = '';
+                allEmpty.style.display = 'block';
+            } else {
+                allEmpty.style.display = 'none';
+                allTbody.innerHTML = allLoans.map(loan => `
+                    <tr>
+                        <td>${escapeHtml(loan.articuloNombre)}</td>
+                        <td>${escapeHtml(loan.persona)}</td>
+                        <td>${formatDateTime(loan.fechaHora)}</td>
+                        <td>
+                            <span class="status ${loan.devuelto ? 'status--success' : 'status--warning'}">
+                                ${loan.devuelto ? 'Devuelto' : 'Pendiente'}
+                            </span>
+                        </td>
+                        <td>
+                            ${!loan.devuelto ? 
+                                `<button class="btn btn--sm btn--primary" onclick="markAsReturned(${loan.id})" title="Marcar como devuelto">✅</button>` : 
+                                '---'
+                            }
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // Utility functions
+        function formatDateTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert--${type}`;
+            alert.textContent = message;
+            
+            container.appendChild(alert);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 3000);
+        }
+
+        // Reset functionality
+        function showResetDialog() {
+            document.getElementById('reset-modal').classList.add('show');
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.remove('show');
+        }
+
+        function resetData() {
+            try {
+                console.log('🔄 Reseteando datos de la sesión...');
+                
+                // Clear session storage
+                sessionDataStore.inventario = null;
+                sessionDataStore.prestamos = null;
+                sessionDataStore.lastSave = null;
+                sessionDataStore.initialized = false;
+                
+                console.log('🗑️ Memoria de sesión limpiada completamente');
+                
+                // Reset to initial data
+                inventory = initialInventory.map((item, index) => ({ id: index + 1, ...item }));
+                loans = [];
+                
+                // Save fresh data
+                saveToSessionStorage();
+                
+                // Re-render everything
+                renderInventory();
+                renderLoans();
+                updateLoanItemSelector();
+                
+                closeResetModal();
+                showAlert('✅ Datos reseteados correctamente. Inventario inicial restaurado.', 'success');
+                console.log('✅ Reset completado - datos iniciales cargados y guardados');
+            } catch (error) {
+                console.error('❌ Error resetting data:', error);
+                showAlert('Error al resetear los datos.', 'error');
+            }
+        }
+
+        // Close modals when clicking outside
+        document.getElementById('item-modal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeItemModal();
+            }
+        });
+
+        document.getElementById('reset-modal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeResetModal();
+            }
+        });
+
+        // Initialize app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>

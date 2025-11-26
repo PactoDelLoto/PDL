@@ -1,0 +1,135 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario - Pacto del Loto</title>
+
+    <!-- Metadatos y Favicon -->
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+
+    <!-- Estilos CSS -->
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/DataTables/datatables.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+
+    <!-- Fuentes Externas -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Script para cargar componentes comunes -->
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+    <header>
+        <!-- El navbar se cargará aquí -->
+    </header>
+
+    <main class="container mt-5 pt-5">
+        <h1 class="mb-4">Gestión de Inventario</h1>
+
+        <!-- Pestañas de Navegación -->
+        <ul class="nav nav-tabs" id="inventory-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="inventario-tab" data-bs-toggle="tab" data-bs-target="#inventario-section" type="button" role="tab" aria-controls="inventario-section" aria-selected="true">📦 Inventario General</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="prestamos-tab" data-bs-toggle="tab" data-bs-target="#prestamos-section" type="button" role="tab" aria-controls="prestamos-section" aria-selected="false">📋 Préstamos</button>
+            </li>
+        </ul>
+
+        <!-- Contenido de las Pestañas -->
+        <div class="tab-content" id="inventory-tabs-content">
+            <!-- Sección de Inventario -->
+            <div class="tab-pane fade show active" id="inventario-section" role="tabpanel" aria-labelledby="inventario-tab">
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Artículos en Inventario</h5>
+                        <button class="btn btn-primary" id="add-item-btn">
+                            <i class="fas fa-plus me-2"></i>Añadir Artículo
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <table id="inventario-table" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Categoría</th>
+                                    <th>Cantidad</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Los datos del inventario se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sección de Préstamos (Placeholder) -->
+            <div class="tab-pane fade" id="prestamos-section" role="tabpanel" aria-labelledby="prestamos-tab">
+                <div class="card shadow-sm mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Gestión de Préstamos</h5>
+                        <p class="card-text">Esta sección está en desarrollo. Aquí podrás gestionar los préstamos de los artículos del inventario.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Añadir/Editar Artículo -->
+    <div class="modal fade" id="item-modal" tabindex="-1" aria-labelledby="modal-title" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Añadir Artículo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="item-form">
+                        <input type="hidden" id="item-id">
+                        <div class="mb-3">
+                            <label for="item-name" class="form-label">Nombre del Artículo</label>
+                            <input type="text" class="form-control" id="item-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="item-category" class="form-label">Categoría</label>
+                            <select class="form-select" id="item-category" required>
+                                <option value="" disabled selected>Cargando categorías...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="item-quantity" class="form-label">Cantidad</label>
+                            <input type="text" class="form-control" id="item-quantity" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" form="item-form" id="save-item-btn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <!-- El footer se cargará aquí -->
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/DataTables/datatables.min.js"></script>
+
+    <!-- Controladores de la aplicación -->
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/inventarioController.js"></script>
+</body>
+</html>
