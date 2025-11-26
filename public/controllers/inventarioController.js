@@ -6,6 +6,32 @@ document.addEventListener('DOMContentLoaded', function () {
     let userIsSocio = false;
     let currentItemHistory = [];
 
+    // Función para cargar categorías, ahora en el ámbito principal del DOMContentLoaded
+    async function loadAndPopulateCategories() {
+        const categorySelects = document.querySelectorAll('.item-category-select'); // Usamos una clase para seleccionar ambos desplegables
+        try {
+            const snapshot = await db.collection('categoriasInventario').orderBy('nombreCategoria').get();
+            
+            categorySelects.forEach(select => {
+                const currentValue = select.value; // Guardar el valor actual si lo hubiera
+                select.innerHTML = '<option value="" disabled>Seleccione una categoría</option>'; // No autoseleccionar
+                snapshot.forEach(doc => {
+                    const categoria = doc.data();
+                    const option = new Option(categoria.nombreCategoria, doc.id);
+                    select.add(option);
+                });
+                if (currentValue) { // Si había un valor previo (en modo edición), intentar restaurarlo
+                    select.value = currentValue;
+                }
+            });
+        } catch (error) {
+            console.error("Error al cargar categorías: ", error);
+            categorySelects.forEach(select => {
+                select.innerHTML = '<option value="">Error al cargar</option>';
+            });
+        }
+    }
+
     auth.onAuthStateChanged(async user => {
         if (user) {
             userIsAdmin = await window.isUserAdmin();
@@ -24,12 +50,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function initializeInventarioPage() {
         const addItemBtn = document.getElementById('add-item-btn');
-        if (!userIsAdmin) {
+        if (userIsAdmin) {
+            addItemBtn.style.display = 'block';
+            loadAndPopulateCategories(); // Carga inicial para el formulario principal (si existiera)
+        } else {
             addItemBtn.style.display = 'none';
         }
         
         loadInventoryData();
-        if(userIsAdmin) loadAndPopulateCategories();
         setupEventListeners();
         
         if (!infoHistorialTable) {
@@ -92,31 +120,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    async function loadAndPopulateCategories() {
-        const categorySelect = document.getElementById('item-category');
-        try {
-            const snapshot = await db.collection('categoriasInventario').orderBy('nombre').get();
-            categorySelect.innerHTML = '<option value="" disabled selected>Seleccione una categoría</option>';
-            snapshot.forEach(doc => {
-                const categoria = doc.data();
-                categorySelect.innerHTML += `<option value="${doc.id}">${categoria.nombre}</option>`;
-            });
-        } catch (error) {
-            console.error("Error al cargar categorías: ", error);
-            categorySelect.innerHTML = '<option value="">Error al cargar</option>';
-        }
-    }
-
     function setupEventListeners() {
         const itemForm = document.getElementById('item-form');
 
-        // --- LISTENERS PARA ADMIN ---
+        // --- LISTENERS PARA ADMIN -- -
         if (userIsAdmin) {
             $('#add-item-btn').on('click', function () {
                 itemForm.reset();
                 $('#item-modal-title').text('Añadir Nuevo Artículo');
                 itemForm.dataset.mode = 'add';
                 delete itemForm.dataset.id;
+                loadAndPopulateCategories(); // Cargar categorías al abrir para añadir
                 itemModal.show();
             });
 
@@ -126,10 +140,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     const doc = await db.collection('inventario').doc(itemId).get();
                     if (doc.exists) {
                         const data = doc.data();
+                        itemForm.reset();
                         $('#item-modal-title').text('Editar Artículo');
                         $('#item-name').val(data.nombre);
-                        $('#item-category').val(data.idCategoria);
                         $('#item-quantity').val(data.cantidad);
+                        
+                        // Cargar categorías y luego seleccionar la correcta
+                        await loadAndPopulateCategories(); 
+                        $('#item-category').val(data.idCategoria);
 
                         itemForm.dataset.mode = 'edit';
                         itemForm.dataset.id = itemId;
@@ -164,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     nombre: $('#item-name').val(),
                     idCategoria: $('#item-category').val(),
                     categoria: categoriaTexto,
-                    cantidad: $('#item-quantity').val()
+                    cantidad: parseInt($('#item-quantity').val(), 10) || 0
                 };
 
                 try {

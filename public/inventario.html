@@ -194,13 +194,13 @@
                         </div>
                         <div class="mb-3">
                             <label for="item-category" class="form-label">Categoría</label>
-                            <select class="form-select" id="item-category" required>
-                                <option value="" disabled selected>Cargando categorías...</option>
+                            <select class="form-select item-category-select" id="item-category" required>
+                                <option value="" disabled>Seleccione una categoría</option>
                             </select>
                         </div>
                         <div class="mb-3">
                             <label for="item-quantity" class="form-label">Cantidad</label>
-                            <input type="text" class="form-control" id="item-quantity" required>
+                            <input type="number" class="form-control" id="item-quantity" required>
                         </div>
                     </form>
                 </div>
@@ -272,15 +272,13 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="/DataTables/datatables.min.js"></script>
 
-    <!-- Controladores de la aplicación -->
-    <script src="/controllers/firebase-config.js"></script>
-    
-    <!-- FICHERO PRINCIPAL (Debe cargarse antes que los controladores específicos) -->
-    <script src="/js/main.js"></script>
-
-    <script src="/controllers/authController.js"></script>
-    <script src="/controllers/navigation.js"></script>
-    <script src="/controllers/inventarioController.js"></script>
-    <script src="/controllers/prestamosController.js"></script>
+    <!-- Controladores de la aplicación (con cache buster) -->
+    <script src="/controllers/firebase-config.js?v=1.1"></script>
+    <script src="/js/main.js?v=1.1"></script>
+    <script src="/controllers/authController.js?v=1.1"></script>
+    <script src="/controllers/navigation.js?v=1.1"></script>
+    <script src="/controllers/UsuariosController.js?v=1.1"></script>
+    <script src="/controllers/inventarioController.js?v=1.1"></script>
+    <script src="/controllers/prestamosController.js?v=1.1"></script>
 </body>
 </html>
