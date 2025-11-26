@@ -22,8 +22,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- FUNCIÓN DE INICIALIZACIÓN (MODIFICADA) ---
-    // Se ha movido la inicialización de DataTables a `loadInventoryData`
     function initializeInventarioPage() {
         const addItemBtn = document.getElementById('add-item-btn');
         if (!userIsAdmin) {
@@ -34,14 +32,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if(userIsAdmin) loadAndPopulateCategories();
         setupEventListeners();
         
-        // Inicializa la segunda tabla (historial) aquí si no lo has hecho
         if (!infoHistorialTable) {
             infoHistorialTable = $('#tabla-info-historial').DataTable({
                  language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
-                 responsive: true,
-                 searching: false,
-                 paging: false,
-                 info: false,
+                 responsive: true, searching: false, paging: false, info: false,
                  columns: [
                     { data: "PersonaRecibe" },
                     { data: "fechaHoraPrestamo", render: data => data ? new Date(data).toLocaleString() : '' },
@@ -54,20 +48,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // --- LÓGICA DE CARGA DE DATOS (MODIFICADA) ---
     async function loadInventoryData() {
         try {
             const snapshot = await db.collection('inventario').get();
             const inventarioItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // 1. Si la tabla ya es una DataTable, la destruimos para empezar de cero
             if ($.fn.DataTable.isDataTable('#inventario-table')) {
                 $('#inventario-table').DataTable().destroy();
             }
 
-            // 2. Llenamos el cuerpo de la tabla manualmente
             const tableBody = $('#inventario-table tbody');
-            tableBody.empty(); // Limpiamos el contenido previo
+            tableBody.empty();
             
             inventarioItems.forEach(item => {
                 let buttons = '';
@@ -89,12 +80,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 `);
             });
 
-            // 3. Re-inicializamos DataTables sobre la tabla ya con los datos
             inventarioTable = $('#inventario-table').DataTable({
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
                 pageLength: 10,
-                // No se necesita la configuración de `columns` porque lee del HTML
             });
 
         } catch (error) {
@@ -102,30 +91,159 @@ document.addEventListener('DOMContentLoaded', function () {
             $('#inventario-table tbody').html('<tr><td colspan="4" class="text-center text-danger">No se pudo cargar el inventario. Verifique la consola para más detalles.</td></tr>');
         }
     }
-    
-    // --- OTRAS FUNCIONES (sin cambios significativos) ---
 
     async function loadAndPopulateCategories() {
-       // ... (código existente)
+        const categorySelect = document.getElementById('item-category');
+        try {
+            const snapshot = await db.collection('categoriasInventario').orderBy('nombre').get();
+            categorySelect.innerHTML = '<option value="" disabled selected>Seleccione una categoría</option>';
+            snapshot.forEach(doc => {
+                const categoria = doc.data();
+                categorySelect.innerHTML += `<option value="${doc.id}">${categoria.nombre}</option>`;
+            });
+        } catch (error) {
+            console.error("Error al cargar categorías: ", error);
+            categorySelect.innerHTML = '<option value="">Error al cargar</option>';
+        }
     }
 
     function setupEventListeners() {
+        const itemForm = document.getElementById('item-form');
+
+        // --- LISTENERS PARA ADMIN ---
         if (userIsAdmin) {
-            // ... (código para admin sin cambios)
+            $('#add-item-btn').on('click', function () {
+                itemForm.reset();
+                $('#item-modal-title').text('Añadir Nuevo Artículo');
+                itemForm.dataset.mode = 'add';
+                delete itemForm.dataset.id;
+                itemModal.show();
+            });
+
+            $('#inventario-table tbody').on('click', '.edit-btn', async function () {
+                const itemId = $(this).data('id');
+                try {
+                    const doc = await db.collection('inventario').doc(itemId).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        $('#item-modal-title').text('Editar Artículo');
+                        $('#item-name').val(data.nombre);
+                        $('#item-category').val(data.idCategoria);
+                        $('#item-quantity').val(data.cantidad);
+
+                        itemForm.dataset.mode = 'edit';
+                        itemForm.dataset.id = itemId;
+                        itemModal.show();
+                    }
+                } catch (error) {
+                    console.error("Error al obtener datos para editar: ", error);
+                }
+            });
+            
+            $('#inventario-table tbody').on('click', '.delete-btn', async function () {
+                const itemId = $(this).data('id');
+                if (confirm('¿Estás seguro de que quieres eliminar este artículo?')) {
+                    try {
+                        await db.collection('inventario').doc(itemId).delete();
+                        loadInventoryData(); // Recargar la tabla
+                    } catch (error) {
+                        console.error("Error al eliminar el artículo: ", error);
+                    }
+                }
+            });
+
+            itemForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const mode = itemForm.dataset.mode;
+                const itemId = itemForm.dataset.id;
+                
+                const categoriaSelect = document.getElementById('item-category');
+                const categoriaTexto = categoriaSelect.options[categoriaSelect.selectedIndex].text;
+
+                const itemData = {
+                    nombre: $('#item-name').val(),
+                    idCategoria: $('#item-category').val(),
+                    categoria: categoriaTexto,
+                    cantidad: $('#item-quantity').val()
+                };
+
+                try {
+                    if (mode === 'add') {
+                        await db.collection('inventario').add(itemData);
+                    } else {
+                        await db.collection('inventario').doc(itemId).update(itemData);
+                    }
+                    itemModal.hide();
+                    loadInventoryData(); // Recargar tabla
+                } catch (error) {
+                    console.error("Error al guardar el artículo: ", error);
+                }
+            });
         }
 
+        // --- LISTENER PARA TODOS (SOCIOS Y ADMIN) ---
         $('#inventario-table tbody').on('click', '.info-btn', function () {
             const itemId = $(this).data('id');
             const itemName = $(this).data('name');
             openInfoModal(itemId, itemName);
         });
-        
-        // ... (resto de listeners)
+
+        $('#info-filtro-responsable').on('change', applyInfoFilters);
+        $('#info-filtro-evento').on('change', applyInfoFilters);
     }
 
     async function openInfoModal(itemId, itemName) {
-        // ... (código existente)
+        $('#info-modal-title').text(`Historial de: ${itemName}`);
+        infoModal.show();
+        
+        try {
+            const prestamosSnapshot = await db.collection('prestamos').where('IdArticulo', '==', itemId).orderBy('fechaHoraPrestamo', 'desc').get();
+            const prestamosData = await Promise.all(prestamosSnapshot.docs.map(async doc => {
+                const prestamo = doc.data();
+                const responsableName = await window.getUserName(prestamo.IdUsuarioResponsable);
+                return {
+                    ...prestamo,
+                    Responsable: responsableName,
+                    fechaHoraPrestamo: prestamo.fechaHoraPrestamo.toDate(),
+                    fechaHoraDevolucion: prestamo.fechaHoraDevolucion ? prestamo.fechaHoraDevolucion.toDate() : null
+                };
+            }));
+            
+            currentItemHistory = prestamosData;
+            populateInfoFilters(currentItemHistory);
+            applyInfoFilters();
+
+        } catch (error) {
+            console.error("Error al cargar el historial del artículo: ", error);
+            if (infoHistorialTable) {
+                infoHistorialTable.clear().draw();
+            }
+        }
     }
     
-    // ... (resto de funciones)
+    function populateInfoFilters(history) {
+        const responsables = [...new Set(history.map(item => item.Responsable))].filter(Boolean);
+        const eventos = [...new Set(history.map(item => item.Evento))].filter(Boolean);
+
+        const respSelect = document.getElementById('info-filtro-responsable');
+        const eventSelect = document.getElementById('info-filtro-evento');
+
+        respSelect.innerHTML = '<option value="">Todos</option>' + responsables.map(r => `<option value="${r}">${r}</option>`).join('');
+        eventSelect.innerHTML = '<option value="">Todos</option>' + eventos.map(e => `<option value="${e}">${e}</option>`).join('');
+    }
+
+    function applyInfoFilters() {
+        const respFiltro = $('#info-filtro-responsable').val();
+        const eventFiltro = $('#info-filtro-evento').val();
+
+        const filteredHistory = currentItemHistory.filter(item => {
+            const respMatch = !respFiltro || item.Responsable === respFiltro;
+            const eventMatch = !eventFiltro || item.Evento === eventFiltro;
+            return respMatch && eventMatch;
+        });
+
+        if (infoHistorialTable) {
+            infoHistorialTable.clear().rows.add(filteredHistory).draw();
+        }
+    }
 });
