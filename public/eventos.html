@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventos - Pacto del Loto</title>
+
+    <!-- Metadatos y Favicon -->
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+
+    <!-- Estilos CSS -->
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+
+    <!-- Fuentes Externas -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="/jquery-3.7.1.min.js"></script>
+
+    <!-- Estilos específicos para la página de eventos -->
+    <style>
+        .event-card {
+          border-radius: 0.7rem;
+          overflow: hidden;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+          transition: transform 0.18s, box-shadow 0.18s;
+          height: 100%;
+          background: #fff;
+          position: relative;
+        }
+        .event-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.13);
+          z-index: 2;
+        }
+        .event-img {
+          width: 100%;
+          aspect-ratio: 16/9;
+          object-fit: cover;
+          background: #eee;
+        }
+        .event-info {
+          padding: 1rem;
+        }
+        .event-title {
+          font-size: 1.1rem;
+          font-weight: bold;
+          margin-bottom: 0.5rem;
+          color: #333;
+        }
+        .event-date {
+          font-size: 0.9rem;
+          color: #666;
+          margin-bottom: 0.5rem;
+        }
+        .event-extra {
+          font-size: 0.9rem;
+          color: #007bff;
+          font-weight: 500;
+        }
+        .event-hover-details {
+          position: absolute;
+          left: 0; right: 0; bottom: 0;
+          background: rgba(40,40,60,0.95);
+          color: #fff;
+          padding: 1rem;
+          opacity: 0;
+          transform: translateY(10px);
+          pointer-events: none;
+          transition: opacity 0.2s, transform 0.2s;
+        }
+        .event-card:hover .event-hover-details {
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <!-- El navbar se cargará aquí -->
+    </header>
+
+    <!-- Contenido principal de la página de eventos -->
+    <main class="container py-5">
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold">Próximos Eventos</h1>
+            <p class="lead text-muted">Descubre las actividades, torneos y partidas que hemos preparado para ti.</p>
+        </div>
+        
+        <!-- Contenedor donde se cargarán los eventos -->
+        <div id="eventos-catalogo" class="row">
+            <!-- Los eventos se insertarán aquí mediante JS -->
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <!-- El footer se cargará aquí -->
+    </footer>
+
+    <!-- Scripts de Bootstrap y Firebase -->
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Controladores de la aplicación -->
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/eventosController.js"></script>
+
+</body>
+</html>

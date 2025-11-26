@@ -6,11 +6,9 @@
 
   # Use https://search.nixos.org/packages to find packages
   packages = [
-    # pkgs.go
-    # pkgs.python311
-    # pkgs.python311Packages.pip
-    # pkgs.nodejs_20
-    # pkgs.nodePackages.nodemon
+    pkgs.nodejs_20
+    pkgs.nodePackages.npm
+    pkgs.nodePackages.node-gyp
   ];
 
   # Sets environment variables in the workspace
@@ -21,34 +19,26 @@
       # "vscodevim.vim"
     ];
 
-    # Enable previews
-    previews = {
-      enable = true;
-      previews = {
-        # web = {
-        #   # Example: run "npm run dev" with PORT set to IDX's defined port for previews,
-        #   # and show it in IDX's web preview panel
-        #   command = ["npm" "run" "dev"];
-        #   manager = "web";
-        #   env = {
-        #     # Environment variables to set for your server
-        #     PORT = "$PORT";
-        #   };
-        # };
-      };
-    };
-
-    # Workspace lifecycle hooks
     workspace = {
       # Runs when a workspace is first created
       onCreate = {
-        # Example: install JS dependencies from NPM
-        # npm-install = "npm install";
+        install-dependencies = "npm install";
+        # "npm install" is a common command to install dependencies in Node.js projects.
+        # It reads the "package.json" file and downloads the required packages.
       };
-      # Runs when the workspace is (re)started
+
+      # Runs when a workspace is started
       onStart = {
-        # Example: start a background task to watch and re-build backend code
-        # watch-backend = "npm run watch-backend";
+        # "npm start" is a common command to start a Node.js application.
+        # The actual command that runs is defined in the "scripts" section of "package.json".
+        start-app = "npm start";
+      };
+    };
+
+    # VS Code settings
+    vscode = {
+      settings = {
+        "editor.formatOnSave" = true;
       };
     };
   };

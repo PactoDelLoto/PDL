@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hazte Socio - Pacto del Loto</title>
+
+    <!-- Metadatos y Favicon -->
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+
+    <!-- Estilos CSS -->
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+
+    <!-- Fuentes Externas -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Script para cargar componentes comunes (Navbar y Footer) -->
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+
+    <header>
+        <!-- El navbar se cargará aquí -->
+    </header>
+
+    <!-- Jumbotron de ventajas de hacerse socio -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold mb-3">¡Hazte socio de Pacto del Loto!</h1>
+                <p class="lead">Disfruta de todas estas ventajas exclusivas para socios:</p>
+            </div>
+            <div class="row g-4 justify-content-center">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm text-center py-4">
+                        <div class="mb-3"><i class="fa-solid fa-users fa-2x text-primary"></i></div>
+                        <h5 class="fw-bold">Comunidad</h5>
+                        <p class="small mb-0">Forma parte de una comunidad activa de jugadores y aficionados.</p>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm text-center py-4">
+                        <div class="mb-3"><i class="fa-solid fa-dice-d20 fa-2x text-success"></i></div>
+                        <h5 class="fw-bold">Eventos exclusivos</h5>
+                        <p class="small mb-0">Participa en torneos, ligas y eventos solo para socios.</p>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm text-center py-4">
+                        <div class="mb-3"><i class="fa-solid fa-percent fa-2x text-warning"></i></div>
+                        <h5 class="fw-bold">Descuentos</h5>
+                        <p class="small mb-0">Accede a descuentos en material, inscripciones y tiendas colaboradoras.</p>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm text-center py-4">
+                        <div class="mb-3"><i class="fa-solid fa-chess-knight fa-2x text-danger"></i></div>
+                        <h5 class="fw-bold">Juegos de mesa y rol</h5>
+                        <p class="small mb-0">Acceso a una amplia ludoteca y partidas organizadas.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Formulario de inscripción (iframe) -->
+    <section class="py-5 bg-white">
+        <div class="container">
+            <div class="text-center mb-4">
+                <h2 class="fw-bold">Formulario de inscripción</h2>
+                <p>Rellena el siguiente formulario para hacerte socio de Pacto del Loto:</p>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-12 col-md-10 col-lg-8">
+                    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScYSN8JUarE2Lb5VUWsMOAQPvv_XmgWG6KJ_PXNtkaUJ_LdCQ/viewform?embedded=true"
+                            width="100%" height="900" frameborder="0" marginheight="0" marginwidth="0" style="background: #fff; border-radius: 8px;">
+                        Cargando…
+                    </iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <!-- El footer se cargará aquí -->
+    </footer>
+
+    <!-- Scripts de Bootstrap y Firebase -->
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Controladores de la aplicación -->
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+
+</body>
+</html>

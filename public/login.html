@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Pacto del Loto</title>
+
+    <!-- Metadatos y Favicon -->
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+
+    <!-- Estilos CSS -->
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+
+    <!-- Fuentes Externas -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        .password-container {
+            position: relative;
+        }
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+        }
+        .btn-google {
+            background-color: #4285F4;
+            color: white;
+        }
+        .btn-google:hover {
+            background-color: #357ae8;
+            color: white;
+        }
+    </style>
+
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+
+    <header>
+        <!-- El navbar se cargará aquí -->
+    </header>
+
+    <main class="container mt-5 pt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card shadow-lg">
+                    <div class="card-body p-4 p-md-5">
+                        <h2 class="card-title text-center mb-4">Iniciar Sesión</h2>
+                        <form id="login-form" class="needs-validation" novalidate>
+                            <div class="mb-3"><label for="email" class="form-label">Correo Electrónico</label><input type="email" class="form-control" id="email" required><div class="invalid-feedback">Por favor, introduce tu correo electrónico.</div></div><div class="mb-3"><label for="password" class="form-label">Contraseña</label><div class="password-container"><input type="password" class="form-control" id="password" required><i class="fas fa-eye-slash toggle-password" id="toggle-password"></i><div class="invalid-feedback">Por favor, introduce tu contraseña.</div></div></div>
+                            <div id="auth-error" class="alert alert-danger d-none" role="alert"></div>
+                            <div class="d-grid mb-3"><button type="submit" class="btn btn-primary btn-block">Entrar</button></div>
+                        </form>
+
+                        <hr class="my-4">
+
+                        <div class="d-grid mb-3">
+                            <button id="google-login-button" class="btn btn-google btn-block">
+                                <i class="fab fa-google me-2"></i> Continuar con Google
+                            </button>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <p>¿No tienes una cuenta? <a href="/registro.html">Regístrate aquí</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <!-- El footer se cargará aquí -->
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/loginController.js"></script>
+
+</body>
+</html>

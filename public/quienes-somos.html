@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiénes Somos - Pacto del Loto</title>
+
+    <!-- Metadatos y Favicon -->
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+
+    <!-- Estilos CSS -->
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+
+    <!-- Fuentes Externas -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="/jquery-3.7.1.min.js"></script>
+
+    <!-- Estilos específicos de la página -->
+    <style>
+        .about-hero {
+          background: linear-gradient(rgba(30,30,30,0.7), rgba(30,30,30,0.7)), url('/media/img/image1.jpg') center/cover no-repeat;
+          color: #fff;
+          min-height: 50vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+        }
+        .about-hero .overlay-content { z-index: 2; }
+        .about-hero .icon-glow {
+          color: #ffd700;
+          filter: drop-shadow(0 0 10px #ffd70088);
+          animation: glow 2s infinite alternate;
+        }
+        @keyframes glow { to { filter: drop-shadow(0 0 20px #ffd700cc); } }
+        .about-section {
+          background: #f8f9fa;
+          border-radius: 1rem;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+          margin-top: -60px;
+          position: relative;
+          z-index: 3;
+        }
+        .about-values i {
+          font-size: 2.5rem;
+          margin-bottom: 0.5rem;
+          color: #6c63ff;
+          transition: transform 0.2s;
+        }
+        .about-values i:hover { transform: scale(1.2) rotate(-10deg); color: #ff9800; }
+    </style>
+
+</head>
+<body>
+
+    <header>
+        <!-- El navbar se cargará aquí -->
+    </header>
+
+    <!-- Hero creativo -->
+    <section class="about-hero">
+        <div class="container text-center overlay-content">
+            <i class="fa-solid fa-dragon fa-4x icon-glow mb-3"></i>
+            <h1 class="display-3 fw-bold mb-3">¿Quiénes somos?</h1>
+            <p class="lead fs-4">Un lugar donde la imaginación, la estrategia y la amistad se dan la mano.</p>
+        </div>
+    </section>
+
+    <!-- Sección principal -->
+    <section class="about-section py-5 px-3 px-md-5 shadow-lg">
+        <div class="container">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6">
+                    <img src="/media/img/image1.jpg" alt="Nuestra asociación" class="img-fluid rounded-4 shadow-lg mb-4 mb-lg-0" style="border: 5px solid #6c63ff;">
+                </div>
+                <div class="col-lg-6">
+                    <h2 class="fw-bold mb-3"><i class="fa-solid fa-hat-wizard me-2 text-primary"></i> Nuestra historia</h2>
+                    <p class="fs-5">
+                        Pacto del Loto nació de la pasión de un grupo de amigos por los juegos de cartas, miniaturas y rol. Desde nuestros humildes inicios en una pequeña sala, hemos crecido hasta convertirnos en una comunidad vibrante y diversa, donde cada miembro aporta su chispa única.
+                    </p>
+                    <p class="fs-5">
+                        Creemos en el poder del juego para unir personas, fomentar la creatividad y crear recuerdos inolvidables. Organizamos eventos, torneos y jornadas temáticas donde la diversión y el respeto son las reglas principales.
+                    </p>
+                </div>
+            </div>
+            <hr class="my-5">
+            <div class="row about-values text-center g-4">
+                <div class="col-6 col-md-3"><i class="fa-solid fa-people-group"></i><h5 class="fw-bold mt-2">Comunidad</h5><p class="small">Un espacio seguro y abierto para todos los jugadores.</p></div>
+                <div class="col-6 col-md-3"><i class="fa-solid fa-lightbulb"></i><h5 class="fw-bold mt-2">Creatividad</h5><p class="small">Fomentamos la imaginación y la innovación en cada partida.</p></div>
+                <div class="col-6 col-md-3"><i class="fa-solid fa-handshake-angle"></i><h5 class="fw-bold mt-2">Colaboración</h5><p class="small">El trabajo en equipo y la amistad son nuestro motor.</p></div>
+                <div class="col-6 col-md-3"><i class="fa-solid fa-trophy"></i><h5 class="fw-bold mt-2">Superación</h5><p class="small">Nos retamos a mejorar y celebrar cada logro juntos.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <!-- El footer se cargará aquí -->
+    </footer>
+
+    <!-- Scripts de Bootstrap y Firebase -->
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Controladores de la aplicación -->
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+
+</body>
+</html>
