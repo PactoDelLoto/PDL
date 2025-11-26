@@ -1,3 +1,30 @@
+
+/**
+ * Checks if the currently logged-in user is an administrator.
+ * @returns {Promise<boolean>} A promise that resolves to true if the user is an admin, false otherwise.
+ */
+window.isUserAdmin = function() {
+    return new Promise((resolve) => {
+        const user = auth.currentUser;
+        if (!user) {
+            resolve(false);
+            return;
+        }
+
+        const userRef = db.collection('usuarios').doc(user.uid);
+        userRef.get().then(doc => {
+            if (doc.exists && doc.data().isAdmin === true) {
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+        }).catch(error => {
+            console.error("Error al verificar el estado de administrador:", error);
+            resolve(false); // Resolve to false on error to prevent unauthorized access
+        });
+    });
+};
+
 /**
  * Observador del estado de autenticación de Firebase.
  * Se ejecuta cuando la página carga y cada vez que el estado de autenticación cambia.

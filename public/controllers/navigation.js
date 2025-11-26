@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => console.error('Error al cargar el footer:', error));
 });
 
-function populateNavbarLinks(isLoggedIn) {
+async function populateNavbarLinks(isLoggedIn) {
     const links = [
         { text: 'Hazte socio', href: '/hazte-socio.html' },
         { text: 'Actividades', href: '/actividades.html' },
@@ -31,7 +31,10 @@ function populateNavbarLinks(isLoggedIn) {
     ];
 
     if (isLoggedIn) {
-        links.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
+        const isAdmin = await window.isUserAdmin();
+        if (isAdmin) {
+            links.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
+        }
     }
 
     const navbarList = document.getElementById('navbar-links');

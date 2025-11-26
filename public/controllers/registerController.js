@@ -49,7 +49,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (checkElement) {
                     checkElement.classList.toggle('valid', isValid);
                     checkElement.classList.toggle('invalid', !isValid);
-                    checkElement.querySelector('i').className = isValid ? 'fas fa-check-circle' : 'fas fa-times-circle';
+                    const icon = checkElement.querySelector('i');
+                    if (icon) {
+                        icon.className = isValid ? 'fas fa-check-circle' : 'fas fa-times-circle';
+                    }
                 }
             }
         });
@@ -73,15 +76,20 @@ document.addEventListener('DOMContentLoaded', function () {
             const password = passwordInput.value;
             const nombre = document.getElementById('nombre').value;
             const apellidos = document.getElementById('apellidos').value;
+            const telefono = document.getElementById('telefono').value; // Asumiendo que tienes un input con id="telefono"
 
             auth.createUserWithEmailAndPassword(email, password)
                 .then(userCredential => {
                     const user = userCredential.user;
+                    // Guarda el documento del usuario en Firestore con la estructura correcta
                     return db.collection('usuarios').doc(user.uid).set({
+                        UID: user.uid,
                         nombre: nombre,
                         apellidos: apellidos,
-                        email: email,
-                        socio: false,
+                        correo: email, // Corregido de 'email' a 'correo'
+                        telefono: telefono,
+                        isAdmin: false, // Por defecto, no es admin
+                        isSocio: false, // Por defecto, no es socio
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }).then(() => {
                         user.sendEmailVerification();
@@ -107,11 +115,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     return userRef.get().then(docSnapshot => {
                         if (!docSnapshot.exists) {
                             const profile = result.additionalUserInfo.profile;
+                            // Guarda el documento del usuario de Google con la estructura correcta
                             return userRef.set({
+                                UID: user.uid,
                                 nombre: profile.given_name || user.displayName.split(' ')[0],
                                 apellidos: profile.family_name || user.displayName.split(' ').slice(1).join(' '),
-                                email: user.email,
-                                socio: false,
+                                correo: user.email, // Corregido
+                                telefono: user.phoneNumber || '', // Google no siempre provee teléfono
+                                isAdmin: false,
+                                isSocio: false,
                                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
                             });
                         }
@@ -126,12 +138,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- OTROS LISTENERS ---
+    // --- OTROS LISTENERS Y FUNCIONES DE ERROR (Sin cambios) ---
     if (confirmPasswordInput) confirmPasswordInput.addEventListener('input', () => confirmPasswordInput.setCustomValidity(''));
     if (passwordInput) passwordInput.addEventListener('input', () => { passwordInput.setCustomValidity(''); passwordErrorFeedback.textContent = ''; });
 });
 
-// --- FUNCIÓN DE ERRORES DE FIREBASE ---
 function getFirebaseErrorMessage(errorCode) {
     switch(errorCode){
         case 'auth/email-already-in-use': return 'Este correo electrónico ya está en uso por otro método de registro.';
