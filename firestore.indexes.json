@@ -1,0 +1,19 @@
+
+{
+  "indexes": [
+    {
+      "collectionGroup": "prestamos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "Estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaHoraPrestamo",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ]
+}

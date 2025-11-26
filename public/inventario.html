@@ -68,12 +68,109 @@
                 </div>
             </div>
             
-            <!-- Sección de Préstamos (Placeholder) -->
+            <!-- Sección de Préstamos -->
             <div class="tab-pane fade" id="prestamos-section" role="tabpanel" aria-labelledby="prestamos-tab">
                 <div class="card shadow-sm mt-4">
                     <div class="card-body">
-                        <h5 class="card-title">Gestión de Préstamos</h5>
-                        <p class="card-text">Esta sección está en desarrollo. Aquí podrás gestionar los préstamos de los artículos del inventario.</p>
+                        <h5 class="card-title">Registrar Nuevo Préstamo</h5>
+                        <form id="form-prestamo">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="articulo" class="form-label">Artículo</label>
+                                    <select class="form-select" id="articulo" required>
+                                        <!-- Los artículos se cargarán aquí -->
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="persona" class="form-label">Persona que recibe</label>
+                                    <input type="text" class="form-control" id="persona" placeholder="Nombre completo" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="evento" class="form-label">Evento</label>
+                                    <select class="form-select" id="evento">
+                                        <option value="">Desconocido/Ninguno</option>
+                                        <!-- Los eventos se cargarán aquí -->
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Registrar Préstamo</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mt-4">
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="prestamosTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="activos-tab" data-bs-toggle="tab" data-bs-target="#activos" type="button" role="tab" aria-controls="activos" aria-selected="true">Préstamos Activos</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial" type="button" role="tab" aria-controls="historial" aria-selected="false">Historial de Préstamos</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="prestamosTabsContent">
+                            <div class="tab-pane fade show active" id="activos" role="tabpanel" aria-labelledby="activos-tab">
+                                <h5 class="card-title mt-3">Préstamos Activos</h5>
+                                <div class="table-responsive">
+                                    <table id="tabla-prestamos-activos" class="table table-striped" style="width:100%">
+                                        <thead>
+                                            <tr>
+                                                <th>Artículo</th>
+                                                <th>Persona</th>
+                                                <th>Fecha y Hora del Préstamo</th>
+                                                <th>Estado</th>
+                                                <th>Responsable</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Los préstamos activos se cargarán aquí -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="historial" role="tabpanel" aria-labelledby="historial-tab">
+                                <h5 class="card-title mt-3">Historial de Préstamos</h5>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="filtro-articulo" class="form-label">Filtrar por Artículo</label>
+                                        <select class="form-select" id="filtro-articulo">
+                                            <!-- Opciones de filtro de artículos -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="filtro-responsable" class="form-label">Filtrar por Responsable</label>
+                                        <select class="form-select" id="filtro-responsable">
+                                            <!-- Opciones de filtro de responsables -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="filtro-evento" class="form-label">Filtrar por Evento</label>
+                                        <select class="form-select" id="filtro-evento">
+                                            <!-- Opciones de filtro de eventos -->
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table id="tabla-prestamos-historial" class="table table-striped" style="width:100%">
+                                        <thead>
+                                            <tr>
+                                                <th>Artículo</th>
+                                                <th>Persona</th>
+                                                <th>Fecha y Hora del Préstamo</th>
+                                                <th>Fecha y Hora de Devolución</th>
+                                                <th>Estado</th>
+                                                <th>Responsable</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- El historial de préstamos se cargará aquí -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -115,6 +212,55 @@
         </div>
     </div>
 
+    <!-- Modal para Historial de Artículo -->
+    <div class="modal fade" id="info-modal" tabindex="-1" aria-labelledby="info-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="info-modal-title">Historial del Artículo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="info-filtro-responsable" class="form-label">Filtrar por Responsable</label>
+                            <select class="form-select" id="info-filtro-responsable">
+                                <!-- Opciones de filtro de responsables -->
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="info-filtro-evento" class="form-label">Filtrar por Evento</label>
+                            <select class="form-select" id="info-filtro-evento">
+                                <!-- Opciones de filtro de eventos -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="tabla-info-historial" class="table table-striped" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Persona</th>
+                                    <th>Fecha y Hora del Préstamo</th>
+                                    <th>Fecha y Hora de Devolución</th>
+                                    <th>Estado</th>
+                                    <th>Responsable</th>
+                                    <th>Evento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- El historial de préstamos del artículo se cargará aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <footer class="footer mt-auto py-3 bg-dark">
         <!-- El footer se cargará aquí -->
     </footer>
@@ -128,8 +274,13 @@
 
     <!-- Controladores de la aplicación -->
     <script src="/controllers/firebase-config.js"></script>
+    
+    <!-- FICHERO PRINCIPAL (Debe cargarse antes que los controladores específicos) -->
+    <script src="/js/main.js"></script>
+
     <script src="/controllers/authController.js"></script>
     <script src="/controllers/navigation.js"></script>
     <script src="/controllers/inventarioController.js"></script>
+    <script src="/controllers/prestamosController.js"></script>
 </body>
 </html>
