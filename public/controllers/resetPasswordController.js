@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             await auth.sendPasswordResetEmail(email);
             // Mostrar mensaje de éxito
-            showAlert('¡Correo enviado! Revisa tu bandeja de entrada (y la carpeta de spam) para encontrar el enlace de restablecimiento.', 'success');
+            showAlert('¡Correo enviado! Revisa tu bandeja de entrada (y la carpeta de SPAM) para encontrar el enlace de restablecimiento.', 'success');
             resetForm.reset(); // Limpiar el formulario
         } catch (error) {
             console.error("Error al enviar correo de restablecimiento:", error);
