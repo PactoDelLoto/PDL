@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // Selectores de elementos del DOM
     const articuloSelect = document.getElementById('articulo');
     const personaInput = document.getElementById('persona');
     const eventoSelect = document.getElementById('evento');
@@ -11,19 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtroResponsable = document.getElementById('filtro-responsable');
     const filtroEvento = document.getElementById('filtro-evento');
 
-    // Instancias de DataTables
     let prestamosActivosTable, prestamosHistorialTable;
-
     let currentUser = null;
     let userCache = {};
 
-    // --- INICIALIZACIÓN Y AUTENTICACIÓN ---
     auth.onAuthStateChanged(user => {
         if (user) {
             currentUser = user;
             initializePrestamosPage();
-        } else {
-            console.log("Usuario no autenticado.");
         }
     });
 
@@ -32,11 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loadEventos();
         loadResponsablesFilter();
         setupEventListeners();
-        // Carga inicial de la primera tabla visible
         loadPrestamosActivos();
     }
-    
-    // --- CARGA DE DATOS PARA FORMULARIOS Y FILTROS ---
 
     async function loadArticulos() {
         try {
@@ -65,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error cargando eventos: ", error);
         }
     }
-    
+
     async function loadResponsablesFilter() {
         try {
             const snapshot = await db.collection("usuarios").where('isSocio', '==', true).get();
@@ -79,30 +70,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- GESTIÓN DE EVENTOS ---
-
     function setupEventListeners() {
         formPrestamo.addEventListener('submit', handlePrestamoSubmit);
-
-        filtroArticulo.addEventListener('change', loadHistorialPrestamos);
-        filtroResponsable.addEventListener('change', loadHistorialPrestamos);
-        filtroEvento.addEventListener('change', loadHistorialPrestamos);
-        
-        // Listeners para inicializar tablas de DataTables al mostrar la pestaña
+        $('#filtro-articulo, #filtro-responsable, #filtro-evento').on('change', loadHistorialPrestamos);
         $('button[data-bs-target="#activos"]').on('shown.bs.tab', loadPrestamosActivos);
         $('button[data-bs-target="#historial"]').on('shown.bs.tab', loadHistorialPrestamos);
-
-        // Delegación de eventos para los botones de las tablas
         $('#tabla-prestamos-activos').on('click', '.btn-devolver', handleDevolucion);
         $('#tabla-prestamos-historial').on('click', '.btn-cancelar-devolucion', handleCancelarDevolucion);
     }
 
-    // --- MANEJADORES DE ACCIONES ---
-
     async function handlePrestamoSubmit(e) {
         e.preventDefault();
         if (!articuloSelect.value || !personaInput.value) {
-            alert('Por favor, complete todos los campos requeridos.');
+            showAlert('Por favor, complete el artículo y la persona que recibe.', 'warning');
             return;
         }
         try {
@@ -118,79 +98,86 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             formPrestamo.reset();
             loadPrestamosActivos();
-            alert('Préstamo registrado con éxito.');
+            showAlert('Préstamo registrado con éxito.', 'success');
         } catch (error) {
             console.error("Error al registrar el préstamo: ", error);
+            showAlert('Hubo un error al registrar el préstamo.', 'danger');
         }
     }
 
-    async function handleDevolucion(e) {
+    function handleDevolucion(e) {
         const id = $(e.currentTarget).data('id');
-        if (confirm('¿Confirmar la devolución de este artículo?')) {
-            try {
-                await db.collection("prestamos").doc(id).update({ Estado: 'Devuelto', fechaHoraDevolucion: new Date() });
-                loadPrestamosActivos();
-                if (prestamosHistorialTable) loadHistorialPrestamos(); // Recarga si la tabla de historial ya se ha cargado
-            } catch (error) {
-                console.error('Error al devolver el artículo:', error);
+        showConfirmationModal(
+            'Confirmar Devolución',
+            '¿Estás seguro de que quieres marcar este artículo como devuelto?',
+            async () => {
+                try {
+                    await db.collection("prestamos").doc(id).update({ Estado: 'Devuelto', fechaHoraDevolucion: new Date() });
+                    showAlert('Artículo devuelto con éxito.', 'success');
+                    loadPrestamosActivos();
+                    if (prestamosHistorialTable) loadHistorialPrestamos();
+                } catch (error) {
+                    console.error('Error al devolver el artículo:', error);
+                    showAlert('Error al procesar la devolución.', 'danger');
+                }
             }
-        }
+        );
     }
 
-    async function handleCancelarDevolucion(e) {
+    function handleCancelarDevolucion(e) {
         const id = $(e.currentTarget).data('id');
-        if (confirm('¿Está seguro de que desea cancelar la devolución?')) {
-            try {
-                await db.collection("prestamos").doc(id).update({ Estado: 'Pendiente', fechaHoraDevolucion: null });
-                loadHistorialPrestamos();
-                loadPrestamosActivos(); 
-            } catch (error) {
-                console.error('Error al cancelar la devolución:', error);
+        showConfirmationModal(
+            'Cancelar Devolución',
+            '¿Estás seguro de que quieres anular la devolución de este artículo? El préstamo volverá a estar pendiente.',
+            async () => {
+                try {
+                    await db.collection("prestamos").doc(id).update({ Estado: 'Pendiente', fechaHoraDevolucion: null });
+                    showAlert('La devolución ha sido cancelada.', 'info');
+                    loadHistorialPrestamos();
+                    loadPrestamosActivos();
+                } catch (error) {
+                    console.error('Error al cancelar la devolución:', error);
+                    showAlert('Error al cancelar la devolución.', 'danger');
+                }
             }
-        }
+        );
     }
-
-    // --- CARGA Y RENDERIZADO DE TABLAS ---
 
     async function loadPrestamosActivos() {
-        if (!$.fn.DataTable.isDataTable('#tabla-prestamos-activos')) {
+        if (!prestamosActivosTable) {
             prestamosActivosTable = $('#tabla-prestamos-activos').DataTable({ 
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
+                columns: [ null, null, null, null, null, { orderable: false, searchable: false } ]
             });
         }
         try {
             const snapshot = await db.collection("prestamos").where("Estado", "==", "Pendiente").orderBy("fechaHoraPrestamo", "desc").get();
             const data = await Promise.all(snapshot.docs.map(async doc => {
-                const prestamo = doc.data();
-                return {
-                    ...prestamo,
-                    id: doc.id,
-                    responsable: await getUserName(prestamo.IdUsuarioResponsable),
-                    fechaHoraPrestamo: prestamo.fechaHoraPrestamo.toDate()
-                };
+                const p = doc.data();
+                const responsable = await getUserName(p.IdUsuarioResponsable);
+                return [
+                    p.nombreArticulo,
+                    p.PersonaRecibe,
+                    p.fechaHoraPrestamo.toDate().toLocaleString(),
+                    '<span class="badge bg-warning text-dark">Pendiente</span>',
+                    responsable,
+                    `<button class="btn btn-success btn-sm btn-devolver" data-id="${doc.id}">Devolver</button>`
+                ];
             }));
-            
-            prestamosActivosTable.clear();
-            prestamosActivosTable.rows.add(data.map(p => ([
-                p.nombreArticulo,
-                p.PersonaRecibe,
-                p.fechaHoraPrestamo.toLocaleString(),
-                '<span class="badge bg-warning text-dark">Pendiente</span>',
-                p.responsable,
-                `<button class="btn btn-success btn-sm btn-devolver" data-id="${p.id}">Devolver</button>`
-            ]))).draw();
-
+            prestamosActivosTable.clear().rows.add(data).draw();
         } catch (error) {
             console.error("Error cargando préstamos activos: ", error);
         }
     }
 
     async function loadHistorialPrestamos() {
-        if (!$.fn.DataTable.isDataTable('#tabla-prestamos-historial')) {
+        if (!prestamosHistorialTable) {
             prestamosHistorialTable = $('#tabla-prestamos-historial').DataTable({ 
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
+                order: [[ 3, "desc" ]], // Ordenar por fecha de devolución por defecto
+                columns: [ null, null, null, null, null, null, { orderable: false, searchable: false } ]
             });
         }
         try {
@@ -201,33 +188,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const snapshot = await query.orderBy("fechaHoraDevolucion", "desc").get();
             const data = await Promise.all(snapshot.docs.map(async doc => {
-                const prestamo = doc.data();
-                return {
-                    ...prestamo,
-                    id: doc.id,
-                    responsable: await getUserName(prestamo.IdUsuarioResponsable),
-                    fechaHoraPrestamo: prestamo.fechaHoraPrestamo.toDate(),
-                    fechaHoraDevolucion: prestamo.fechaHoraDevolucion ? prestamo.fechaHoraDevolucion.toDate() : null
-                };
+                const p = doc.data();
+                const responsable = await getUserName(p.IdUsuarioResponsable);
+                return [
+                    p.nombreArticulo,
+                    p.PersonaRecibe,
+                    p.fechaHoraPrestamo.toDate().toLocaleString(),
+                    p.fechaHoraDevolucion ? p.fechaHoraDevolucion.toDate().toLocaleString() : 'N/A',
+                    '<span class="badge bg-success">Devuelto</span>',
+                    responsable,
+                    `<button class="btn btn-warning btn-sm btn-cancelar-devolucion" data-id="${doc.id}">Cancelar</button>`
+                ];
             }));
-            
-            prestamosHistorialTable.clear();
-            prestamosHistorialTable.rows.add(data.map(p => ([
-                p.nombreArticulo,
-                p.PersonaRecibe,
-                p.fechaHoraPrestamo.toLocaleString(),
-                p.fechaHoraDevolucion ? p.fechaHoraDevolucion.toLocaleString() : 'N/A',
-                '<span class="badge bg-success">Devuelto</span>',
-                p.responsable,
-                `<button class="btn btn-warning btn-sm btn-cancelar-devolucion" data-id="${p.id}">Cancelar Devolución</button>`
-            ]))).draw();
-
+            prestamosHistorialTable.clear().rows.add(data).draw();
         } catch (error) {
             console.error("Error cargando historial de préstamos: ", error);
         }
     }
-
-    // --- FUNCIONES DE UTILIDAD ---
 
     async function getUserName(userId) {
         if (!userId) return "Desconocido";
