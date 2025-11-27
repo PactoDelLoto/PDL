@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    // Elements
     const articuloSelect = document.getElementById('articulo');
     const personaInput = document.getElementById('persona');
     const eventoSelect = document.getElementById('evento');
@@ -10,10 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtroResponsable = document.getElementById('filtro-responsable');
     const filtroEvento = document.getElementById('filtro-evento');
 
+    // DataTables
     let prestamosActivosTable, prestamosHistorialTable;
+    
+    // State
     let currentUser = null;
-    let userCache = {};
+    let userCache = {}; // Cache for user names to reduce DB reads
 
+    // --- INITIALIZATION ---
     auth.onAuthStateChanged(user => {
         if (user) {
             currentUser = user;
@@ -22,25 +27,69 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function initializePrestamosPage() {
-        loadArticulos();
+        loadArticulosParaPrestamo();
         loadEventos();
-        loadResponsablesFilter();
+        loadFiltros();
         setupEventListeners();
         loadPrestamosActivos();
     }
 
-    async function loadArticulos() {
+    // --- DATA LOADING ---
+
+    async function loadArticulosParaPrestamo() {
         try {
             const snapshot = await db.collection("inventario").orderBy('nombre').get();
             articuloSelect.innerHTML = '<option value="">Seleccione un artículo</option>';
-            filtroArticulo.innerHTML = '<option value="">Todos</option>';
+            
             snapshot.forEach(doc => {
                 const item = doc.data();
-                articuloSelect.add(new Option(item.nombre, doc.id));
-                filtroArticulo.add(new Option(item.nombre, doc.id));
+                const total = item.cantidad;
+
+                if (total > 0) {
+                    const disponibles = (item.cantidadRestante === undefined || item.cantidadRestante === null) ? total : item.cantidadRestante;
+                    if (disponibles > 0) {
+                        const optionText = `${item.nombre} (${disponibles}/${total} disponibles)`;
+                        articuloSelect.add(new Option(optionText, doc.id));
+                    }
+                }
             });
         } catch (error) {
-            console.error("Error cargando artículos: ", error);
+            console.error("Error cargando artículos para prestar: ", error);
+        }
+    }
+
+    async function loadFiltros() {
+        try {
+            const snapshot = await db.collection("inventario").orderBy('nombre').get();
+            filtroArticulo.innerHTML = '<option value="">Todos</option>';
+            snapshot.forEach(doc => {
+                filtroArticulo.add(new Option(doc.data().nombre, doc.id));
+            });
+        } catch (error) {
+            console.error("Error cargando artículos para filtro: ", error);
+        }
+
+        try {
+            const snapshot = await db.collection("eventos").orderBy('nombre').get();
+            filtroEvento.innerHTML = '<option value="">Todos</option>';
+            snapshot.forEach(doc => {
+                 filtroEvento.add(new Option(doc.data().nombre, doc.data().nombre));
+            });
+        } catch (error) {
+            console.error("Error cargando eventos para filtro: ", error);
+        }
+
+
+        try {
+            const snapshot = await db.collection("usuarios").where('isSocio', '==', true).get();
+            filtroResponsable.innerHTML = '<option value="">Todos</option>';
+            snapshot.forEach(doc => {
+                const user = doc.data();
+                const fullName = `${user.nombre} ${user.apellidos}`.trim();
+                filtroResponsable.add(new Option(fullName, doc.id));
+            });
+        } catch (error) {
+            console.error("Error cargando responsables: ", error);
         }
     }
 
@@ -49,105 +98,166 @@ document.addEventListener('DOMContentLoaded', () => {
             const snapshot = await db.collection("eventos").orderBy('nombre').get();
             eventoSelect.innerHTML = '<option value="">Desconocido/Ninguno</option>';
             snapshot.forEach(doc => {
-                const evento = doc.data();
-                eventoSelect.add(new Option(evento.nombre, evento.nombre));
+                eventoSelect.add(new Option(doc.data().nombre, doc.data().nombre));
             });
         } catch (error) {
             console.error("Error cargando eventos: ", error);
         }
     }
 
-    async function loadResponsablesFilter() {
-        try {
-            const snapshot = await db.collection("usuarios").where('isSocio', '==', true).get();
-            filtroResponsable.innerHTML = '<option value="">Todos</option>';
-            snapshot.forEach(doc => {
-                const user = doc.data();
-                filtroResponsable.add(new Option(`${user.nombre} ${user.apellidos}`.trim(), doc.id));
-            });
-        } catch (error) {
-            console.error("Error cargando responsables: ", error);
-        }
-    }
+    // --- EVENT LISTENERS ---
 
     function setupEventListeners() {
         formPrestamo.addEventListener('submit', handlePrestamoSubmit);
         $('#filtro-articulo, #filtro-responsable, #filtro-evento').on('change', loadHistorialPrestamos);
         $('button[data-bs-target="#activos"]').on('shown.bs.tab', loadPrestamosActivos);
         $('button[data-bs-target="#historial"]').on('shown.bs.tab', loadHistorialPrestamos);
-        $('#tabla-prestamos-activos').on('click', '.btn-devolver', handleDevolucion);
-        $('#tabla-prestamos-historial').on('click', '.btn-cancelar-devolucion', handleCancelarDevolucion);
+        $('#tabla-prestamos-activos tbody').on('click', '.btn-devolver', handleDevolucion);
+        $('#tabla-prestamos-historial tbody').on('click', '.btn-cancelar-devolucion', handleCancelarDevolucion);
     }
+
+    // --- ACTION HANDLERS (with transactions) ---
 
     async function handlePrestamoSubmit(e) {
         e.preventDefault();
-        if (!articuloSelect.value || !personaInput.value) {
+        const articuloId = articuloSelect.value;
+        const persona = personaInput.value;
+
+        if (!articuloId || !persona) {
             showAlert('Por favor, complete el artículo y la persona que recibe.', 'warning');
             return;
         }
+
+        const articuloRef = db.collection('inventario').doc(articuloId);
+
         try {
-            await db.collection("prestamos").add({
-                IdArticulo: articuloSelect.value,
-                nombreArticulo: articuloSelect.options[articuloSelect.selectedIndex].text,
-                PersonaRecibe: personaInput.value,
-                IdUsuarioResponsable: currentUser.uid,
-                fechaHoraPrestamo: new Date(),
-                fechaHoraDevolucion: null,
-                Evento: eventoSelect.value || "N/A",
-                Estado: "Pendiente"
+            await db.runTransaction(async (transaction) => {
+                const articuloDoc = await transaction.get(articuloRef);
+                if (!articuloDoc.exists) {
+                    throw "El artículo seleccionado ya no existe.";
+                }
+
+                const item = articuloDoc.data();
+                const total = item.cantidad;
+                const disponibles = (item.cantidadRestante === undefined || item.cantidadRestante === null) ? total : item.cantidadRestante;
+
+                if (disponibles <= 0) {
+                    throw "No quedan unidades disponibles de este artículo para prestar.";
+                }
+
+                transaction.update(articuloRef, { cantidadRestante: disponibles - 1 });
+
+                const prestamoRef = db.collection('prestamos').doc();
+                transaction.set(prestamoRef, {
+                    IdArticulo: articuloId,
+                    nombreArticulo: item.nombre,
+                    PersonaRecibe: persona,
+                    IdUsuarioResponsable: currentUser.uid,
+                    fechaHoraPrestamo: firebase.firestore.FieldValue.serverTimestamp(),
+                    fechaHoraDevolucion: null,
+                    Evento: eventoSelect.value || "N/A",
+                    Estado: "Pendiente"
+                });
+                document.dispatchEvent(new CustomEvent('inventarioActualizado'));
             });
-            formPrestamo.reset();
-            loadPrestamosActivos();
+
             showAlert('Préstamo registrado con éxito.', 'success');
+            formPrestamo.reset();
+            await loadArticulosParaPrestamo();
+            loadPrestamosActivos();
+
         } catch (error) {
-            console.error("Error al registrar el préstamo: ", error);
-            showAlert('Hubo un error al registrar el préstamo.', 'danger');
+            console.error("Error en la transacción de préstamo: ", error);
+            showAlert(typeof error === 'string' ? error : 'Hubo un error al registrar el préstamo.', 'danger');
         }
     }
 
     function handleDevolucion(e) {
-        const id = $(e.currentTarget).data('id');
-        showConfirmationModal(
-            'Confirmar Devolución',
-            '¿Estás seguro de que quieres marcar este artículo como devuelto?',
-            async () => {
-                try {
-                    await db.collection("prestamos").doc(id).update({ Estado: 'Devuelto', fechaHoraDevolucion: new Date() });
-                    showAlert('Artículo devuelto con éxito.', 'success');
-                    loadPrestamosActivos();
-                    if (prestamosHistorialTable) loadHistorialPrestamos();
-                } catch (error) {
-                    console.error('Error al devolver el artículo:', error);
-                    showAlert('Error al procesar la devolución.', 'danger');
-                }
+        const prestamoId = $(e.currentTarget).data('id');
+        const prestamoRef = db.collection('prestamos').doc(prestamoId);
+
+        showConfirmationModal('Confirmar Devolución', '¿Marcar este artículo como devuelto?', async () => {
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const prestamoDoc = await transaction.get(prestamoRef);
+                    if (!prestamoDoc.exists) throw "El préstamo ya no existe.";
+                    
+                    const prestamoData = prestamoDoc.data();
+                    const articuloRef = db.collection('inventario').doc(prestamoData.IdArticulo);
+                    const articuloDoc = await transaction.get(articuloRef);
+
+                    if (articuloDoc.exists) {
+                        const item = articuloDoc.data();
+                        const disponibles = (item.cantidadRestante === undefined || item.cantidadRestante === null) ? item.cantidad : item.cantidadRestante;
+                        if (disponibles < item.cantidad) {
+                            transaction.update(articuloRef, { cantidadRestante: disponibles + 1 });
+                        }
+                    }
+                    
+                    transaction.update(prestamoRef, { Estado: 'Devuelto', fechaHoraDevolucion: firebase.firestore.FieldValue.serverTimestamp() });
+                    document.dispatchEvent(new CustomEvent('inventarioActualizado'));
+                });
+
+                showAlert('Artículo devuelto con éxito.', 'success');
+                loadPrestamosActivos();
+                if ($.fn.DataTable.isDataTable('#tabla-prestamos-historial')) loadHistorialPrestamos();
+                await loadArticulosParaPrestamo(); // This line is crucial
+                document.dispatchEvent(new CustomEvent('inventarioActualizado'));
+
+            } catch (error) {
+                console.error('Error en la transacción de devolución:', error);
+                showAlert('Error al procesar la devolución.', 'danger');
             }
-        );
+        });
     }
 
     function handleCancelarDevolucion(e) {
-        const id = $(e.currentTarget).data('id');
-        showConfirmationModal(
-            'Cancelar Devolución',
-            '¿Estás seguro de que quieres anular la devolución de este artículo? El préstamo volverá a estar pendiente.',
-            async () => {
-                try {
-                    await db.collection("prestamos").doc(id).update({ Estado: 'Pendiente', fechaHoraDevolucion: null });
-                    showAlert('La devolución ha sido cancelada.', 'info');
-                    loadHistorialPrestamos();
-                    loadPrestamosActivos();
-                } catch (error) {
-                    console.error('Error al cancelar la devolución:', error);
-                    showAlert('Error al cancelar la devolución.', 'danger');
-                }
+        const prestamoId = $(e.currentTarget).data('id');
+        const prestamoRef = db.collection('prestamos').doc(prestamoId);
+
+        showConfirmationModal('Cancelar Devolución', '¿Anular la devolución? El préstamo volverá a estar pendiente.', async () => {
+             try {
+                await db.runTransaction(async (transaction) => {
+                    const prestamoDoc = await transaction.get(prestamoRef);
+                    if (!prestamoDoc.exists) throw "El préstamo ya no existe.";
+
+                    const prestamoData = prestamoDoc.data();
+                    const articuloRef = db.collection('inventario').doc(prestamoData.IdArticulo);
+                    const articuloDoc = await transaction.get(articuloRef);
+
+                     if (articuloDoc.exists) {
+                        const item = articuloDoc.data();
+                        const disponibles = (item.cantidadRestante === undefined || item.cantidadRestante === null) ? item.cantidad : item.cantidadRestante;
+                        if (disponibles > 0) {
+                            transaction.update(articuloRef, { cantidadRestante: disponibles - 1 });
+                        }
+                    }
+
+                    transaction.update(prestamoRef, { Estado: 'Pendiente', fechaHoraDevolucion: null });
+                    document.dispatchEvent(new CustomEvent('inventarioActualizado'));
+                });
+
+                showAlert('La devolución ha sido cancelada.', 'info');
+                loadHistorialPrestamos();
+                loadPrestamosActivos();
+                await loadArticulosParaPrestamo();
+                document.dispatchEvent(new CustomEvent('inventarioActualizado'));
+
+            } catch (error) {
+                console.error('Error al cancelar la devolución:', error);
+                showAlert('Error al cancelar la devolución.', 'danger');
             }
-        );
+        });
     }
+
+    // --- TABLE RENDERING ---
 
     async function loadPrestamosActivos() {
         if (!prestamosActivosTable) {
-            prestamosActivosTable = $('#tabla-prestamos-activos').DataTable({ 
+            prestamosActivosTable = $('#tabla-prestamos-activos').DataTable({
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
+                order: [[2, 'desc']],
                 columns: [ null, null, null, null, null, { orderable: false, searchable: false } ]
             });
         }
@@ -155,13 +265,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const snapshot = await db.collection("prestamos").where("Estado", "==", "Pendiente").orderBy("fechaHoraPrestamo", "desc").get();
             const data = await Promise.all(snapshot.docs.map(async doc => {
                 const p = doc.data();
-                const responsable = await getUserName(p.IdUsuarioResponsable);
                 return [
                     p.nombreArticulo,
                     p.PersonaRecibe,
                     p.fechaHoraPrestamo.toDate().toLocaleString(),
                     '<span class="badge bg-warning text-dark">Pendiente</span>',
-                    responsable,
+                    await getUserName(p.IdUsuarioResponsable),
                     `<button class="btn btn-success btn-sm btn-devolver" data-id="${doc.id}">Devolver</button>`
                 ];
             }));
@@ -173,13 +282,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadHistorialPrestamos() {
         if (!prestamosHistorialTable) {
-            prestamosHistorialTable = $('#tabla-prestamos-historial').DataTable({ 
+            prestamosHistorialTable = $('#tabla-prestamos-historial').DataTable({
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
-                order: [[ 3, "desc" ]], // Ordenar por fecha de devolución por defecto
+                order: [[3, "desc"]],
                 columns: [ null, null, null, null, null, null, { orderable: false, searchable: false } ]
             });
         }
+
         try {
             let query = db.collection("prestamos").where("Estado", "==", "Devuelto");
             if (filtroArticulo.value) query = query.where("IdArticulo", "==", filtroArticulo.value);
@@ -189,15 +299,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const snapshot = await query.orderBy("fechaHoraDevolucion", "desc").get();
             const data = await Promise.all(snapshot.docs.map(async doc => {
                 const p = doc.data();
-                const responsable = await getUserName(p.IdUsuarioResponsable);
                 return [
                     p.nombreArticulo,
                     p.PersonaRecibe,
                     p.fechaHoraPrestamo.toDate().toLocaleString(),
                     p.fechaHoraDevolucion ? p.fechaHoraDevolucion.toDate().toLocaleString() : 'N/A',
                     '<span class="badge bg-success">Devuelto</span>',
-                    responsable,
-                    `<button class="btn btn-warning btn-sm btn-cancelar-devolucion" data-id="${doc.id}">Cancelar</button>`
+                    await getUserName(p.IdUsuarioResponsable),
+                    `<button class="btn btn-warning btn-sm btn-cancelar-devolucion" data-id="${doc.id}">Anular</button>`
                 ];
             }));
             prestamosHistorialTable.clear().rows.add(data).draw();
@@ -205,6 +314,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error cargando historial de préstamos: ", error);
         }
     }
+
+    // --- UTILITY FUNCTIONS ---
 
     async function getUserName(userId) {
         if (!userId) return "Desconocido";
@@ -215,9 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fullName = `${userDoc.data().nombre} ${userDoc.data().apellidos}`.trim();
                 userCache[userId] = fullName;
                 return fullName;
-            } else {
-                return "Desconocido";
             }
+            return "Usuario no encontrado";
         } catch (error) {
             console.error(`Error obteniendo nombre de usuario para ID ${userId}:`, error);
             return "Desconocido";

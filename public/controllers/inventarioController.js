@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 select.innerHTML = '<option value="" disabled>Seleccione una categoría</option>';
                 snapshot.forEach(doc => {
                     const categoria = doc.data();
-                    // The value of the option will be the unique document ID, which is used for relationships
                     select.add(new Option(categoria.nombreCategoria, doc.id)); 
                 });
                 if (currentValue) select.value = currentValue;
@@ -88,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loadCategoriesForFilter();
         loadInventoryData();
         setupEventListeners();
-        loadAndPopulateCategoriesForModal(); // Load categories for the modal on initial page load
+        loadAndPopulateCategoriesForModal();
     }
 
     // --- DATA LOADING & TABLE RENDERING ---
@@ -108,6 +107,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 columns: [
                     { data: 'nombre' },
                     { data: 'categoria' },
+                    {
+                        data: null,
+                        className: 'text-center',
+                        orderable: false,
+                        searchable: false,
+                        render: function (data, type, row) {
+                            const total = row.cantidad;
+                            if (total === undefined || total === null || isNaN(total) || total < 1) {
+                                return '';
+                            }
+                            const disponibles = (row.cantidadRestante === undefined || row.cantidadRestante === null) ? total : row.cantidadRestante;
+                            const color = disponibles > 0 ? 'green' : 'red';
+                            const style = `color: ${color}; font-weight: bold; font-size: 1.1rem;`;
+                            return `<span style="${style}">${disponibles}/${total}</span>`;
+                        }
+                    },
                     { data: 'cantidad', className: 'text-center' },
                     {
                         data: 'id',
@@ -227,7 +242,8 @@ document.addEventListener('DOMContentLoaded', function () {
             nombre: $('#item-name').val(),
             idCategoria: $('#item-category').val(), // This stores the category's document ID
             categoria: categoriaSelect.options[categoriaSelect.selectedIndex].text,
-            cantidad: parseInt($('#item-quantity').val(), 10) || 0
+            cantidad: parseInt($('#item-quantity').val(), 10) || 0,
+            cantidadRestante: parseInt($('#item-quantity').val(), 10) || 0
         };
         try {
             if (itemId) {
@@ -363,4 +379,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const filtered = currentItemHistory.filter(item => (!respFiltro || item.Responsable === respFiltro) && (!eventFiltro || item.Evento === eventFiltro));
         infoHistorialTable.clear().rows.add(filtered).draw();
     }
+
+    document.addEventListener('inventarioActualizado', () => {
+        loadInventoryData();           // Refresca tabla de inventario
+        loadAndPopulateCategoriesForModal(); // Refresca selects de categorías si se usan
+    });
+
 });
