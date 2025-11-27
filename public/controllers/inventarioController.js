@@ -68,7 +68,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     { data: "PersonaRecibe" },
                     { data: "fechaHoraPrestamo", render: data => data ? new Date(data).toLocaleString() : '' },
                     { data: "fechaHoraDevolucion", render: data => data ? new Date(data).toLocaleString() : 'N/A' },
-                    { data: "Estado" },
+                    {
+                        data: "Estado",
+                        render: function(data) {
+                            if (data === 'Devuelto') {
+                                return '<span class="badge bg-success">Devuelto</span>';
+                            } else if (data === 'Pendiente') {
+                                return '<span class="badge bg-warning text-dark">Pendiente</span>';
+                            }
+                            return data;
+                        }
+                    },
                     { data: "Responsable" },
                     { data: "Evento" }
                 ]
