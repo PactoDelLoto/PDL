@@ -37,6 +37,9 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="prestamos-tab" data-bs-toggle="tab" data-bs-target="#prestamos-section" type="button" role="tab" aria-controls="prestamos-section" aria-selected="false">📋 Préstamos</button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias-section" type="button" role="tab" aria-controls="categorias-section" aria-selected="false">🏷️ Categorías</button>
+            </li>
         </ul>
 
         <!-- Contenido de las Pestañas -->
@@ -51,13 +54,21 @@
                         </button>
                     </div>
                     <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="category-filter" class="form-label">Filtrar por categoría</label>
+                                <select id="category-filter" class="form-select">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                        </div>
                         <table id="inventario-table" class="table table-striped table-hover" style="width:100%">
-                            <thead>
+                            <thead class="text-center">
                                 <tr>
-                                    <th>Nombre</th>
-                                    <th>Categoría</th>
-                                    <th>Cantidad</th>
-                                    <th>Acciones</th>
+                                    <th class="text-center">Nombre</th>
+                                    <th class="text-center">Categoría</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -113,7 +124,7 @@
                                 <h5 class="card-title mt-3">Préstamos Activos</h5>
                                 <div class="table-responsive">
                                     <table id="tabla-prestamos-activos" class="table table-striped" style="width:100%">
-                                        <thead>
+                                        <thead class="text-center">
                                             <tr>
                                                 <th>Artículo</th>
                                                 <th>Persona</th>
@@ -153,7 +164,7 @@
                                 </div>
                                 <div class="table-responsive">
                                     <table id="tabla-prestamos-historial" class="table table-striped" style="width:100%">
-                                        <thead>
+                                        <thead class="text-center">
                                             <tr>
                                                 <th>Artículo</th>
                                                 <th>Persona</th>
@@ -165,12 +176,34 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <!-- El historial de préstamos se cargará aquí -->
+                                            <!-- El historial de préstamos se cargarán aquí -->
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Categorías -->
+            <div class="tab-pane fade" id="categorias-section" role="tabpanel" aria-labelledby="categorias-tab">
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Gestión de Categorías</h5>
+                    </div>
+                    <div class="card-body">
+                        <table id="categorias-table" class="table table-striped table-hover" style="width:100%">
+                            <thead class="text-center">
+                                <tr>
+                                    <th>ID Categoría</th>
+                                    <th>Nombre Categoría</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Los datos de las categorías se cargarán aquí -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -237,7 +270,7 @@
                     </div>
                     <div class="table-responsive">
                         <table id="tabla-info-historial" class="table table-striped" style="width:100%">
-                            <thead>
+                            <thead class="text-center">
                                 <tr>
                                     <th>Persona</th>
                                     <th>Fecha y Hora del Préstamo</th>

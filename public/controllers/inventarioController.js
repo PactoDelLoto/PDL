@@ -1,277 +1,272 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Modals
     const itemModal = new bootstrap.Modal(document.getElementById('item-modal'));
     const infoModal = new bootstrap.Modal(document.getElementById('info-modal'));
-    let inventarioTable, infoHistorialTable;
+
+    // DataTables instances
+    let inventarioTable, infoHistorialTable, categoriasTable;
+
+    // User permissions
     let userIsAdmin = false;
     let userIsSocio = false;
+
+    // Data cache
     let currentItemHistory = [];
 
-    // Función para cargar categorías, ahora en el ámbito principal del DOMContentLoaded
-    async function loadAndPopulateCategories() {
-        const categorySelects = document.querySelectorAll('.item-category-select'); // Usamos una clase para seleccionar ambos desplegables
+    // --- CATEGORY LOADING FUNCTIONS ---
+
+    async function loadAndPopulateCategoriesForModal() {
+        const categorySelects = document.querySelectorAll('.item-category-select');
         try {
             const snapshot = await db.collection('categoriasInventario').orderBy('nombreCategoria').get();
-            
             categorySelects.forEach(select => {
-                const currentValue = select.value; // Guardar el valor actual si lo hubiera
-                select.innerHTML = '<option value="" disabled>Seleccione una categoría</option>'; // No autoseleccionar
+                const currentValue = select.value;
+                select.innerHTML = '<option value="" disabled>Seleccione una categoría</option>';
                 snapshot.forEach(doc => {
                     const categoria = doc.data();
-                    const option = new Option(categoria.nombreCategoria, doc.id);
-                    select.add(option);
+                    select.add(new Option(categoria.nombreCategoria, doc.id));
                 });
-                if (currentValue) { // Si había un valor previo (en modo edición), intentar restaurarlo
-                    select.value = currentValue;
-                }
+                if (currentValue) select.value = currentValue;
             });
         } catch (error) {
-            console.error("Error al cargar categorías: ", error);
-            categorySelects.forEach(select => {
-                select.innerHTML = '<option value="">Error al cargar</option>';
-            });
+            console.error("Error al cargar categorías para el modal: ", error);
         }
     }
+
+    async function loadCategoriesForFilter() {
+        const categoryFilterSelect = document.getElementById('category-filter');
+        try {
+            const snapshot = await db.collection('categoriasInventario').orderBy('nombreCategoria').get();
+            snapshot.forEach(doc => {
+                const categoria = doc.data();
+                categoryFilterSelect.add(new Option(categoria.nombreCategoria, categoria.nombreCategoria));
+            });
+        } catch (error) {
+            console.error("Error al cargar categorías para el filtro: ", error);
+        }
+    }
+
+    // --- AUTHENTICATION ---
 
     auth.onAuthStateChanged(async user => {
         if (user) {
             userIsAdmin = await window.isUserAdmin();
             userIsSocio = await window.isUserSocio();
-
             if (userIsSocio || userIsAdmin) {
                 initializeInventarioPage();
             } else {
-                console.warn("Acceso denegado. El usuario no es socio ni administrador.");
-                document.querySelector('main').innerHTML = '<div class="alert alert-danger">Acceso denegado. Debes ser socio o administrador para acceder a esta sección.</div>';
+                document.querySelector('main').innerHTML = '<div class="alert alert-danger">Acceso denegado.</div>';
             }
         } else {
-            document.querySelector('main').innerHTML = '<div class="alert alert-warning">Por favor, inicia sesión para continuar.</div>';
+            document.querySelector('main').innerHTML = '<div class="alert alert-warning">Por favor, inicia sesión.</div>';
         }
     });
+
+    // --- INITIALIZATION ---
 
     function initializeInventarioPage() {
         const addItemBtn = document.getElementById('add-item-btn');
         if (userIsAdmin) {
             addItemBtn.style.display = 'block';
-            loadAndPopulateCategories(); // Carga inicial para el formulario principal (si existiera)
+            loadAndPopulateCategoriesForModal();
         } else {
             addItemBtn.style.display = 'none';
         }
-        
+        loadCategoriesForFilter();
         loadInventoryData();
         setupEventListeners();
-        
-        if (!infoHistorialTable) {
-            infoHistorialTable = $('#tabla-info-historial').DataTable({
-                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
-                 responsive: true, searching: false, paging: false, info: false,
-                 columns: [
-                    { data: "PersonaRecibe" },
-                    { data: "fechaHoraPrestamo", render: data => data ? new Date(data).toLocaleString() : '' },
-                    { data: "fechaHoraDevolucion", render: data => data ? new Date(data).toLocaleString() : 'N/A' },
-                    {
-                        data: "Estado",
-                        render: function(data) {
-                            if (data === 'Devuelto') {
-                                return '<span class="badge bg-success">Devuelto</span>';
-                            } else if (data === 'Pendiente') {
-                                return '<span class="badge bg-warning text-dark">Pendiente</span>';
-                            }
-                            return data;
-                        }
-                    },
-                    { data: "Responsable" },
-                    { data: "Evento" }
-                ]
-            });
-        }
     }
+
+    // --- DATA LOADING & TABLE RENDERING ---
 
     async function loadInventoryData() {
         try {
             const snapshot = await db.collection('inventario').get();
-            const inventarioItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             if ($.fn.DataTable.isDataTable('#inventario-table')) {
                 $('#inventario-table').DataTable().destroy();
             }
-
-            const tableBody = $('#inventario-table tbody');
-            tableBody.empty();
             
-            inventarioItems.forEach(item => {
-                let buttons = '';
-                if (userIsAdmin) {
-                    buttons += `<button class="btn btn-sm btn-primary edit-btn" data-id="${item.id}" title="Editar"><i class="fas fa-edit"></i></button> `;
-                    buttons += `<button class="btn btn-sm btn-danger delete-btn" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button> `;
-                }
-                if (userIsSocio || userIsAdmin) {
-                    buttons += `<button class="btn btn-sm btn-secondary info-btn" data-id="${item.id}" data-name="${item.nombre}" title="Historial del Artículo"><i class="fas fa-info-circle"></i></button>`;
-                }
-
-                tableBody.append(`
-                    <tr>
-                        <td>${item.nombre || ''}</td>
-                        <td>${item.categoria || ''}</td>
-                        <td class="text-center">${item.cantidad || 0}</td>
-                        <td class="text-center">${buttons}</td>
-                    </tr>
-                `);
-            });
-
             inventarioTable = $('#inventario-table').DataTable({
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
                 pageLength: 10,
+                data: items,
+                columns: [
+                    { data: 'nombre' },
+                    { data: 'categoria' },
+                    { data: 'cantidad', className: 'text-center' },
+                    {
+                        data: 'id',
+                        render: (data, type, row) => {
+                            let buttons = '';
+                            if (userIsAdmin) {
+                                buttons += `<button class="btn btn-sm btn-primary edit-btn" data-id="${data}" title="Editar"><i class="fas fa-edit"></i></button> `;
+                                buttons += `<button class="btn btn-sm btn-danger delete-btn" data-id="${data}" title="Eliminar"><i class="fas fa-trash"></i></button> `;
+                            }
+                            buttons += `<button class="btn btn-sm btn-secondary info-btn" data-id="${data}" data-name="${row.nombre}" title="Historial"><i class="fas fa-info-circle"></i></button>`;
+                            return buttons;
+                        },
+                        className: 'text-center'
+                    }
+                ]
             });
-
         } catch (error) {
-            console.error("Error crítico al cargar el inventario: ", error);
-            $('#inventario-table tbody').html('<tr><td colspan="4" class="text-center text-danger">No se pudo cargar el inventario. Verifique la consola para más detalles.</td></tr>');
+            console.error("Error al cargar inventario: ", error);
+        }
+    }
+
+    async function loadAndInitCategoriasTable() {
+        if ($.fn.DataTable.isDataTable('#categorias-table')) return;
+
+        try {
+            const snapshot = await db.collection('categoriasInventario').orderBy('nombreCategoria').get();
+            const categories = snapshot.docs.map(doc => ({ id: doc.id, nombre: doc.data().nombreCategoria }));
+            
+            categoriasTable = $('#categorias-table').DataTable({
+                language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
+                responsive: true,
+                pageLength: 10,
+                data: categories,
+                columns: [
+                    { data: 'id' },
+                    { data: 'nombre' }
+                ]
+            });
+        } catch (error) {
+            console.error("Error al cargar categorías: ", error);
         }
     }
 
     function setupEventListeners() {
         const itemForm = document.getElementById('item-form');
 
-        // --- LISTENERS PARA ADMIN -- -
+        $('#category-filter').on('change', function() {
+            inventarioTable.column(1).search($(this).val()).draw();
+        });
+
+        // Tab listeners for on-demand table initialization
+        $('button[data-bs-target="#categorias-section"]').on('shown.bs.tab', loadAndInitCategoriasTable);
+        
+        // Nota: Las tablas de préstamos se inicializan en prestamosController.js.
+        // Para convertirlas en DataTables, se deberían aplicar cambios similares en ese archivo.
+
         if (userIsAdmin) {
-            $('#add-item-btn').on('click', function () {
+            $('#add-item-btn').on('click', () => {
                 itemForm.reset();
-                $('#item-modal-title').text('Añadir Nuevo Artículo');
+                $('#item-modal-title').text('Añadir Artículo');
                 itemForm.dataset.mode = 'add';
-                delete itemForm.dataset.id;
-                loadAndPopulateCategories(); // Cargar categorías al abrir para añadir
+                loadAndPopulateCategoriesForModal();
                 itemModal.show();
             });
 
             $('#inventario-table tbody').on('click', '.edit-btn', async function () {
-                const itemId = $(this).data('id');
-                try {
-                    const doc = await db.collection('inventario').doc(itemId).get();
-                    if (doc.exists) {
-                        const data = doc.data();
-                        itemForm.reset();
-                        $('#item-modal-title').text('Editar Artículo');
-                        $('#item-name').val(data.nombre);
-                        $('#item-quantity').val(data.cantidad);
-                        
-                        // Cargar categorías y luego seleccionar la correcta
-                        await loadAndPopulateCategories(); 
-                        $('#item-category').val(data.idCategoria);
-
-                        itemForm.dataset.mode = 'edit';
-                        itemForm.dataset.id = itemId;
-                        itemModal.show();
-                    }
-                } catch (error) {
-                    console.error("Error al obtener datos para editar: ", error);
+                const id = $(this).data('id');
+                const doc = await db.collection('inventario').doc(id).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    itemForm.reset();
+                    $('#item-modal-title').text('Editar Artículo');
+                    $('#item-name').val(data.nombre);
+                    $('#item-quantity').val(data.cantidad);
+                    await loadAndPopulateCategoriesForModal();
+                    $('#item-category').val(data.idCategoria);
+                    itemForm.dataset.id = id;
+                    itemForm.dataset.mode = 'edit';
+                    itemModal.show();
                 }
             });
-            
+
             $('#inventario-table tbody').on('click', '.delete-btn', async function () {
-                const itemId = $(this).data('id');
-                if (confirm('¿Estás seguro de que quieres eliminar este artículo?')) {
-                    try {
-                        await db.collection('inventario').doc(itemId).delete();
-                        loadInventoryData(); // Recargar la tabla
-                    } catch (error) {
-                        console.error("Error al eliminar el artículo: ", error);
-                    }
+                if (confirm('¿Seguro?')) {
+                    await db.collection('inventario').doc($(this).data('id')).delete();
+                    loadInventoryData();
                 }
             });
 
-            itemForm.addEventListener('submit', async function (e) {
+            itemForm.addEventListener('submit', async e => {
                 e.preventDefault();
-                const mode = itemForm.dataset.mode;
-                const itemId = itemForm.dataset.id;
-                
                 const categoriaSelect = document.getElementById('item-category');
-                const categoriaTexto = categoriaSelect.options[categoriaSelect.selectedIndex].text;
-
                 const itemData = {
                     nombre: $('#item-name').val(),
                     idCategoria: $('#item-category').val(),
-                    categoria: categoriaTexto,
+                    categoria: categoriaSelect.options[categoriaSelect.selectedIndex].text,
                     cantidad: parseInt($('#item-quantity').val(), 10) || 0
                 };
 
-                try {
-                    if (mode === 'add') {
-                        await db.collection('inventario').add(itemData);
-                    } else {
-                        await db.collection('inventario').doc(itemId).update(itemData);
-                    }
-                    itemModal.hide();
-                    loadInventoryData(); // Recargar tabla
-                } catch (error) {
-                    console.error("Error al guardar el artículo: ", error);
+                if (itemForm.dataset.mode === 'add') {
+                    await db.collection('inventario').add(itemData);
+                } else {
+                    await db.collection('inventario').doc(itemForm.dataset.id).update(itemData);
                 }
+                itemModal.hide();
+                loadInventoryData();
             });
         }
 
-        // --- LISTENER PARA TODOS (SOCIOS Y ADMIN) ---
         $('#inventario-table tbody').on('click', '.info-btn', function () {
-            const itemId = $(this).data('id');
-            const itemName = $(this).data('name');
-            openInfoModal(itemId, itemName);
+            openInfoModal($(this).data('id'), $(this).data('name'));
         });
 
-        $('#info-filtro-responsable').on('change', applyInfoFilters);
-        $('#info-filtro-evento').on('change', applyInfoFilters);
+        $('#info-filtro-responsable, #info-filtro-evento').on('change', applyInfoFilters);
     }
 
     async function openInfoModal(itemId, itemName) {
         $('#info-modal-title').text(`Historial de: ${itemName}`);
         infoModal.show();
-        
+
         try {
-            const prestamosSnapshot = await db.collection('prestamos').where('IdArticulo', '==', itemId).orderBy('fechaHoraPrestamo', 'desc').get();
-            const prestamosData = await Promise.all(prestamosSnapshot.docs.map(async doc => {
+            const snapshot = await db.collection('prestamos').where('IdArticulo', '==', itemId).orderBy('fechaHoraPrestamo', 'desc').get();
+            currentItemHistory = await Promise.all(snapshot.docs.map(async doc => {
                 const prestamo = doc.data();
-                const responsableName = await window.getUserName(prestamo.IdUsuarioResponsable);
+                const respName = await window.getUserName(prestamo.IdUsuarioResponsable);
                 return {
                     ...prestamo,
-                    Responsable: responsableName,
+                    Responsable: respName,
                     fechaHoraPrestamo: prestamo.fechaHoraPrestamo.toDate(),
                     fechaHoraDevolucion: prestamo.fechaHoraDevolucion ? prestamo.fechaHoraDevolucion.toDate() : null
                 };
             }));
-            
-            currentItemHistory = prestamosData;
+
+            if (!$.fn.DataTable.isDataTable('#tabla-info-historial')) {
+                infoHistorialTable = $('#tabla-info-historial').DataTable({
+                    language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
+                    responsive: true, searching: false, paging: false, info: false,
+                    columns: [
+                        { data: "PersonaRecibe" },
+                        { data: "fechaHoraPrestamo", render: d => d ? d.toLocaleString() : '' },
+                        { data: "fechaHoraDevolucion", render: d => d ? d.toLocaleString() : 'N/A' },
+                        {
+                            data: "Estado",
+                            render: d => d === 'Devuelto' ? '<span class="badge bg-success">Devuelto</span>' : '<span class="badge bg-warning text-dark">Pendiente</span>'
+                        },
+                        { data: "Responsable" },
+                        { data: "Evento" }
+                    ]
+                });
+            }
             populateInfoFilters(currentItemHistory);
             applyInfoFilters();
-
         } catch (error) {
-            console.error("Error al cargar el historial del artículo: ", error);
-            if (infoHistorialTable) {
-                infoHistorialTable.clear().draw();
-            }
+            console.error("Error al cargar historial: ", error);
         }
     }
-    
+
     function populateInfoFilters(history) {
         const responsables = [...new Set(history.map(item => item.Responsable))].filter(Boolean);
         const eventos = [...new Set(history.map(item => item.Evento))].filter(Boolean);
-
-        const respSelect = document.getElementById('info-filtro-responsable');
-        const eventSelect = document.getElementById('info-filtro-evento');
-
-        respSelect.innerHTML = '<option value="">Todos</option>' + responsables.map(r => `<option value="${r}">${r}</option>`).join('');
-        eventSelect.innerHTML = '<option value="">Todos</option>' + eventos.map(e => `<option value="${e}">${e}</option>`).join('');
+        $('#info-filtro-responsable').html('<option value="">Todos</option>' + responsables.map(r => `<option value="${r}">${r}</option>`).join(''));
+        $('#info-filtro-evento').html('<option value="">Todos</option>' + eventos.map(e => `<option value="${e}">${e}</option>`).join(''));
     }
 
     function applyInfoFilters() {
         const respFiltro = $('#info-filtro-responsable').val();
         const eventFiltro = $('#info-filtro-evento').val();
-
-        const filteredHistory = currentItemHistory.filter(item => {
-            const respMatch = !respFiltro || item.Responsable === respFiltro;
-            const eventMatch = !eventFiltro || item.Evento === eventFiltro;
-            return respMatch && eventMatch;
-        });
-
-        if (infoHistorialTable) {
-            infoHistorialTable.clear().rows.add(filteredHistory).draw();
-        }
+        const filtered = currentItemHistory.filter(item => 
+            (!respFiltro || item.Responsable === respFiltro) && 
+            (!eventFiltro || item.Evento === eventFiltro)
+        );
+        infoHistorialTable.clear().rows.add(filtered).draw();
     }
 });
