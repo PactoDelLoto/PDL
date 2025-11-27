@@ -27,6 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function initializePrestamosPage() {
+        // Initialize Select2 on static dropdowns first
+        $('#evento, #filtro-articulo, #filtro-responsable, #filtro-evento').select2({
+            theme: 'bootstrap-5'
+        });
+
         loadArticulosParaPrestamo();
         loadEventos();
         loadFiltros();
@@ -38,6 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadArticulosParaPrestamo() {
         try {
+            // If Select2 is already initialized on the element, destroy it
+            if ($('#articulo').data('select2')) {
+                $('#articulo').select2('destroy');
+            }
+
             const snapshot = await db.collection("inventario").orderBy('nombre').get();
             articuloSelect.innerHTML = '<option value="">Seleccione un artículo</option>';
             
@@ -53,6 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
+
+            // Initialize Select2
+            $('#articulo').select2({
+                theme: 'bootstrap-5'
+            });
+
         } catch (error) {
             console.error("Error cargando artículos para prestar: ", error);
         }
@@ -120,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handlePrestamoSubmit(e) {
         e.preventDefault();
-        const articuloId = articuloSelect.value;
+        const articuloId = $('#articulo').val(); // Get value from Select2
         const persona = personaInput.value;
 
         if (!articuloId || !persona) {
@@ -155,16 +171,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     IdUsuarioResponsable: currentUser.uid,
                     fechaHoraPrestamo: firebase.firestore.FieldValue.serverTimestamp(),
                     fechaHoraDevolucion: null,
-                    Evento: eventoSelect.value || "N/A",
+                    Evento: $('#evento').val() || "N/A",
                     Estado: "Pendiente"
                 });
-                document.dispatchEvent(new CustomEvent('inventarioActualizado'));
             });
 
             showAlert('Préstamo registrado con éxito.', 'success');
             formPrestamo.reset();
+            $('#articulo, #evento').val('').trigger('change'); // Reset Select2 dropdowns
             await loadArticulosParaPrestamo();
             loadPrestamosActivos();
+            document.dispatchEvent(new CustomEvent('inventarioActualizado'));
 
         } catch (error) {
             console.error("Error en la transacción de préstamo: ", error);
@@ -195,13 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     transaction.update(prestamoRef, { Estado: 'Devuelto', fechaHoraDevolucion: firebase.firestore.FieldValue.serverTimestamp() });
-                    document.dispatchEvent(new CustomEvent('inventarioActualizado'));
                 });
 
                 showAlert('Artículo devuelto con éxito.', 'success');
                 loadPrestamosActivos();
                 if ($.fn.DataTable.isDataTable('#tabla-prestamos-historial')) loadHistorialPrestamos();
-                await loadArticulosParaPrestamo(); // This line is crucial
+                await loadArticulosParaPrestamo();
                 document.dispatchEvent(new CustomEvent('inventarioActualizado'));
 
             } catch (error) {
@@ -234,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     transaction.update(prestamoRef, { Estado: 'Pendiente', fechaHoraDevolucion: null });
-                    document.dispatchEvent(new CustomEvent('inventarioActualizado'));
                 });
 
                 showAlert('La devolución ha sido cancelada.', 'info');
@@ -292,9 +307,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             let query = db.collection("prestamos").where("Estado", "==", "Devuelto");
-            if (filtroArticulo.value) query = query.where("IdArticulo", "==", filtroArticulo.value);
-            if (filtroResponsable.value) query = query.where("IdUsuarioResponsable", "==", filtroResponsable.value);
-            if (filtroEvento.value) query = query.where("Evento", "==", filtroEvento.value);
+            if ($('#filtro-articulo').val()) query = query.where("IdArticulo", "==", $('#filtro-articulo').val());
+            if ($('#filtro-responsable').val()) query = query.where("IdUsuarioResponsable", "==", $('#filtro-responsable').val());
+            if ($('#filtro-evento').val()) query = query.where("Evento", "==", $('#filtro-evento').val());
 
             const snapshot = await query.orderBy("fechaHoraDevolucion", "desc").get();
             const data = await Promise.all(snapshot.docs.map(async doc => {
