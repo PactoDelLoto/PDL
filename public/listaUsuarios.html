@@ -42,6 +42,8 @@
                                     <th>Fecha de Registro</th>
                                     <th></th> <!-- Columna para acciones de Socio -->
                                     <th></th> <!-- Columna para acciones de Admin -->
+                                    <th></th> <!-- Columna para Editar -->
+                                    <th></th> <!-- Columna para Eliminar -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -53,6 +55,35 @@
             </div>
         </div>
     </main>
+
+    <!-- Modal para Editar Usuario -->
+    <div class="modal fade" id="edit-user-modal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editUserModalLabel">Editar Usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="edit-user-form">
+                    <div class="modal-body">
+                        <input type="hidden" id="edit-user-id">
+                        <div class="mb-3">
+                            <label for="edit-user-name" class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="edit-user-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-user-lastname" class="form-label">Apellidos</label>
+                            <input type="text" class="form-control" id="edit-user-lastname" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal de Confirmación Genérico -->
     <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
@@ -83,8 +114,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="/DataTables/datatables.min.js"></script>
-    <script src="/js/utils.js"></script> <!-- Asegúrate de que utils.js esté aquí -->
-
+    <script src="/js/utils.js"></script>
 
     <!-- Controladores de la aplicación -->
     <script src="/controllers/firebase-config.js"></script>
