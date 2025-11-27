@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 select.innerHTML = '<option value="" disabled>Seleccione una categoría</option>';
                 snapshot.forEach(doc => {
                     const categoria = doc.data();
-                    select.add(new Option(categoria.nombreCategoria, doc.id)); // Use document ID for the value
+                    // The value of the option will be the unique document ID, which is used for relationships
+                    select.add(new Option(categoria.nombreCategoria, doc.id)); 
                 });
                 if (currentValue) select.value = currentValue;
             });
@@ -80,7 +81,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (userIsAdmin) {
             addItemBtn.style.display = 'block';
             if(categoryFormContainer) categoryFormContainer.style.display = 'block';
-            loadAndPopulateCategoriesForModal();
         } else {
             addItemBtn.style.display = 'none';
             if(categoryFormContainer) categoryFormContainer.style.display = 'none';
@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loadCategoriesForFilter();
         loadInventoryData();
         setupEventListeners();
+        loadAndPopulateCategoriesForModal(); // Load categories for the modal on initial page load
     }
 
     // --- DATA LOADING & TABLE RENDERING ---
@@ -146,12 +147,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         { data: 'idCategoria' },
                         { data: 'nombreCategoria' },
                         {
-                            data: 'docId',
-                            render: (data, type, row) => {
+                            data: null, // Data is not directly from a single property, we use the whole row
+                            render: function (data, type, row) {
                                 if (userIsAdmin) {
-                                    return `<button class="btn btn-sm btn-danger delete-category-btn" data-id="${data}" data-name="${row.nombreCategoria}" title="Eliminar"><i class="fas fa-trash"></i></button>`;
+                                    // Use row.docId which is the unique document ID. This is the robust way.
+                                    return `<button class="btn btn-sm btn-danger delete-category-btn" data-id="${row.docId}" data-name="${row.nombreCategoria}" title="Eliminar Categoria"><i class="fas fa-trash"></i></button>`;
                                 }
-                                return '';
+                                return ''; // Return empty string for non-admins
                             },
                             orderable: false, searchable: false, className: 'text-center'
                         }
@@ -183,24 +185,25 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             $('#inventario-table tbody').on('click', '.edit-btn', async function () {
-                const doc = await db.collection('inventario').doc($(this).data('id')).get();
-                if (doc.exists) {
-                    const data = doc.data();
+                const docRef = await db.collection('inventario').doc($(this).data('id')).get();
+                if (docRef.exists) {
+                    const data = docRef.data();
                     itemForm.reset();
                     $('#modal-title').text('Editar Artículo');
-                    $('#item-id').val(doc.id);
+                    $('#item-id').val(docRef.id);
                     $('#item-name').val(data.nombre);
                     $('#item-quantity').val(data.cantidad);
                     await loadAndPopulateCategoriesForModal();
-                    $('#item-category').val(data.idCategoria); // This is the doc.id of the category
+                    $('#item-category').val(data.idCategoria); // This is the category's document ID
                     itemModal.show();
                 }
             });
 
             $('#inventario-table tbody').on('click', '.delete-btn', function () {
-                showConfirmationModal('Confirmar Eliminación', '¿Seguro que quieres eliminarlo?', async () => {
-                    await db.collection('inventario').doc($(this).data('id')).delete();
-                    showAlert('Artículo eliminado.', 'success');
+                const docId = $(this).data('id');
+                showConfirmationModal('Confirmar Eliminación', `¿Estás seguro de que quieres eliminar este artículo?`, async () => {
+                    await db.collection('inventario').doc(docId).delete();
+                    showAlert('Artículo eliminado con éxito.', 'success');
                     loadInventoryData();
                 });
             });
@@ -222,22 +225,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const itemId = $('#item-id').val();
         const itemData = {
             nombre: $('#item-name').val(),
-            idCategoria: $('#item-category').val(), // This is the doc.id of the category
+            idCategoria: $('#item-category').val(), // This stores the category's document ID
             categoria: categoriaSelect.options[categoriaSelect.selectedIndex].text,
             cantidad: parseInt($('#item-quantity').val(), 10) || 0
         };
         try {
             if (itemId) {
                 await db.collection('inventario').doc(itemId).update(itemData);
-                showAlert('Artículo actualizado.', 'success');
+                showAlert('Artículo actualizado con éxito.', 'success');
             } else {
                 await db.collection('inventario').add(itemData);
-                showAlert('Artículo añadido.', 'success');
+                showAlert('Artículo añadido con éxito.', 'success');
             }
             itemModal.hide();
             loadInventoryData();
         } catch (error) {
-            showAlert('Error al guardar.', 'danger');
+            showAlert('Error al guardar el artículo.', 'danger');
+            console.error("Error saving item: ", error);
         }
     }
 
@@ -246,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const newCategoryInput = document.getElementById('new-category-name');
         const newCategoryName = newCategoryInput.value.trim();
         if (!newCategoryName) {
-            showAlert('El nombre no puede estar vacío.', 'warning');
+            showAlert('El nombre de la categoría no puede estar vacío.', 'warning');
             return;
         }
 
@@ -281,19 +285,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
             showAlert('Error al añadir la categoría.', 'danger');
+            console.error("Error adding category: ", error);
         }
     }
 
     async function handleDeleteCategory(docId, categoryName) {
-        // Check if any inventory item is using this category
         const inventorySnapshot = await db.collection('inventario').where('idCategoria', '==', docId).get();
     
         if (!inventorySnapshot.empty) {
-            showAlert(`No se puede eliminar "${categoryName}" porque está siendo usada por ${inventorySnapshot.size} artículo(s).`, 'danger');
+            const itemNames = inventorySnapshot.docs.map(doc => doc.data().nombre).join(', ');
+            showAlert(`No se puede eliminar "${categoryName}" porque está asignada a: ${itemNames}.`, 'danger', 10000);
             return;
         }
     
-        // If not in use, ask for confirmation and delete
         showConfirmationModal(
             'Confirmar Eliminación', 
             `¿Estás seguro de que quieres eliminar la categoría "${categoryName}"? Esta acción no se puede deshacer.`,
