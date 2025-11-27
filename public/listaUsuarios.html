@@ -40,6 +40,8 @@
                                     <th>Socio</th>
                                     <th>Admin</th>
                                     <th>Fecha de Registro</th>
+                                    <th></th> <!-- Columna para acciones de Socio -->
+                                    <th></th> <!-- Columna para acciones de Admin -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -52,6 +54,25 @@
         </div>
     </main>
 
+    <!-- Modal de Confirmación Genérico -->
+    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">Confirmar Acción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmation-modal-body-text">¿Estás seguro de que quieres realizar esta acción?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirm-action-btn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="footer mt-auto py-3 bg-dark">
         <!-- El footer se cargará aquí -->
     </footer>
@@ -62,6 +83,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="/DataTables/datatables.min.js"></script>
+    <script src="/js/utils.js"></script> <!-- Asegúrate de que utils.js esté aquí -->
+
 
     <!-- Controladores de la aplicación -->
     <script src="/controllers/firebase-config.js"></script>
