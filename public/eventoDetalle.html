@@ -46,7 +46,12 @@
 
     <!-- Sección de Subeventos -->
     <div class="mt-5 mb-5">
-        <h2 class="mb-4">Subeventos</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Subeventos</h2>
+            <button id="create-subevent-btn" class="btn btn-primary socio-controls" style="display: none;">
+                <i class="fas fa-plus"></i> Crear Subevento
+            </button>
+        </div>
         <div class="card shadow-sm">
             <div class="card-body">
                 <div class="table-responsive">
@@ -59,6 +64,78 @@
     </div>
 
 </main>
+
+<!-- Modal para Crear/Editar Subevento -->
+<div class="modal fade" id="subevent-modal" tabindex="-1" aria-labelledby="subevent-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="subevent-modal-title">Crear Nuevo Subevento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="subevent-form">
+                    <input type="hidden" id="subevent-id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Título del Subevento</label>
+                        <input type="text" class="form-control" id="subevent-titulo" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" id="subevent-descripcion" rows="3" required></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo de Subevento</label>
+                            <select id="subevent-tipo" class="form-select" required>
+                                <option value="" disabled selected>Seleccione un tipo...</option>
+                                <!-- Los tipos se cargarán aquí desde la DB -->
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Plazas Disponibles</label>
+                            <input type="number" class="form-control" id="subevent-plazas" min="0" value="0" required>
+                            <div class="form-text">Si es 0, se considerará "Entrada libre".</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha del Subevento</label>
+                            <input type="date" class="form-control" id="subevent-fechaEvento" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Hora del Subevento</label>
+                            <input type="time" class="form-control" id="subevent-horaEvento" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Lugar</label>
+                        <input type="text" class="form-control" id="subevent-lugar" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Publicación</label>
+                        <input type="datetime-local" class="form-control" id="subevent-fechaPublicacion" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">URL de Imagen (opcional)</label>
+                        <input type="text" class="form-control" id="subevent-imagen">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-primary" form="subevent-form" id="save-subevent-btn">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Contenedor de Alertas -->
 <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index:1055"></div>
