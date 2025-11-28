@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalles del Evento - Pacto del Loto</title>
+
+    <!-- Metadatos y Favicon -->
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+
+    <!-- Estilos CSS -->
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/DataTables/datatables.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+
+    <!-- Fuentes Externas -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+<body>
+
+<header>
+    <!-- El navbar se cargará aquí -->
+</header>
+
+<main class="container mt-5 pt-5">
+    <!-- Botón para volver a la lista de eventos -->
+    <div class="mb-4">
+        <a href="/eventos.html" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver a Eventos</a>
+    </div>
+
+    <!-- Contenedor de Detalles del Evento -->
+    <div class="card shadow-lg mb-5">
+        <img id="event-detail-image" src="" class="card-img-top" alt="Imagen del evento" style="max-height: 400px; object-fit: cover;">
+        <div class="card-body p-4">
+            <h1 id="event-detail-title" class="card-title display-5 fw-bold mb-3">Cargando...</h1>
+            <p id="event-detail-description" class="card-text fs-5 mb-4">Cargando descripción...</p>
+            
+            <div class="d-flex justify-content-between text-muted">
+                <span id="event-detail-date"><i class="fas fa-calendar-alt"></i> Cargando fecha...</span>
+                <span id="event-detail-place"><i class="fas fa-map-marker-alt"></i> Cargando lugar...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Subeventos -->
+    <div class="mt-5 mb-5">
+        <h2 class="mb-4">Subeventos</h2>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="subeventos-table" class="table table-striped table-hover" width="100%">
+                        <!-- Cabecera y cuerpo serán gestionados por DataTables -->
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- Contenedor de Alertas -->
+<div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index:1055"></div>
+
+<footer class="footer mt-auto py-3 bg-dark"></footer>
+
+<!-- Scripts -->
+<script src="/jquery-3.7.1.min.js"></script>
+<script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="/DataTables/datatables.min.js"></script>
+
+<script src="/controllers/firebase-config.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/controllers/authController.js"></script>
+<script src="/controllers/navigation.js"></script>
+<script src="/controllers/eventosController.js"></script>
+
+</body>
+</html>
