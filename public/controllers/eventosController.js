@@ -53,7 +53,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function loadEventTypes() { /* ... (código sin cambios) ... */ }
+    async function loadEventTypes() {
+        try {
+            const snapshot = await db.collection('tipoSubevento').orderBy('nombre').get();
+            tiposCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            if (typeFilterSelect) {
+                const currentFilterValue = typeFilterSelect.value;
+                typeFilterSelect.innerHTML = '<option value="">Todos</option>';
+                tiposCache.forEach(tipo => typeFilterSelect.add(new Option(tipo.nombre, tipo.nombre)));
+                typeFilterSelect.value = currentFilterValue;
+            }
+
+            if (eventTypeSelect) {
+                const currentTypeValue = eventTypeSelect.value;
+                eventTypeSelect.innerHTML = '<option value="" disabled selected>Seleccione un tipo</option>';
+                tiposCache.forEach(tipo => eventTypeSelect.add(new Option(tipo.nombre, tipo.nombre)));
+                eventTypeSelect.value = currentTypeValue;
+            }
+            
+            renderTypesList(); 
+        } catch (error) {
+            console.error("Error cargando tipos de evento:", error);
+            showAlert("Error al cargar los tipos de evento.", "danger");
+        }
+    }
 
     // --- UI RENDERING ---
     function renderViews() {
@@ -87,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             eventosGallery.appendChild(col);
         });
-        updateUIVisibility(); // Asegura que los botones admin se muestren/oculten
+        updateUIVisibility();
     }
 
     function renderTable() {
@@ -107,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             eventosTableBody.appendChild(tr);
         });
-        updateUIVisibility(); // Asegura que los botones admin se muestren/oculten
+        updateUIVisibility();
     }
 
     // --- EVENT MODAL & CRUD ---
@@ -136,7 +160,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleEventFormSubmit(e) {
         e.preventDefault();
         const id = document.getElementById('event-id').value;
-        const eventoData = { /* ... (código de recogida de datos sin cambios) ... */ };
+        const eventoData = {
+            titulo: document.getElementById('event-titulo').value,
+            descripcion: document.getElementById('event-descripcion').value,
+            fecha: document.getElementById('event-fecha').value,
+            hora: document.getElementById('event-hora').value,
+            lugar: document.getElementById('event-lugar').value,
+            publicacion: document.getElementById('event-publicacion').value,
+            imagen: document.getElementById('event-imagen').value,
+            tipo: document.getElementById('event-tipo').value,
+        };
         try {
             if (id) {
                 await db.collection('eventos').doc(id).update(eventoData);
@@ -170,12 +203,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- TYPE MODAL & CRUD ---
-    /* ... (código de tipos de evento sin cambios) ... */
+    function openManageTypesModal() {
+        renderTypesList();
+        manageTypesModal.show();
+    }
+
+    function renderTypesList() {
+        if (!typesListContainer) return;
+        typesListContainer.innerHTML = '';
+        tiposCache.forEach(tipo => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.textContent = tipo.nombre;
+            li.dataset.id = tipo.id;
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-sm btn-outline-danger btn-delete-type';
+            deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            deleteBtn.dataset.id = tipo.id;
+            deleteBtn.dataset.name = tipo.nombre;
+
+            li.appendChild(deleteBtn);
+            typesListContainer.appendChild(li);
+        });
+    }
+
+    async function handleTypeFormSubmit(e) {
+        e.preventDefault();
+        const typeNameInput = document.getElementById('type-name');
+        const newTypeName = typeNameInput.value.trim();
+        if (!newTypeName) {
+            showAlert('El nombre del tipo no puede estar vacío.', 'warning');
+            return;
+        }
+
+        const isDuplicate = tiposCache.some(tipo => tipo.nombre.toLowerCase() === newTypeName.toLowerCase());
+        if (isDuplicate) {
+            showAlert(`El tipo "${newTypeName}" ya existe.`, 'warning');
+            return;
+        }
+
+        try {
+            await db.collection('tipoSubevento').add({ nombre: newTypeName });
+            showAlert('Tipo de evento creado con éxito.', 'success');
+            typeNameInput.value = '';
+            await loadEventTypes(); // Recarga y renderiza
+        } catch (error) {
+            console.error("Error creando tipo de evento:", error);
+            showAlert('Error al crear el tipo de evento.', 'danger');
+        }
+    }
+
+    async function handleDeleteType(id) {
+        const typeToDelete = tiposCache.find(t => t.id === id);
+        if (!typeToDelete) return;
+
+        const eventsWithType = eventosCache.filter(evento => evento.tipo === typeToDelete.nombre);
+        if (eventsWithType.length > 0) {
+            const eventTitles = eventsWithType.map(e => e.titulo).join(', ');
+            showAlert(`No se puede eliminar el tipo "${typeToDelete.nombre}" porque está en uso por los siguientes eventos: ${eventTitles}.`, 'danger', 10000);
+            return;
+        }
+        
+        document.getElementById('confirm-modal-body').innerHTML = `¿Seguro que deseas eliminar el tipo de evento <strong>"${typeToDelete.nombre}"</strong>?`;
+        confirmModal.show();
+
+        document.getElementById('confirm-modal-btn').onclick = async () => {
+            try {
+                await db.collection('tipoSubevento').doc(id).delete();
+                showAlert('Tipo de evento eliminado.', 'success');
+                confirmModal.hide();
+                await loadEventTypes();
+            } catch (error) {
+                console.error("Error eliminando tipo de evento:", error);
+                showAlert('Error al eliminar el tipo de evento.', 'danger');
+            }
+        };
+    }
 
     // --- ADMIN VISIBILITY & BINDINGS ---
     function updateUIVisibility() {
         const isAdmin = userRole === 'admin';
         document.querySelectorAll('.admin-controls').forEach(c => c.style.display = isAdmin ? 'inline-block' : 'none');
+        document.querySelectorAll('.admin-only').forEach(c => c.style.display = isAdmin ? 'block' : 'none');
     }
 
     // --- GLOBAL EVENT LISTENERS ---
@@ -186,8 +296,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .on('click', '.btn-delete-event', e => handleDeleteEvent(e.currentTarget.dataset.id))
         .on('submit', '#event-form', handleEventFormSubmit)
         .on('click', '#view-gallery-btn', () => switchView('gallery'))
-        .on('click', '#view-table-btn', () => switchView('table'));
-        // ... (resto de listeners para tipos)
+        .on('click', '#view-table-btn', () => switchView('table'))
+        .on('submit', '#type-form', handleTypeFormSubmit)
+        .on('click', '.btn-delete-type', e => handleDeleteType(e.currentTarget.dataset.id));
 
     function switchView(view) {
         $('#eventos-gallery-container, #eventos-table-container').hide();
@@ -196,5 +307,14 @@ document.addEventListener('DOMContentLoaded', () => {
         $(`#view-${view}-btn`).addClass('active');
     }
     
-    function showAlert(message, type = 'info') { /* ... (código sin cambios) ... */ }
+    function showAlert(message, type = 'info', duration = 5000) {
+        const container = document.getElementById('alert-container');
+        if (!container) return;
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.role = 'alert';
+        alert.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        container.appendChild(alert);
+        setTimeout(() => new bootstrap.Alert(alert).close(), duration);
+    }
 });
