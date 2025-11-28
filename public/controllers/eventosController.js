@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userRole = 'viewer';
     let eventosCache = [];
     let tiposCache = [];
-    let eventModal, confirmModal, manageTypesModal;
+    let eventModal, confirmModal, manageTypesModal, eventosDataTable;
 
     // --- UI ELEMENTS ---
     const eventModalElement = document.getElementById('event-modal');
@@ -18,8 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const typeFilterSelect = document.getElementById('type-filter');
     const eventTypeSelect = document.getElementById('event-tipo');
     const eventosGallery = document.getElementById('eventos-gallery');
-    const eventosTableBody = document.querySelector('#eventos-table tbody');
-
+    
     // --- INITIALIZATION ---
     if (eventModalElement) eventModal = new bootstrap.Modal(eventModalElement);
     if (confirmModalElement) confirmModal = new bootstrap.Modal(confirmModalElement);
@@ -37,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initPage() {
         updateUIVisibility();
+        initDataTable();
         loadEventTypes();
         loadEvents();
     }
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderViews();
         } catch (error) {
             console.error("Error cargando eventos:", error);
-            showAlert("Error al cargar eventos. Es posible que necesites crear un índice en Firestore (revisa la consola F12).", "danger");
+            showAlert("Error al cargar eventos.", "danger");
         }
     }
 
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const snapshot = await db.collection('tipoSubevento').orderBy('nombre').get();
             tiposCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
+            
             if (typeFilterSelect) {
                 const currentFilterValue = typeFilterSelect.value;
                 typeFilterSelect.innerHTML = '<option value="">Todos</option>';
@@ -71,18 +71,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 tiposCache.forEach(tipo => eventTypeSelect.add(new Option(tipo.nombre, tipo.nombre)));
                 eventTypeSelect.value = currentTypeValue;
             }
-            
+
             renderTypesList(); 
         } catch (error) {
             console.error("Error cargando tipos de evento:", error);
-            showAlert("Error al cargar los tipos de evento.", "danger");
+        }
+    }
+
+    function initDataTable() {
+        if ($.fn.DataTable.isDataTable('#eventos-table')) {
+            eventosDataTable = $('#eventos-table').DataTable();
+        } else {
+            eventosDataTable = $('#eventos-table').DataTable({
+                language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
+                responsive: true,
+                pageLength: 10,
+                data: [],
+                columns: [
+                    { data: 'titulo', title: 'Título' },
+                    {
+                        data: null,
+                        title: 'Fecha y Hora',
+                        render: (data) => {
+                            const fecha = new Date(data.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                            return `${fecha} ${data.hora}`;
+                        }
+                    },
+                    { data: 'lugar', title: 'Lugar' },
+                    {
+                        data: 'id',
+                        title: 'Acciones',
+                        orderable: false, 
+                        searchable: false, 
+                        className: 'admin-controls text-center',
+                        render: (id) => `
+                            <button class="btn btn-sm btn-outline-primary btn-edit-event" data-id="${id}"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger btn-delete-event" data-id="${id}"><i class="fas fa-trash"></i></button>
+                        `
+                    }
+                ]
+            });
         }
     }
 
     // --- UI RENDERING ---
     function renderViews() {
         renderGallery();
-        renderTable();
+        eventosDataTable.clear().rows.add(eventosCache).draw();
+        updateUIVisibility();
     }
 
     function renderGallery() {
@@ -110,26 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>`;
             eventosGallery.appendChild(col);
-        });
-        updateUIVisibility();
-    }
-
-    function renderTable() {
-        if (!eventosTableBody) return;
-        eventosTableBody.innerHTML = '';
-        eventosCache.forEach(evento => {
-            const tr = document.createElement('tr');
-            const fecha = new Date(evento.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            tr.innerHTML = `
-                <td>${evento.titulo}</td>
-                <td>${fecha} ${evento.hora}</td>
-                <td>${evento.lugar}</td>
-                <td class="admin-controls">
-                    <button class="btn btn-sm btn-outline-primary btn-edit-event" data-id="${evento.id}"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-sm btn-outline-danger btn-delete-event" data-id="${evento.id}"><i class="fas fa-trash"></i></button>
-                </td>
-            `;
-            eventosTableBody.appendChild(tr);
         });
         updateUIVisibility();
     }
@@ -247,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await db.collection('tipoSubevento').add({ nombre: newTypeName });
             showAlert('Tipo de evento creado con éxito.', 'success');
             typeNameInput.value = '';
-            await loadEventTypes(); // Recarga y renderiza
+            await loadEventTypes();
         } catch (error) {
             console.error("Error creando tipo de evento:", error);
             showAlert('Error al crear el tipo de evento.', 'danger');
@@ -284,8 +300,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ADMIN VISIBILITY & BINDINGS ---
     function updateUIVisibility() {
         const isAdmin = userRole === 'admin';
-        document.querySelectorAll('.admin-controls').forEach(c => c.style.display = isAdmin ? 'inline-block' : 'none');
+        document.querySelectorAll('.admin-controls').forEach(c => c.style.display = isAdmin ? 'revert' : 'none');
         document.querySelectorAll('.admin-only').forEach(c => c.style.display = isAdmin ? 'block' : 'none');
+        if (eventosDataTable) {
+             const col = eventosDataTable.column('.admin-controls');
+             if (col.visible() !== isAdmin) {
+                col.visible(isAdmin);
+             }
+        }
     }
 
     // --- GLOBAL EVENT LISTENERS ---
