@@ -16,6 +16,23 @@ document.addEventListener('DOMContentLoaded', function () {
     // Data cache
     let currentItemHistory = [];
 
+    async function getUserName(userId) {
+        if (!userId) {
+            return 'Usuario desconocido';
+        }
+        try {
+            const userDoc = await db.collection('usuarios').doc(userId).get();
+            if (userDoc.exists) {
+                return userDoc.data().nombre;
+            } else {
+                return 'Usuario desconocido';
+            }
+        } catch (error) {
+            console.error("Error al obtener el nombre del usuario:", error);
+            return 'Usuario desconocido';
+        }
+    }
+
     // --- CATEGORY LOADING FUNCTIONS ---
 
     async function loadAndPopulateCategoriesForModal() {
@@ -341,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const snapshot = await db.collection('prestamos').where('IdArticulo', '==', itemId).orderBy('fechaHoraPrestamo', 'desc').get();
             currentItemHistory = await Promise.all(snapshot.docs.map(async doc => {
                 const prestamo = doc.data();
-                const respName = await window.getUserName(prestamo.IdUsuarioResponsable);
+                const respName = await getUserName(prestamo.IdUsuarioResponsable);
                 return { ...prestamo, Responsable: respName, fechaHoraPrestamo: prestamo.fechaHoraPrestamo.toDate(), fechaHoraDevolucion: prestamo.fechaHoraDevolucion ? prestamo.fechaHoraDevolucion.toDate() : null };
             }));
             if (!$.fn.DataTable.isDataTable('#tabla-info-historial')) {
