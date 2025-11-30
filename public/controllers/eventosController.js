@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
     let eventosCache = [];
     let tiposCache = [];
+    let tiposCountMap = {};
     let subeventosCache = [];
     let itemToDeleteId = null;
     let itemToDeleteType = null; // 'evento' or 'subevento'
@@ -37,6 +38,50 @@ document.addEventListener('DOMContentLoaded', () => {
     if (manageTypesModalElement) manageTypesModal = new bootstrap.Modal(manageTypesModalElement);
     if (subeventModalElement) subeventModal = new bootstrap.Modal(subeventModalElement);
 
+    // Helper para mostrar un modal por encima de otros (corrige stacking cuando hay múltiples modales)
+    function showModalOnTop(modalInstance, modalElement) {
+        if (!modalInstance || !modalElement) return;
+        try {
+            // Determinar el z-index más alto entre modales y backdrops abiertos
+            let maxZ = 1050; // base aproximada
+            document.querySelectorAll('.modal.show').forEach(m => {
+                const z = parseInt(window.getComputedStyle(m).zIndex) || 1050;
+                if (z > maxZ) maxZ = z;
+            });
+            document.querySelectorAll('.modal-backdrop').forEach(b => {
+                const z = parseInt(window.getComputedStyle(b).zIndex) || 1040;
+                if (z > maxZ) maxZ = z;
+            });
+            const newZ = maxZ + 20;
+            modalElement.style.zIndex = newZ;
+
+            const onShown = () => {
+                // Ajustar el backdrop recién creado para que quede justo debajo del modal
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                if (backdrops.length) {
+                    const bd = backdrops[backdrops.length - 1];
+                    bd.style.zIndex = newZ - 10;
+                }
+                modalElement.removeEventListener('shown.bs.modal', onShown);
+            };
+            modalElement.addEventListener('shown.bs.modal', onShown);
+            modalInstance.show();
+        } catch (e) {
+            // Fallback: mostrar normalmente
+            modalInstance.show();
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         if (user) {
@@ -63,9 +108,31 @@ document.addEventListener('DOMContentLoaded', () => {
             loadEventDetails();
         } else if (path.includes('eventos.html')) {
             initDataTable();
-            loadEvents();
+            // Cargar eventos y todas las actividades (subeventos) antes de renderizar
+            Promise.all([loadEvents(), loadAllSubeventos()]).then(() => {
+                renderViews();
+            });
         }
         updateUIVisibility(); // Initial call for non-datatable elements
+    }
+
+    async function loadAllSubeventos() {
+        try {
+            const now = firebase.firestore.Timestamp.now();
+            let query = db.collection('subeventos').orderBy('fechaEvento', 'asc');
+            const snapshot = await query.get();
+            // Convertir y mantener fechaPublicacion como Date si existe
+            subeventosCache = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    fechaPublicacion: data.fechaPublicacion && data.fechaPublicacion.toDate ? data.fechaPublicacion.toDate() : (data.fechaPublicacion || null)
+                };
+            });
+        } catch (error) {
+            console.error('Error loading all subevents:', error);
+        }
     }
 
     // ================================================
@@ -89,23 +156,43 @@ document.addEventListener('DOMContentLoaded', () => {
             language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
             responsive: true, pageLength: 10, data: [],
             columns: [
-                { data: 'titulo', title: 'Título' },
+                { data: 'titulo', title: 'Título', render: (data, type, row) => {
+                    const badge = row.kind === 'actividad' ? '<span class="badge bg-success ms-2">Actividad</span>' : '<span class="badge bg-primary ms-2">Evento</span>';
+                    return `${data || ''} ${badge}`;
+                }},
                 {
                     data: null, title: 'Fecha y Hora',
                     render: (data) => {
-                        const fecha = new Date(data.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                        return `${fecha} ${data.hora}`;
+                        const fecha = new Date((data.fecha || '') + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        return `${fecha} ${data.hora || ''}`;
                     }
                 },
-                { data: 'lugar', title: 'Lugar' },
+                { data: 'lugar', title: 'Lugar', render: (data) => {
+                    if (!data) return '';
+                    const full = String(data);
+                    if (full.length > 40) {
+                        const short = full.slice(0,40) + '…';
+                        return `<span title="${escapeHtml(full)}">${escapeHtml(short)}</span>`;
+                    }
+                    return escapeHtml(full);
+                } },
                 {
-                    data: 'id', title: 'Acciones',
+                    data: null, title: 'Acciones',
                     orderable: false, searchable: false, className: 'text-center',
-                    render: (id) => `
-                        <a href="eventoDetalle.html?id=${id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
-                        <button class="btn btn-sm btn-outline-primary btn-edit-event admin-controls" data-id="${id}" title="Editar"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-outline-danger btn-delete-event admin-controls" data-id="${id}" title="Eliminar"><i class="fas fa-trash"></i></button>
-                    `
+                    render: (data, type, row) => {
+                        if (row.kind === 'actividad') {
+                            return `
+                                <a href="eventoDetalle.html?id=${row.eventoId || row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                                <button class="btn btn-sm btn-outline-primary btn-edit-subevent admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-outline-danger btn-delete-subevent admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            `;
+                        }
+                        return `
+                            <a href="eventoDetalle.html?id=${data}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                            <button class="btn btn-sm btn-outline-primary btn-edit-event admin-controls" data-id="${data}" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger btn-delete-event admin-controls" data-id="${data}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        `;
+                    }
                 }
             ],
             drawCallback: function(settings) {
@@ -116,35 +203,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderViews() {
-        renderGallery();
-        if(eventosDataTable) {
-            eventosDataTable.clear().rows.add(eventosCache).draw();
-        }
+        // kept for backward compatibility; prefer usar applyEventFilterAndRender
+        applyEventFilterAndRender();
     }
 
-    function renderGallery() {
+    function renderGallery(events = null) {
+        const list = events || eventosCache.map(e => ({ kind: 'evento', item: e }));
         if (!eventosGallery) return;
         eventosGallery.innerHTML = '';
-        if (eventosCache.length === 0) {
+        if (!list || list.length === 0) {
             eventosGallery.innerHTML = '<div class="col-12"><p class="text-center text-muted">No hay eventos para mostrar.</p></div>';
             return;
         }
-        eventosCache.forEach(evento => {
+        list.forEach(wrapper => {
+            const { kind, item } = wrapper;
             const col = document.createElement('div');
             col.className = 'col-lg-4 col-md-6 mb-4';
-            const fecha = new Date(evento.fecha + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+            const titulo = item.titulo || '';
+            const descripcion = item.descripcion || '';
+            const imagen = item.imagen || 'https://via.placeholder.com/400x250';
+            let fechaStr = '';
+            let horaStr = '';
+            if (kind === 'evento') {
+                fechaStr = new Date((item.fecha || '') + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                horaStr = item.hora || '';
+            } else {
+                fechaStr = new Date((item.fechaEvento || '') + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                horaStr = item.horaEvento || '';
+            }
+            const badge = kind === 'evento' ? `<span class="badge bg-primary">Evento</span>` : `<span class="badge bg-success">Actividad</span>`;
+            const viewHref = kind === 'evento' ? `eventoDetalle.html?id=${item.id}` : `eventoDetalle.html?id=${item.eventoId || item.id}`;
             col.innerHTML = `
                 <div class="card h-100 shadow-sm">
-                    <img src="${evento.imagen || 'https://via.placeholder.com/400x250'}" class="card-img-top">
+                    <img src="${imagen}" class="card-img-top">
                     <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">${evento.titulo}</h5>
-                        <p class="card-text text-muted small">${fecha} a las ${evento.hora}</p>
-                        <p class="card-text flex-grow-1">${evento.descripcion.substring(0, 100)}...</p>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">${titulo}</h5>
+                            ${badge}
+                        </div>
+                        <p class="card-text text-muted small">${fechaStr} ${horaStr ? 'a las ' + horaStr : ''}</p>
+                        <p class="card-text flex-grow-1">${descripcion.substring(0, 100)}...</p>
                         <div class="mt-auto d-flex justify-content-between align-items-center">
-                            <a href="eventoDetalle.html?id=${evento.id}" class="btn btn-outline-info btn-sm"><i class="fas fa-eye"></i> Ver Detalles</a>
+                            <a href="${viewHref}" class="btn btn-outline-info btn-sm"><i class="fas fa-eye"></i> Ver Detalles</a>
                             <div class="admin-controls">
-                                <button class="btn btn-sm btn-outline-primary btn-edit-event" data-id="${evento.id}" title="Editar"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-sm btn-outline-danger btn-delete-event" data-id="${evento.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                ${kind === 'evento' ? `<button class="btn btn-sm btn-outline-primary btn-edit-event" data-id="${item.id}" title="Editar"><i class="fas fa-edit"></i></button>` : `<button class="btn btn-sm btn-outline-primary btn-edit-subevent" data-id="${item.id}" title="Editar"><i class="fas fa-edit"></i></button>`}
+                                ${kind === 'evento' ? `<button class="btn btn-sm btn-outline-danger btn-delete-event" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>` : `<button class="btn btn-sm btn-outline-danger btn-delete-subevent" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>`}
                             </div>
                         </div>
                     </div>
@@ -152,6 +255,76 @@ document.addEventListener('DOMContentLoaded', () => {
             eventosGallery.appendChild(col);
         });
         updateUIVisibility(); // Update for gallery view
+    }
+
+    async function applyEventFilterAndRender() {
+        const selectedType = typeFilterSelect ? typeFilterSelect.value : '';
+        if (!selectedType) {
+            // sin filtro: mostrar todos los eventos y actividades futuras
+            const now = new Date();
+            const upcomingEvents = eventosCache.filter(ev => {
+                if (!ev.fecha) return false;
+                const dt = new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00'));
+                return dt > now;
+            });
+            const upcomingActivities = (subeventosCache || []).filter(s => {
+                if (!s.fechaEvento) return false;
+                const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
+                // si viewer, solo mostrar publicadas
+                if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > now) return false;
+                return dt > now;
+            });
+
+            // Construir listados para galería y tabla
+            const combinedForGallery = [...upcomingEvents.map(e => ({ kind: 'evento', item: e })), ...upcomingActivities.map(s => ({ kind: 'actividad', item: s }))];
+            renderGallery(combinedForGallery);
+
+            if (eventosDataTable) {
+                const tableRows = [];
+                upcomingEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, lugar: ev.lugar, kind: 'evento' }));
+                upcomingActivities.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId }));
+                eventosDataTable.clear().rows.add(tableRows).draw();
+            }
+            return;
+        }
+
+        // Cuando los tipos aplican a subeventos, mostramos solo aquellos eventos
+        // que tienen al menos un subevento del tipo seleccionado.
+        try {
+            const now = firebase.firestore.Timestamp.now();
+            // Obtener todos los subeventos del tipo seleccionado en una sola consulta
+            let query = db.collection('subeventos').where('tipoEventoId', '==', selectedType);
+            if (userRole === 'viewer') query = query.where('fechaPublicacion', '<=', now);
+            const snap = await query.get();
+            const nowDate = new Date();
+            const snapData = snap.docs.map(d => ({ id: d.id, ...d.data(), fechaPublicacion: d.data().fechaPublicacion && d.data().fechaPublicacion.toDate ? d.data().fechaPublicacion.toDate() : null }));
+            const activityFiltered = (subeventosCache && subeventosCache.length ? subeventosCache : snapData).filter(s => s.tipoEventoId === selectedType).filter(s => {
+                if (!s.fechaEvento) return false;
+                const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
+                if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > nowDate) return false;
+                return dt > nowDate;
+            });
+            const eventIds = new Set(activityFiltered.map(s => s.eventoId).filter(Boolean));
+            const filteredEvents = eventosCache.filter(ev => eventIds.has(ev.id) && (new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00')) > nowDate));
+
+            // Construir combinados
+            const combinedForGallery = [...filteredEvents.map(e => ({ kind: 'evento', item: e })), ...activityFiltered.map(s => ({ kind: 'actividad', item: s }))];
+            renderGallery(combinedForGallery);
+
+            if (eventosDataTable) {
+                const tableRows = [];
+                filteredEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, lugar: ev.lugar, kind: 'evento' }));
+                activityFiltered.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId }));
+                eventosDataTable.clear().rows.add(tableRows).draw();
+            }
+        } catch (error) {
+            console.error('Error aplicando filtro por tipo en eventos:', error);
+            // fallback: mostrar todos
+            renderGallery(eventosCache);
+            if (eventosDataTable) {
+                eventosDataTable.clear().rows.add(eventosCache).draw();
+            }
+        }
     }
     
     function openEventModalForEdit(id) {
@@ -166,6 +339,22 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('event-lugar').value = evento.lugar;
             document.getElementById('event-descripcion').value = evento.descripcion;
             document.getElementById('event-imagen').value = evento.imagen;
+            // Prefill publication datetime if present
+            try {
+                const pubEl = document.getElementById('event-publicacion');
+                if (pubEl) {
+                    const fp = evento.fechaPublicacion;
+                    let d = null;
+                    if (fp && fp.toDate) d = fp.toDate();
+                    else if (fp) d = new Date(fp);
+                    if (d && !isNaN(d.getTime())) {
+                        const dateString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,16);
+                        pubEl.value = dateString;
+                    }
+                }
+            } catch (e) {
+                console.warn('No se pudo prellenar fecha de publicación:', e);
+            }
             if(eventModal) eventModal.show();
         }
     }
@@ -181,6 +370,15 @@ document.addEventListener('DOMContentLoaded', () => {
             lugar: document.getElementById('event-lugar').value,
             imagen: document.getElementById('event-imagen').value,
         };
+        // fechaPublicacion
+        try {
+            const pubVal = document.getElementById('event-publicacion')?.value;
+            if (pubVal) {
+                eventoData.fechaPublicacion = firebase.firestore.Timestamp.fromDate(new Date(pubVal));
+            }
+        } catch (e) {
+            console.warn('No se pudo parsear fechaPublicacion:', e);
+        }
         try {
             if (id) {
                 await db.collection('eventos').doc(id).update(eventoData);
@@ -203,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         itemToDeleteId = id;
         itemToDeleteType = 'evento';
         document.getElementById('confirm-modal-body').textContent = `¿Estás seguro de que quieres eliminar el evento "${eventToDelete.titulo}"?`;
-        if(confirmModal) confirmModal.show();
+        if(confirmModal) showModalOnTop(confirmModal, confirmModalElement);
     }
 
     // ================================================
@@ -212,25 +410,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadEventDetails() {
         const eventId = new URLSearchParams(window.location.search).get('id');
-        if (!eventId) {
-            document.querySelector('main').innerHTML = '<div class="alert alert-danger">ID de evento no especificado.</div>';
-            return;
-        }
+        if (!eventId) return showAlert('Evento no especificado.', 'warning');
         try {
-            const eventDoc = await db.collection('eventos').doc(eventId).get();
-            if (!eventDoc.exists) {
-                document.querySelector('main').innerHTML = '<div class="alert alert-danger">Evento no encontrado.</div>';
-                return;
+            // Cargar datos del evento
+            const eventoDoc = await db.collection('eventos').doc(eventId).get();
+            if (!eventoDoc.exists) return showAlert('Evento no encontrado.', 'warning');
+            const evento = { id: eventoDoc.id, ...eventoDoc.data() };
+
+            // Cargar tipos y conteos
+            const snapshot = await db.collection('tipoSubevento').orderBy('nombre').get();
+            tiposCache = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            const subSnap = await db.collection('subeventos').get();
+            const counts = {};
+            subSnap.docs.forEach(d => {
+                const data = d.data();
+                const tipoId = data.tipoEventoId;
+                if (tipoId) counts[tipoId] = (counts[tipoId] || 0) + 1;
+            });
+            tiposCountMap = counts;
+
+            // Poblar selects
+            const filter = document.getElementById('type-filter');
+            const select = document.getElementById('subevent-tipo');
+            if (filter) {
+                filter.innerHTML = '<option value="">-- Todos los tipos --</option>';
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = data.nombre;
+                    filter.appendChild(option);
+                });
             }
-            const evento = eventDoc.data();
-            document.getElementById('event-detail-title').textContent = evento.titulo;
-            document.getElementById('event-detail-description').textContent = evento.descripcion;
-            document.getElementById('event-detail-image').src = evento.imagen || 'https://via.placeholder.com/800x400';
-            const fecha = new Date(evento.fecha + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('event-detail-date').innerHTML = `<i class="fas fa-calendar-alt"></i> ${fecha} a las ${evento.hora}`;
-            document.getElementById('event-detail-place').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${evento.lugar}`;
+            if (select) {
+                select.innerHTML = '<option value="">-- Selecciona un tipo --</option>';
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const opt2 = document.createElement('option');
+                    opt2.value = doc.id;
+                    opt2.textContent = data.nombre;
+                    select.appendChild(opt2);
+                });
+            }
+            renderTypesList();
+
+            // Rellenar detalles del evento en la vista
+            const fecha = evento.fecha || '';
+            const dateEl = document.getElementById('event-detail-date');
+            const placeEl = document.getElementById('event-detail-place');
+            const titleEl = document.getElementById('event-detail-title');
+            const descEl = document.getElementById('event-detail-description');
+            const imgEl = document.getElementById('event-detail-image');
+
+            if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${fecha} ${evento.hora ? 'a las ' + evento.hora : ''}`;
+            if (placeEl) placeEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${escapeHtml(evento.lugar || '')}`;
+            if (titleEl) titleEl.textContent = evento.titulo || 'Sin título';
+            if (descEl) descEl.textContent = evento.descripcion || '';
+            if (imgEl) {
+                const src = evento.imagen && evento.imagen.trim() ? evento.imagen.trim() : 'https://via.placeholder.com/1200x400?text=Sin+imagen';
+                imgEl.src = src;
+                imgEl.alt = evento.titulo || 'Imagen del evento';
+                imgEl.onerror = function() { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
+            }
+
             initSubeventosDataTable();
-            loadSubeventos(eventId);
+            await loadSubeventos(eventId);
+
+            // Si venimos con editSubeventId en la URL, abrir la edición de ese subevento
+            const params = new URLSearchParams(window.location.search);
+            const editId = params.get('editSubeventId');
+            if (editId) setTimeout(() => openSubeventModalForEdit(editId), 50);
         } catch (error) {
             console.error("Error loading event details:", error);
             showAlert("Error al cargar los detalles del evento.", "danger");
@@ -292,7 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function openSubeventModalForCreate() {
         if (subeventForm) subeventForm.reset();
         document.getElementById('subevent-id').value = '';
-        document.getElementById('subevent-modal-title').textContent = 'Crear Nuevo Subevento';
+        document.getElementById('subevent-modal-title').textContent = 'Crear Nueva Actividad';
         if (subeventModal) subeventModal.show();
     }
 
@@ -301,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (subevento && subeventForm) {
             subeventForm.reset();
             document.getElementById('subevent-id').value = id;
-            document.getElementById('subevent-modal-title').textContent = 'Editar Subevento';
+            document.getElementById('subevent-modal-title').textContent = 'Editar Actividad';
 
             document.getElementById('subevent-titulo').value = subevento.titulo;
             document.getElementById('subevent-descripcion').value = subevento.descripcion;
@@ -366,17 +616,127 @@ document.addEventListener('DOMContentLoaded', () => {
         itemToDeleteId = id;
         itemToDeleteType = 'subevento';
         document.getElementById('confirm-modal-body').textContent = `¿Estás seguro de que quieres eliminar el subevento "${subeventToDelete.titulo}"?`;
-        if(confirmModal) confirmModal.show();
+            if(confirmModal) showModalOnTop(confirmModal, confirmModalElement);
     }
 
     // ================================================
     // SHARED LOGIC & TYPE MANAGEMENT
     // ================================================
 
-    async function loadEventTypes() { /* ... existing code ... */ }
-    function renderTypesList() { /* ... existing code ... */ }
-    async function handleTypeFormSubmit(e) { /* ... existing code ... */ }
-    function handleDeleteType(id) { /* ... existing code ... */ }
+    async function loadEventTypes() {
+        try {
+            // Colección 'tipoSubevento' para tipos de subeventos
+            const snapshot = await db.collection('tipoSubevento').orderBy('nombre').get();
+            tiposCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Calcular conteos de actividades por tipo (una sola consulta a subeventos)
+            try {
+                const subSnap = await db.collection('subeventos').get();
+                const counts = {};
+                subSnap.docs.forEach(d => {
+                    const data = d.data();
+                    const tipoId = data.tipoEventoId;
+                    if (tipoId) counts[tipoId] = (counts[tipoId] || 0) + 1;
+                });
+                tiposCountMap = counts;
+            } catch (errCounts) {
+                console.warn('No se pudo calcular conteos para tipos:', errCounts);
+                tiposCountMap = {};
+            }
+
+            // Poblar selects y lista
+            if (typeFilterSelect) {
+                typeFilterSelect.innerHTML = `<option value="">Filtrar por tipo</option>`;
+                tiposCache.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.nombre;
+                    typeFilterSelect.appendChild(opt);
+                });
+            }
+            if (subeventTipoSelect) {
+                subeventTipoSelect.innerHTML = `<option value="">Selecciona un tipo</option>`;
+                tiposCache.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.nombre;
+                    subeventTipoSelect.appendChild(opt);
+                });
+            }
+            renderTypesList();
+        } catch (error) {
+            console.error('Error loading types:', error);
+        }
+    }
+
+    function renderTypesList() {
+        if (!typesListContainer) return;
+        typesListContainer.innerHTML = '';
+        if (!tiposCache || tiposCache.length === 0) {
+            typesListContainer.innerHTML = '<p class="text-muted">No hay tipos creados.</p>';
+            return;
+        }
+        const list = document.createElement('div');
+        list.className = 'list-group';
+        tiposCache.forEach(t => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+            const count = tiposCountMap[t.id] || 0;
+            item.innerHTML = `
+                <div>${escapeHtml(t.nombre)} <span class="badge bg-secondary ms-2">${count}</span></div>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary btn-edit-type me-2" data-id="${t.id}">Editar</button>
+                    <button class="btn btn-sm btn-outline-danger btn-delete-type" data-id="${t.id}">Eliminar</button>
+                </div>`;
+            list.appendChild(item);
+        });
+        typesListContainer.appendChild(list);
+    }
+
+    async function handleTypeFormSubmit(e) {
+        e.preventDefault();
+        const id = document.getElementById('type-id').value;
+        const nombre = document.getElementById('type-name').value.trim();
+        if (!nombre) return showAlert('El nombre del tipo no puede estar vacío.', 'warning');
+        try {
+                if (id) {
+                await db.collection('tipoSubevento').doc(id).update({ nombre });
+                showAlert('Tipo actualizado correctamente.', 'success');
+            } else {
+                await db.collection('tipoSubevento').add({ nombre });
+                showAlert('Tipo creado correctamente.', 'success');
+            }
+            // Reset y recarga
+            if (typeForm) typeForm.reset();
+            if (manageTypesModal) manageTypesModal.hide();
+            await loadEventTypes();
+        } catch (error) {
+            console.error('Error saving type:', error);
+            showAlert('No se pudo guardar el tipo.', 'danger');
+        }
+    }
+
+    async function handleDeleteType(id) {
+        const tipo = tiposCache.find(t => t.id === id);
+        if (!tipo) return;
+        // Comprobar si existen subeventos asociados a este tipo
+        try {
+            const snap = await db.collection('subeventos').where('tipoEventoId', '==', id).get();
+            const count = snap.size || 0;
+            if (count > 0) {
+                showAlert(`No se puede eliminar este tipo porque ${count} actividad(es) lo usan.`, 'warning');
+                return;
+            }
+        } catch (error) {
+            console.error('Error comprobando subeventos para tipo:', error);
+            showAlert('Error al comprobar uso del tipo. Intenta de nuevo.', 'danger');
+            return;
+        }
+
+        itemToDeleteId = id;
+        itemToDeleteType = 'tipo';
+        document.getElementById('confirm-modal-body').textContent = `¿Estás seguro de que deseas eliminar el tipo "${tipo.nombre}"?`;
+        if (confirmModal) showModalOnTop(confirmModal, confirmModalElement);
+    }
 
     // ================================================
     // UI, VISIBILITY & LISTENERS
@@ -439,26 +799,50 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.is('#view-gallery-btn')) switchView('gallery');
         if (target.is('#view-table-btn')) switchView('table');
         if (target.is('.btn-delete-type')) handleDeleteType(target.data('id'));
+        if (target.is('.btn-edit-type')) {
+            const id = target.data('id');
+            const tipo = tiposCache.find(t => t.id === id);
+            if (tipo) {
+                document.getElementById('type-id').value = tipo.id;
+                document.getElementById('type-name').value = tipo.nombre;
+                if (manageTypesModal) manageTypesModal.show();
+            }
+        }
         
         // Detail Page
         if (target.is('#create-subevent-btn')) openSubeventModalForCreate();
-        if (target.is('.btn-edit-subevent')) openSubeventModalForEdit(target.data('id'));
+        if (target.is('.btn-edit-subevent')) {
+            const sid = target.data('id');
+            if (subeventModal) {
+                openSubeventModalForEdit(sid);
+            } else {
+                // Redirigir al detalle del evento padre y abrir edición allí
+                const sub = (subeventosCache || []).find(s => s.id === sid);
+                const parentId = sub ? sub.eventoId : null;
+                const url = `eventoDetalle.html?id=${parentId || ''}&editSubeventId=${sid}`;
+                window.location.href = url;
+            }
+        }
         if (target.is('.btn-delete-subevent')) handleDeleteSubevent(target.data('id'));
         
         // Confirmation Modal
-        if (target.is('#confirm-delete-btn')) {
+        if (target.is('#confirm-modal-btn')) {
             if (!itemToDeleteId || !itemToDeleteType) return;
 
-            let collectionName = itemToDeleteType === 'evento' ? 'eventos' : 'subeventos';
+            let collectionName = 'subeventos';
+            if (itemToDeleteType === 'evento') collectionName = 'eventos';
+            else if (itemToDeleteType === 'tipo') collectionName = 'tipoSubevento';
 
             db.collection(collectionName).doc(itemToDeleteId).delete()
                 .then(() => {
                     showAlert(`${itemToDeleteType.charAt(0).toUpperCase() + itemToDeleteType.slice(1)} eliminado con éxito.`, 'success');
                     if (itemToDeleteType === 'evento') {
                         loadEvents();
-                    } else {
+                    } else if (itemToDeleteType === 'subevento') {
                         const eventId = new URLSearchParams(window.location.search).get('id');
                         loadSubeventos(eventId);
+                    } else if (itemToDeleteType === 'tipo') {
+                        loadEventTypes();
                     }
                 })
                 .catch(error => {
@@ -481,7 +865,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     $(document).on('change', '#type-filter', function() {
-        // This requires the main events to have a type field.
+        // Filtrar la vista de eventos por tipo seleccionado
+        renderViews();
+        if (eventosDataTable) eventosDataTable.responsive.recalc();
     });
 
 });
