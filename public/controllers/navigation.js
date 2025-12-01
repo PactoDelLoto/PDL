@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function populateNavbarLinks(isLoggedIn) {
     const links = [
         { text: 'Hazte socio', href: '/hazte-socio.html' },
-        { text: 'Actividades', href: '/actividades.html' },
+        /*{ text: 'Actividades', href: '/actividades.html' },*/
         { text: 'Eventos', href: '/eventos.html' },
         { text: 'Quiénes somos', href: '/quienes-somos.html' }
     ];
