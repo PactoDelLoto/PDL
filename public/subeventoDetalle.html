@@ -123,80 +123,8 @@
 <script src="/js/utils.js"></script>
 <script src="/controllers/authController.js"></script>
 <script src="/controllers/navigation.js"></script>
+<script src="/controllers/subeventosController.js"></script>
 <script src="/controllers/eventosController.js"></script>
 
 </body>
 </html>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label class="form-label">Tipo de Actividad</label>
-                                                <select id="subevent-tipo" class="form-select" required>
-                                                    <option value="" disabled selected>Seleccione un tipo...</option>
-                                                    <!-- Los tipos se cargarán aquí desde la DB -->
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label class="form-label">Plazas Disponibles</label>
-                                                <input type="number" class="form-control" id="subevent-plazas" min="0" value="0" required>
-                                                <div class="form-text">Si es 0, se considerará "Entrada libre".</div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label class="form-label">Fecha de la Actividad</label>
-                                                <input type="date" class="form-control" id="subevent-fechaEvento" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label class="form-label">Hora de la Actividad</label>
-                                                <input type="time" class="form-control" id="subevent-horaEvento" required>
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label">Lugar</label>
-                                            <input type="text" class="form-control" id="subevent-lugar" required>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label">Fecha de Publicación</label>
-                                            <input type="datetime-local" class="form-control" id="subevent-fechaPublicacion" required>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label">URL de Imagen (opcional)</label>
-                                            <input type="text" class="form-control" id="subevent-imagen">
-                                        </div>
-                                    </form>
-                                </div>
-                                <div class="modal-footer">
-                                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button class="btn btn-primary" form="subevent-form" id="save-subevent-btn">Guardar</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Contenedor de Alertas -->
-                    <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index:1055"></div>
-
-                    <footer class="footer mt-auto py-3 bg-dark"></footer>
-
-                    <!-- Scripts -->
-                    <script src="/jquery-3.7.1.min.js"></script>
-                    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
-                    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-                    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-                    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-                    <script src="/DataTables/datatables.min.js"></script>
-
-                    <script src="/controllers/firebase-config.js"></script>
-                    <script src="/js/utils.js"></script>
-                    <script src="/controllers/authController.js"></script>
-                    <script src="/controllers/navigation.js"></script>
-                    <script src="/controllers/eventosController.js"></script>
-
-                    </body>
-                    </html>

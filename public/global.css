@@ -74,3 +74,38 @@ footer, .bg-dark {
       object-fit: cover;
       object-position: center;
     }
+
+    .carousel-caption {
+      /* ya la tienes centrada con flex, esto es opcional */
+      text-align: center;
+    }
+    
+    .caption-box {
+      background: rgba(0, 0, 0, 0.55); /* negro semitransparente */
+      padding: 1rem 2rem;
+      border-radius: 0.5rem;
+    }
+    
+    .caption-box h2,
+    .caption-box p {
+      color: #f5f6fa; /* texto claro */
+      margin: 0;
+    }
+    .card-link-wrapper {
+      text-decoration: none;
+      color: inherit;
+    }
+    
+    .card-link-wrapper .card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card-link-wrapper:hover .card {
+      transform: translateY(-4px);
+      box-shadow: 0 0 20px rgba(0, 51, 105, 0.4);
+    }
+    
+    .card-link-wrapper:hover .fa-users {
+      color: #000000; /* azul más vivo, ajusta al gusto */
+    }
+        

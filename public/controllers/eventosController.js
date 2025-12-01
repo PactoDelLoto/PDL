@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let subeventosCache = [];
     let itemToDeleteId = null;
     let itemToDeleteType = null; // 'evento' or 'subevento'
+    // Exponer getters simples para otros controladores (subeventos)
+    window.getTiposCache = () => tiposCache;
+    window.getUserRole = () => userRole;
 
     // --- UI ELEMENTS ---
     let eventModal, confirmModal, manageTypesModal, subeventModal;
@@ -41,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const eventHoraEl = document.getElementById('event-hora');
 
     // --- DATATABLES ---
-    let eventosDataTable, subeventosDataTable;
+    let eventosDataTable;
 
     // --- INITIALIZATION ---
     if (eventModalElement) eventModal = new bootstrap.Modal(eventModalElement);
@@ -139,10 +142,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const path = window.location.pathname;
         loadEventTypes();
 
-        if (path.includes('eventoDetalle.html')) {
+        // Evitar colisiones: comprobar primero la ruta de subevento (subeventoDetalle contiene 'eventoDetalle' como substring)
+        if (path.includes('subeventoDetalle.html')) {
+            if (window.loadSubeventDetails) window.loadSubeventDetails();
+        } else if (path.includes('eventoDetalle.html')) {
             loadEventDetails();
-        } else if (path.includes('subeventoDetalle.html')) {
-            loadSubeventDetails();
         } else if (path.includes('eventos.html')) {
             initDataTable();
             // Cargar eventos y todas las actividades (subeventos) antes de renderizar
@@ -322,6 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedType = typeFilterSelect ? typeFilterSelect.value : '';
         const showEvents = filterShowEventsEl ? filterShowEventsEl.checked : true;
         const showActivities = filterShowActivitiesEl ? filterShowActivitiesEl.checked : true;
+        const searchTerm = (document.getElementById('search-input') && document.getElementById('search-input').value) ? document.getElementById('search-input').value.trim().toLowerCase() : '';
         if (!selectedType) {
             // sin filtro: mostrar todos los eventos y actividades futuras
             const now = new Date();
@@ -345,6 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         return false;
                     }
                 });
+                if (searchTerm) {
+                    upcomingEvents = upcomingEvents.filter(ev => (ev.titulo || '').toLowerCase().includes(searchTerm) || (ev.descripcion || '').toLowerCase().includes(searchTerm));
+                }
             }
 
             if (showActivities) {
@@ -355,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > now) return false;
                     return dt > now;
                 });
+                if (searchTerm) {
+                    upcomingActivities = upcomingActivities.filter(s => (s.titulo || '').toLowerCase().includes(searchTerm) || (s.descripcion || '').toLowerCase().includes(searchTerm));
+                }
             }
 
             // Construir listados para galería y tabla
@@ -380,12 +391,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const snap = await query.get();
             const nowDate = new Date();
             const snapData = snap.docs.map(d => ({ id: d.id, ...d.data(), fechaPublicacion: d.data().fechaPublicacion && d.data().fechaPublicacion.toDate ? d.data().fechaPublicacion.toDate() : null }));
-            const activityFiltered = (subeventosCache && subeventosCache.length ? subeventosCache : snapData).filter(s => s.tipoEventoId === selectedType).filter(s => {
+            let activityFiltered = (subeventosCache && subeventosCache.length ? subeventosCache : snapData).filter(s => s.tipoEventoId === selectedType).filter(s => {
                 if (!s.fechaEvento) return false;
                 const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
                 if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > nowDate) return false;
                 return dt > nowDate;
             });
+            if (searchTerm) {
+                // Filtrar por término de búsqueda tanto actividades como eventos
+                activityFiltered = activityFiltered.filter(s => (s.titulo || '').toLowerCase().includes(searchTerm) || (s.descripcion || '').toLowerCase().includes(searchTerm));
+            }
             const eventIds = new Set(activityFiltered.map(s => s.eventoId).filter(Boolean));
             const filteredEvents = eventosCache.filter(ev => {
                 if (!eventIds.has(ev.id)) return false;
@@ -604,216 +619,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 imgEl.onerror = function() { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
             }
 
-            initSubeventosDataTable();
-            await loadSubeventos(eventId);
+            if (window.initSubeventosDataTable) window.initSubeventosDataTable();
+            if (window.loadSubeventos) await window.loadSubeventos(eventId);
 
             // Si venimos con editSubeventId en la URL, abrir la edición de ese subevento
             const params = new URLSearchParams(window.location.search);
             const editId = params.get('editSubeventId');
-            if (editId) setTimeout(() => openSubeventModalForEdit(editId), 50);
+            if (editId) setTimeout(() => { if (window.openSubeventModalForEdit) window.openSubeventModalForEdit(editId); }, 50);
         } catch (error) {
             console.error("Error loading event details:", error);
             showAlert("Error al cargar los detalles del evento.", "danger");
         }
     }
 
-    async function loadSubeventos(eventId) {
-        const now = firebase.firestore.Timestamp.now();
-        let query = db.collection('subeventos').where('eventoId', '==', eventId);
-        if (userRole === 'viewer') {
-            query = query.where('fechaPublicacion', '<=', now);
-        }
-        try {
-            const snapshot = await query.get();
-            subeventosCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), fechaPublicacion: doc.data().fechaPublicacion.toDate() }));
-            if (subeventosDataTable) {
-                subeventosDataTable.clear().rows.add(subeventosCache).draw();
-            }
-        } catch(error) {
-            console.error("Error loading subevents: ", error);
-        }
-    }
+    // La carga y gestión de subeventos ahora la gestiona `subeventosController.js`
 
-    function initSubeventosDataTable() {
-        if ($.fn.DataTable.isDataTable('#subeventos-table')) return;
-        subeventosDataTable = $('#subeventos-table').DataTable({
-            language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
-            responsive: true, data: [],
-            columns: [
-                { data: 'titulo', title: 'Nombre' },
-                { 
-                    data: 'tipoEventoId', 
-                    title: 'Tipo', 
-                    render: (tipoId) => tiposCache.find(t => t.id === tipoId)?.nombre || 'Desconocido'
-                },
-                {
-                    data: null, title: 'Plazas',
-                    render: data => data.plazas > 0 ? `${data.plazasOcupadas || 0} / ${data.plazas}` : 'Entrada libre'
-                },
-                {
-                    data: 'id', title: 'Acciones',
-                    orderable: false, searchable: false, className: 'text-center',
-                    render: (data, type, row) => {
-                        if (row.kind === 'actividad') {
-                            return `
-                                <a href="subeventoDetalle.html?id=${row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
-                                <button class="btn btn-sm btn-outline-primary btn-edit-subevent admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-sm btn-outline-danger btn-delete-subevent admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
-                            `;
-                        }
-                        return `
-                            <a href="eventoDetalle.html?id=${data}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
-                            <button class="btn btn-sm btn-outline-primary btn-edit-event admin-controls" data-id="${data}" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-sm btn-outline-danger btn-delete-event admin-controls" data-id="${data}" title="Eliminar"><i class="fas fa-trash"></i></button>
-                        `;
-                    }
-                    },
-                ],
-                drawCallback: function(settings) {
-                    updateUIVisibility();
-                }
-            });
-        }
-
-    function openSubeventModalForCreate() {
-        if (subeventForm) subeventForm.reset();
-        document.getElementById('subevent-id').value = '';
-        document.getElementById('subevent-modal-title').textContent = 'Crear Nueva Actividad';
-        if (subeventModal) subeventModal.show();
-    }
-
-    function openSubeventModalForEdit(id) {
-        const subevento = subeventosCache.find(s => s.id === id);
-        if (subevento && subeventForm) {
-            subeventForm.reset();
-            document.getElementById('subevent-id').value = id;
-            document.getElementById('subevent-modal-title').textContent = 'Editar Actividad';
-
-            document.getElementById('subevent-titulo').value = subevento.titulo;
-            document.getElementById('subevent-descripcion').value = subevento.descripcion;
-            document.getElementById('subevent-tipo').value = subevento.tipoEventoId;
-            document.getElementById('subevent-plazas').value = subevento.plazas;
-            document.getElementById('subevent-fechaEvento').value = subevento.fechaEvento;
-            document.getElementById('subevent-horaEvento').value = subevento.horaEvento;
-            document.getElementById('subevent-lugar').value = subevento.lugar;
-            document.getElementById('subevent-imagen').value = subevento.imagen;
-            
-            // Prefill fechaPublicacion handling Timestamp or Date or string
-            try {
-                const fp = subevento.fechaPublicacion;
-                let d = null;
-                if (fp && typeof fp.toDate === 'function') d = fp.toDate();
-                else if (fp instanceof Date) d = fp;
-                else if (fp) d = new Date(fp);
-                if (d && !isNaN(d.getTime())) {
-                    const dateString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000 )).toISOString().slice(0, 16);
-                    document.getElementById('subevent-fechaPublicacion').value = dateString;
-                }
-            } catch (e) {
-                console.warn('No se pudo prellenar fecha de publicación del subevento:', e);
-            }
-            if (subeventModal) subeventModal.show();
-        }
-    }
-
-    // ================================================
-    // SUBEVENT DETAIL PAGE (subeventoDetalle.html)
-    // ================================================
-
-    async function loadSubeventDetails() {
-        const subId = new URLSearchParams(window.location.search).get('id');
-        if (!subId) return showAlert('Actividad no especificada.', 'warning');
-        try {
-            const doc = await db.collection('subeventos').doc(subId).get();
-            if (!doc.exists) return showAlert('Actividad no encontrada.', 'warning');
-            const sub = { id: doc.id, ...doc.data() };
-
-            // Si no tenemos tipos cargados, loadEventTypes ya lo llamó en initPage
-            renderTypesList();
-
-            // Rellenar vista
-            const titleEl = document.getElementById('subevent-detail-title');
-            const descEl = document.getElementById('subevent-detail-description');
-            const dateEl = document.getElementById('subevent-detail-date');
-            const placeEl = document.getElementById('subevent-detail-place');
-            const tipoEl = document.getElementById('subevent-detail-tipo');
-            const imgEl = document.getElementById('subevent-detail-image');
-            const parentEl = document.getElementById('subevent-detail-parent');
-
-            if (titleEl) titleEl.textContent = sub.titulo || 'Sin título';
-            if (descEl) descEl.textContent = sub.descripcion || '';
-            if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${(sub.fechaEvento||'')} ${sub.horaEvento ? 'a las ' + sub.horaEvento : ''}`;
-            if (placeEl) placeEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${escapeHtml(sub.lugar || '')}`;
-            if (tipoEl) tipoEl.textContent = tiposCache.find(t => t.id === sub.tipoEventoId)?.nombre || 'Desconocido';
-            if (imgEl) {
-                const src = sub.imagen && sub.imagen.trim() ? sub.imagen.trim() : 'https://via.placeholder.com/1200x400?text=Sin+imagen';
-                imgEl.src = src;
-                imgEl.alt = sub.titulo || 'Imagen de la actividad';
-                imgEl.onerror = function() { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
-            }
-            if (parentEl) {
-                if (sub.eventoId) {
-                    const evDoc = await db.collection('eventos').doc(sub.eventoId).get();
-                    if (evDoc.exists) {
-                        const ev = evDoc.data();
-                        parentEl.innerHTML = `Evento padre: <a href="eventoDetalle.html?id=${sub.eventoId}">${escapeHtml(ev.titulo || 'Ver evento')}</a>`;
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error loading subevent detail:', error);
-            showAlert('Error al cargar la actividad.', 'danger');
-        }
-    }
-
-    async function handleSubeventFormSubmit(e) {
-        e.preventDefault();
-        if (!currentUser) return showAlert('Debes iniciar sesión para esta acción.', 'danger');
-        
-        const eventId = new URLSearchParams(window.location.search).get('id');
-        const subeventId = document.getElementById('subevent-id').value;
-        const publicacionVal = document.getElementById('subevent-fechaPublicacion').value;
-        const fechaPublicacion = firebase.firestore.Timestamp.fromDate(new Date(publicacionVal));
-
-        const subeventoData = {
-            titulo: document.getElementById('subevent-titulo').value,
-            descripcion: document.getElementById('subevent-descripcion').value,
-            tipoEventoId: document.getElementById('subevent-tipo').value,
-            eventoId: eventId,
-            imagen: document.getElementById('subevent-imagen').value,
-            fechaEvento: document.getElementById('subevent-fechaEvento').value,
-            horaEvento: document.getElementById('subevent-horaEvento').value,
-            fechaPublicacion: fechaPublicacion,
-            lugar: document.getElementById('subevent-lugar').value,
-            plazas: parseInt(document.getElementById('subevent-plazas').value, 10),
-        };
-
-        try {
-            if (subeventId) {
-                await db.collection('subeventos').doc(subeventId).update(subeventoData);
-                showAlert('Subevento actualizado con éxito', 'success');
-            } else {
-                subeventoData.creador = currentUser.uid;
-                subeventoData.plazasOcupadas = 0;
-                await db.collection('subeventos').add(subeventoData);
-                showAlert('Subevento creado con éxito', 'success');
-            }
-            if (subeventModal) subeventModal.hide();
-            loadSubeventos(eventId);
-        } catch (error) {
-            console.error('Error saving subevent: ', error);
-            showAlert('Error al guardar el subevento.', 'danger');
-        }
-    }
-
-    function handleDeleteSubevent(id) {
-        const subeventToDelete = subeventosCache.find(e => e.id === id);
-        if (!subeventToDelete) return;
-        itemToDeleteId = id;
-        itemToDeleteType = 'subevento';
-        document.getElementById('confirm-modal-body').textContent = `¿Estás seguro de que quieres eliminar el subevento "${subeventToDelete.titulo}"?`;
-            if(confirmModal) showModalOnTop(confirmModal, confirmModalElement);
-    }
+    // Las funciones y la lógica referente a "subeventos" han sido movidas a
+    // `public/controllers/subeventosController.js` para mantener este archivo más pequeño.
 
     // ================================================
     // SHARED LOGIC & TYPE MANAGEMENT
@@ -975,6 +797,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }, duration);
      }
 
+    function showRetryAlert(message) {
+        const container = document.getElementById('alert-container');
+        if (!container) return;
+        // eliminar previo
+        const prev = document.getElementById('retry-alert');
+        if (prev) prev.remove();
+        const alert = document.createElement('div');
+        alert.id = 'retry-alert';
+        alert.className = `alert alert-warning alert-dismissible fade show`;
+        alert.role = 'alert';
+        alert.innerHTML = `${escapeHtml(message)} <button type="button" id="retry-load-subevent" class="btn btn-sm btn-primary ms-2">Reintentar</button> <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+        container.appendChild(alert);
+        // Attach click
+        setTimeout(() => {
+            const btn = document.getElementById('retry-load-subevent');
+            if (btn) btn.addEventListener('click', () => {
+                // eliminar alerta y reintentar
+                const existing = document.getElementById('retry-alert');
+                if (existing) existing.remove();
+                try { if (window.loadSubeventDetails) window.loadSubeventDetails(); } catch(e) { console.error('Error reintentando loadSubeventDetails:', e); }
+            });
+        }, 50);
+    }
+
+    // Exponer helpers para otros controladores (p.ej. subeventosController)
+    window.showAlert = showAlert;
+    window.showRetryAlert = showRetryAlert;
+    window.renderTypesList = () => { try { return renderTypesList(); } catch(e) { console.warn('renderTypesList no disponible aún', e); } };
+    window.escapeHtml = (typeof escapeHtml === 'function') ? escapeHtml : (s => s);
+
     // --- GLOBAL EVENT LISTENERS ---
     $(document).off('click submit change');
 
@@ -1009,20 +861,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Detail Page
-        if (target.is('#create-subevent-btn')) openSubeventModalForCreate();
+        if (target.is('#create-subevent-btn')) { if (window.openSubeventModalForCreate) window.openSubeventModalForCreate(); }
         if (target.is('.btn-edit-subevent')) {
             const sid = target.data('id');
             if (subeventModal) {
-                openSubeventModalForEdit(sid);
+                if (window.openSubeventModalForEdit) window.openSubeventModalForEdit(sid);
             } else {
                 // Redirigir al detalle del evento padre y abrir edición allí
-                const sub = (subeventosCache || []).find(s => s.id === sid);
+                const sub = (window._subeventosCache ? window._subeventosCache() : (subeventosCache || [])).find(s => s.id === sid);
                 const parentId = sub ? sub.eventoId : null;
                 const url = `eventoDetalle.html?id=${parentId || ''}&editSubeventId=${sid}`;
                 window.location.href = url;
             }
         }
-        if (target.is('.btn-delete-subevent')) handleDeleteSubevent(target.data('id'));
+        if (target.is('.btn-delete-subevent')) { if (window.handleDeleteSubevent) window.handleDeleteSubevent(target.data('id')); }
         
         // Confirmation Modal
         if (target.is('#confirm-modal-btn')) {
@@ -1035,14 +887,14 @@ document.addEventListener('DOMContentLoaded', () => {
             db.collection(collectionName).doc(itemToDeleteId).delete()
                 .then(() => {
                     showAlert(`${itemToDeleteType.charAt(0).toUpperCase() + itemToDeleteType.slice(1)} eliminado con éxito.`, 'success');
-                    if (itemToDeleteType === 'evento') {
-                        loadEvents();
-                    } else if (itemToDeleteType === 'subevento') {
-                        const eventId = new URLSearchParams(window.location.search).get('id');
-                        loadSubeventos(eventId);
-                    } else if (itemToDeleteType === 'tipo') {
-                        loadEventTypes();
-                    }
+                            if (itemToDeleteType === 'evento') {
+                                loadEvents();
+                            } else if (itemToDeleteType === 'subevento') {
+                                const eventId = new URLSearchParams(window.location.search).get('id');
+                                if (window.loadSubeventos) window.loadSubeventos(eventId);
+                            } else if (itemToDeleteType === 'tipo') {
+                                loadEventTypes();
+                            }
                 })
                 .catch(error => {
                     console.error(`Error deleting ${itemToDeleteType}: `, error);
@@ -1060,11 +912,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = $(e.target);
         if (form.is('#event-form')) handleEventFormSubmit(e);
         if (form.is('#type-form')) handleTypeFormSubmit(e);
-        if (form.is('#subevent-form')) handleSubeventFormSubmit(e);
+        if (form.is('#subevent-form')) {
+            if (window.handleSubeventFormSubmit) window.handleSubeventFormSubmit(e);
+            else console.warn('handleSubeventFormSubmit no disponible');
+        }
     });
 
     $(document).on('change', '#type-filter', function() {
         // Filtrar la vista de eventos por tipo seleccionado
+        renderViews();
+        if (eventosDataTable) eventosDataTable.responsive.recalc();
+    });
+
+    $(document).on('input', '#search-input', function() {
+        // Búsqueda por título/descripcion
         renderViews();
         if (eventosDataTable) eventosDataTable.responsive.recalc();
     });
