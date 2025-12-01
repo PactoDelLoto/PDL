@@ -30,17 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 {
                     data: 'id', title: 'Acciones', orderable: false, searchable: false, className: 'text-center',
                     render: (data, type, row) => {
-                        if (row.kind === 'actividad') {
-                            return `
-                                <a href="subeventoDetalle.html?id=${row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
-                                <button class="btn btn-sm btn-outline-primary btn-edit-subevent admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-sm btn-outline-danger btn-delete-subevent admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
-                            `;
-                        }
+                        // Esta tabla sólo muestra subeventos (actividades), así que siempre mostramos los botones de actividad
                         return `
-                            <a href="eventoDetalle.html?id=${data}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
-                            <button class="btn btn-sm btn-outline-primary btn-edit-event admin-controls" data-id="${data}" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-sm btn-outline-danger btn-delete-event admin-controls" data-id="${data}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            <a href="subeventoDetalle.html?id=${row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                            <button class="btn btn-sm btn-outline-primary btn-edit-subevent admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger btn-delete-subevent admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
                         `;
                     }
                 }
@@ -82,6 +76,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (subeventForm) subeventForm.reset();
         const idEl = document.getElementById('subevent-id'); if (idEl) idEl.value = '';
         const titleEl = document.getElementById('subevent-modal-title'); if (titleEl) titleEl.textContent = 'Crear Nueva Actividad';
+        // Asegurar que el form contiene el id del evento padre (si viene en la URL)
+        try {
+            const parentInputId = 'subevent-parent-id';
+            let parentInput = document.getElementById(parentInputId);
+            if (!parentInput && subeventForm) {
+                parentInput = document.createElement('input');
+                parentInput.type = 'hidden';
+                parentInput.id = parentInputId;
+                parentInput.name = parentInputId;
+                subeventForm.appendChild(parentInput);
+            }
+            if (parentInput) {
+                const parentId = new URLSearchParams(window.location.search).get('id') || '';
+                parentInput.value = parentId;
+            }
+        } catch(e) { console.warn('No se pudo setear parent id en create modal', e); }
+
         if (subeventModal) subeventModal.show();
     }
 
@@ -127,6 +138,21 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 console.warn('No se pudo prellenar fecha de publicación del subevento:', e);
             }
+            // Asegurar que el form contiene el id del evento padre del subevento editado
+            try {
+                const parentInputId = 'subevent-parent-id';
+                let parentInput = document.getElementById(parentInputId);
+                if (!parentInput && subeventForm) {
+                    parentInput = document.createElement('input');
+                    parentInput.type = 'hidden';
+                    parentInput.id = parentInputId;
+                    parentInput.name = parentInputId;
+                    subeventForm.appendChild(parentInput);
+                }
+                if (parentInput) {
+                    parentInput.value = subevento.eventoId || '';
+                }
+            } catch(e) { console.warn('No se pudo setear parent id en edit modal', e); }
             if (subeventModal) subeventModal.show();
         }
     }
@@ -191,8 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const currentUser = auth.currentUser;
         if (!currentUser) return window.showAlert ? window.showAlert('Debes iniciar sesión para esta acción.', 'danger') : null;
-
-        const eventId = new URLSearchParams(window.location.search).get('id');
+        // Obtener evento padre ya sea desde campo oculto o desde la URL
+        const parentInput = document.getElementById('subevent-parent-id');
+        const eventId = (parentInput && parentInput.value) ? parentInput.value : (new URLSearchParams(window.location.search).get('id'));
         const subeventIdEl = document.getElementById('subevent-id');
         const subeventId = subeventIdEl ? subeventIdEl.value : '';
         const publicacionVal = document.getElementById('subevent-fechaPublicacion') ? document.getElementById('subevent-fechaPublicacion').value : '';

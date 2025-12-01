@@ -868,10 +868,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (window.openSubeventModalForEdit) window.openSubeventModalForEdit(sid);
             } else {
                 // Redirigir al detalle del evento padre y abrir edición allí
-                const sub = (window._subeventosCache ? window._subeventosCache() : (subeventosCache || [])).find(s => s.id === sid);
+                const sub = (window._subeventosCache ? window._subeventosCache() : (typeof subeventosCache !== 'undefined' ? subeventosCache : [])).find(s => s.id === sid);
                 const parentId = sub ? sub.eventoId : null;
-                const url = `eventoDetalle.html?id=${parentId || ''}&editSubeventId=${sid}`;
-                window.location.href = url;
+                if (parentId) {
+                    window.location.href = `eventoDetalle.html?id=${parentId}&editSubeventId=${sid}`;
+                } else {
+                    // Si no lo tenemos en cache, obtener el documento desde Firestore y redirigir usando su eventoId
+                    db.collection('subeventos').doc(sid).get()
+                        .then(doc => {
+                            const pid = doc.exists ? (doc.data().eventoId || '') : '';
+                            window.location.href = `eventoDetalle.html?id=${pid}&editSubeventId=${sid}`;
+                        })
+                        .catch(err => {
+                            console.error('Error fetching subevento parent for redirect:', err);
+                            showAlert('No se pudo localizar la actividad para editarla. Intenta de nuevo.', 'danger');
+                        });
+                }
             }
         }
         if (target.is('.btn-delete-subevent')) { if (window.handleDeleteSubevent) window.handleDeleteSubevent(target.data('id')); }
@@ -912,10 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = $(e.target);
         if (form.is('#event-form')) handleEventFormSubmit(e);
         if (form.is('#type-form')) handleTypeFormSubmit(e);
-        if (form.is('#subevent-form')) {
-            if (window.handleSubeventFormSubmit) window.handleSubeventFormSubmit(e);
-            else console.warn('handleSubeventFormSubmit no disponible');
-        }
+        // El envío de '#subevent-form' lo gestiona `subeventosController.js`.
     });
 
     $(document).on('change', '#type-filter', function() {
