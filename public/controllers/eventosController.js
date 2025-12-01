@@ -28,6 +28,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const typeFilterSelect = document.getElementById('type-filter');
     const eventTypeSelect = document.getElementById('event-tipo');
     const subeventTipoSelect = document.getElementById('subevent-tipo');
+    // Filtros de vista: mostrar eventos / actividades
+    const filterShowEventsEl = document.getElementById('filter-show-events');
+    const filterShowActivitiesEl = document.getElementById('filter-show-activities');
+    // Campos nuevos para eventos continuos
+    const eventContinuoCheckbox = document.getElementById('event-continuo');
+    const eventFechaInicioEl = document.getElementById('event-fechaInicio');
+    const eventFechaFinEl = document.getElementById('event-fechaFin');
+    const eventFechaCol = document.getElementById('event-fecha-col');
+    const eventHoraCol = document.getElementById('event-hora-col');
+    const eventFechaEl = document.getElementById('event-fecha');
+    const eventHoraEl = document.getElementById('event-hora');
 
     // --- DATATABLES ---
     let eventosDataTable, subeventosDataTable;
@@ -82,6 +93,30 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, '&#39;');
     }
 
+    function toggleEventContinuoUI() {
+        try {
+            const continuo = eventContinuoCheckbox && eventContinuoCheckbox.checked;
+            if (eventFechaCol) eventFechaCol.style.display = continuo ? 'none' : 'block';
+            if (eventHoraCol) eventHoraCol.style.display = continuo ? 'none' : 'block';
+            if (eventFechaInicioEl) eventFechaInicioEl.parentElement.style.display = continuo ? 'block' : 'none';
+            if (eventFechaFinEl) eventFechaFinEl.parentElement.style.display = continuo ? 'block' : 'none';
+            if (eventFechaEl) eventFechaEl.required = !continuo;
+            if (eventHoraEl) eventHoraEl.required = !continuo;
+            if (eventFechaInicioEl) eventFechaInicioEl.required = !!continuo;
+            if (eventFechaFinEl) eventFechaFinEl.required = !!continuo;
+            if (continuo) {
+                // limpiar fecha/hora para evitar valores inconsistentes
+                if (eventFechaEl) eventFechaEl.value = '';
+                if (eventHoraEl) eventHoraEl.value = '';
+            } else {
+                if (eventFechaInicioEl) eventFechaInicioEl.value = '';
+                if (eventFechaFinEl) eventFechaFinEl.value = '';
+            }
+        } catch (e) {
+            // noop
+        }
+    }
+
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         if (user) {
@@ -106,6 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (path.includes('eventoDetalle.html')) {
             loadEventDetails();
+        } else if (path.includes('subeventoDetalle.html')) {
+            loadSubeventDetails();
         } else if (path.includes('eventos.html')) {
             initDataTable();
             // Cargar eventos y todas las actividades (subeventos) antes de renderizar
@@ -142,7 +179,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadEvents() {
         try {
             const snapshot = await db.collection('eventos').orderBy('fecha', 'desc').get();
-            eventosCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            eventosCache = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    fechaPublicacion: data.fechaPublicacion && data.fechaPublicacion.toDate ? data.fechaPublicacion.toDate() : (data.fechaPublicacion || null)
+                };
+            });
             renderViews();
         } catch (error) {
             console.error("Error loading events:", error);
@@ -163,8 +207,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 {
                     data: null, title: 'Fecha y Hora',
                     render: (data) => {
-                        const fecha = new Date((data.fecha || '') + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                        return `${fecha} ${data.hora || ''}`;
+                        try {
+                            if (data.continuo) {
+                                const start = data.fechaInicio ? new Date((data.fechaInicio || '') + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+                                const end = data.fechaFin ? new Date((data.fechaFin || '') + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+                                return `${start}${end ? ' — ' + end : ''}`;
+                            }
+                            const fecha = data.fecha ? new Date((data.fecha || '') + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+                            return `${fecha} ${data.hora || ''}`;
+                        } catch (e) {
+                            return '';
+                        }
                     }
                 },
                 { data: 'lugar', title: 'Lugar', render: (data) => {
@@ -182,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     render: (data, type, row) => {
                         if (row.kind === 'actividad') {
                             return `
-                                <a href="eventoDetalle.html?id=${row.eventoId || row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                                <a href="subeventoDetalle.html?id=${row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
                                 <button class="btn btn-sm btn-outline-primary btn-edit-subevent admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
                                 <button class="btn btn-sm btn-outline-danger btn-delete-subevent admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
                             `;
@@ -225,14 +278,22 @@ document.addEventListener('DOMContentLoaded', () => {
             let fechaStr = '';
             let horaStr = '';
             if (kind === 'evento') {
-                fechaStr = new Date((item.fecha || '') + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-                horaStr = item.hora || '';
+                if (item.continuo) {
+                    const start = item.fechaInicio ? new Date((item.fechaInicio || '') + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                    const end = item.fechaFin ? new Date((item.fechaFin || '') + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                    fechaStr = start + (end ? ' — ' + end : '');
+                    horaStr = '';
+                } else {
+                    fechaStr = new Date((item.fecha || '') + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                    horaStr = item.hora || '';
+                }
             } else {
                 fechaStr = new Date((item.fechaEvento || '') + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
                 horaStr = item.horaEvento || '';
             }
             const badge = kind === 'evento' ? `<span class="badge bg-primary">Evento</span>` : `<span class="badge bg-success">Actividad</span>`;
-            const viewHref = kind === 'evento' ? `eventoDetalle.html?id=${item.id}` : `eventoDetalle.html?id=${item.eventoId || item.id}`;
+            // Enlace directo: eventos -> eventoDetalle, actividades -> subeventoDetalle
+            const viewHref = kind === 'evento' ? `eventoDetalle.html?id=${item.id}` : `subeventoDetalle.html?id=${item.id}`;
             col.innerHTML = `
                 <div class="card h-100 shadow-sm">
                     <img src="${imagen}" class="card-img-top">
@@ -259,21 +320,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function applyEventFilterAndRender() {
         const selectedType = typeFilterSelect ? typeFilterSelect.value : '';
+        const showEvents = filterShowEventsEl ? filterShowEventsEl.checked : true;
+        const showActivities = filterShowActivitiesEl ? filterShowActivitiesEl.checked : true;
         if (!selectedType) {
             // sin filtro: mostrar todos los eventos y actividades futuras
             const now = new Date();
-            const upcomingEvents = eventosCache.filter(ev => {
-                if (!ev.fecha) return false;
-                const dt = new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00'));
-                return dt > now;
-            });
-            const upcomingActivities = (subeventosCache || []).filter(s => {
-                if (!s.fechaEvento) return false;
-                const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
-                // si viewer, solo mostrar publicadas
-                if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > now) return false;
-                return dt > now;
-            });
+            let upcomingEvents = [];
+            let upcomingActivities = [];
+
+            if (showEvents) {
+                upcomingEvents = eventosCache.filter(ev => {
+                    try {
+                        // Si el evento es continuo, considerarlo si su fechaFin aún no ha pasado
+                        if (ev.continuo) {
+                            if (!ev.fechaFin) return false;
+                            const endDt = new Date((ev.fechaFin || '') + 'T23:59:59');
+                            return endDt > now;
+                        }
+                        // Eventos normales: comprobar fecha + hora
+                        if (!ev.fecha) return false;
+                        const dt = new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00'));
+                        return dt > now;
+                    } catch (e) {
+                        return false;
+                    }
+                });
+            }
+
+            if (showActivities) {
+                upcomingActivities = (subeventosCache || []).filter(s => {
+                    if (!s.fechaEvento) return false;
+                    const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
+                    // si viewer, solo mostrar publicadas
+                    if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > now) return false;
+                    return dt > now;
+                });
+            }
 
             // Construir listados para galería y tabla
             const combinedForGallery = [...upcomingEvents.map(e => ({ kind: 'evento', item: e })), ...upcomingActivities.map(s => ({ kind: 'actividad', item: s }))];
@@ -281,8 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (eventosDataTable) {
                 const tableRows = [];
-                upcomingEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, lugar: ev.lugar, kind: 'evento' }));
-                upcomingActivities.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId }));
+                if (showEvents) upcomingEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, fechaInicio: ev.fechaInicio, fechaFin: ev.fechaFin, continuo: !!ev.continuo, lugar: ev.lugar, kind: 'evento' }));
+                if (showActivities) upcomingActivities.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId }));
                 eventosDataTable.clear().rows.add(tableRows).draw();
             }
             return;
@@ -305,16 +387,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 return dt > nowDate;
             });
             const eventIds = new Set(activityFiltered.map(s => s.eventoId).filter(Boolean));
-            const filteredEvents = eventosCache.filter(ev => eventIds.has(ev.id) && (new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00')) > nowDate));
-
+            const filteredEvents = eventosCache.filter(ev => {
+                if (!eventIds.has(ev.id)) return false;
+                if (ev.continuo) {
+                    if (!ev.fechaFin) return false;
+                    return new Date((ev.fechaFin || '') + 'T23:59:59') > nowDate;
+                }
+                return (new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00')) > nowDate);
+            });
             // Construir combinados
-            const combinedForGallery = [...filteredEvents.map(e => ({ kind: 'evento', item: e })), ...activityFiltered.map(s => ({ kind: 'actividad', item: s }))];
+            const combinedForGallery = [
+                ...(showEvents ? filteredEvents.map(e => ({ kind: 'evento', item: e })) : []),
+                ...(showActivities ? activityFiltered.map(s => ({ kind: 'actividad', item: s })) : [])
+            ];
             renderGallery(combinedForGallery);
 
             if (eventosDataTable) {
                 const tableRows = [];
-                filteredEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, lugar: ev.lugar, kind: 'evento' }));
-                activityFiltered.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId }));
+                if (showEvents) filteredEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, fechaInicio: ev.fechaInicio, fechaFin: ev.fechaFin, continuo: !!ev.continuo, lugar: ev.lugar, kind: 'evento' }));
+                if (showActivities) activityFiltered.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId }));
                 eventosDataTable.clear().rows.add(tableRows).draw();
             }
         } catch (error) {
@@ -334,8 +425,18 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('event-id').value = id;
             document.getElementById('event-modal-title').textContent = 'Editar Evento';
             document.getElementById('event-titulo').value = evento.titulo;
-            document.getElementById('event-fecha').value = evento.fecha;
-            document.getElementById('event-hora').value = evento.hora;
+            // Continuo / rango de fechas
+            try {
+                if (document.getElementById('event-continuo')) document.getElementById('event-continuo').checked = !!evento.continuo;
+                if (document.getElementById('event-fechaInicio')) document.getElementById('event-fechaInicio').value = evento.fechaInicio || '';
+                if (document.getElementById('event-fechaFin')) document.getElementById('event-fechaFin').value = evento.fechaFin || '';
+                document.getElementById('event-fecha').value = evento.fecha || '';
+                document.getElementById('event-hora').value = evento.hora || '';
+                // Ajustar UI según el checkbox
+                toggleEventContinuoUI();
+            } catch (e) {
+                console.warn('No se pudo prellenar campos de fecha/continuo:', e);
+            }
             document.getElementById('event-lugar').value = evento.lugar;
             document.getElementById('event-descripcion').value = evento.descripcion;
             document.getElementById('event-imagen').value = evento.imagen;
@@ -362,14 +463,37 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleEventFormSubmit(e) {
         e.preventDefault();
         const id = document.getElementById('event-id').value;
+        const titulo = document.getElementById('event-titulo').value;
+        const descripcion = document.getElementById('event-descripcion').value;
+        const lugar = document.getElementById('event-lugar').value;
+        const imagen = document.getElementById('event-imagen').value;
+        const continuo = document.getElementById('event-continuo') ? document.getElementById('event-continuo').checked : false;
+        const fecha = document.getElementById('event-fecha') ? document.getElementById('event-fecha').value : '';
+        const hora = document.getElementById('event-hora') ? document.getElementById('event-hora').value : '';
+        const fechaInicio = document.getElementById('event-fechaInicio') ? document.getElementById('event-fechaInicio').value : '';
+        const fechaFin = document.getElementById('event-fechaFin') ? document.getElementById('event-fechaFin').value : '';
+
         const eventoData = {
-            titulo: document.getElementById('event-titulo').value,
-            descripcion: document.getElementById('event-descripcion').value,
-            fecha: document.getElementById('event-fecha').value,
-            hora: document.getElementById('event-hora').value,
-            lugar: document.getElementById('event-lugar').value,
-            imagen: document.getElementById('event-imagen').value,
+            titulo,
+            descripcion,
+            lugar,
+            imagen,
+            continuo: !!continuo
         };
+
+        if (continuo) {
+            eventoData.fechaInicio = fechaInicio || null;
+            eventoData.fechaFin = fechaFin || null;
+            // Remove single fecha/hora
+            eventoData.fecha = null;
+            eventoData.hora = null;
+        } else {
+            eventoData.fecha = fecha || null;
+            eventoData.hora = hora || null;
+            eventoData.fechaInicio = null;
+            eventoData.fechaFin = null;
+        }
+
         // fechaPublicacion
         try {
             const pubVal = document.getElementById('event-publicacion')?.value;
@@ -379,6 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.warn('No se pudo parsear fechaPublicacion:', e);
         }
+
         try {
             if (id) {
                 await db.collection('eventos').doc(id).update(eventoData);
@@ -415,7 +540,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cargar datos del evento
             const eventoDoc = await db.collection('eventos').doc(eventId).get();
             if (!eventoDoc.exists) return showAlert('Evento no encontrado.', 'warning');
-            const evento = { id: eventoDoc.id, ...eventoDoc.data() };
+            const raw = eventoDoc.data();
+            const evento = {
+                id: eventoDoc.id,
+                ...raw,
+                fechaPublicacion: raw.fechaPublicacion && typeof raw.fechaPublicacion.toDate === 'function' ? raw.fechaPublicacion.toDate() : (raw.fechaPublicacion || null)
+            };
 
             // Cargar tipos y conteos
             const snapshot = await db.collection('tipoSubevento').orderBy('nombre').get();
@@ -523,21 +653,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 {
                     data: 'id', title: 'Acciones',
                     orderable: false, searchable: false, className: 'text-center',
-                    render: (id, type, row) => {
-                        let buttons = '';
-                        if (userRole === 'admin' || (currentUser && row.creador === currentUser.uid)) {
-                            buttons += `<button class="btn btn-sm btn-outline-primary btn-edit-subevent" data-id="${id}"><i class="fas fa-edit"></i></button> `;
-                            buttons += `<button class="btn btn-sm btn-outline-danger btn-delete-subevent" data-id="${id}"><i class="fas fa-trash"></i></button>`;
+                    render: (data, type, row) => {
+                        if (row.kind === 'actividad') {
+                            return `
+                                <a href="subeventoDetalle.html?id=${row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                                <button class="btn btn-sm btn-outline-primary btn-edit-subevent admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-outline-danger btn-delete-subevent admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            `;
                         }
-                        return buttons;
+                        return `
+                            <a href="eventoDetalle.html?id=${data}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                            <button class="btn btn-sm btn-outline-primary btn-edit-event admin-controls" data-id="${data}" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger btn-delete-event admin-controls" data-id="${data}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        `;
                     }
+                    },
+                ],
+                drawCallback: function(settings) {
+                    updateUIVisibility();
                 }
-            ],
-            drawCallback: function(settings) {
-                updateUIVisibility();
-            }
-        });
-    }
+            });
+        }
 
     function openSubeventModalForCreate() {
         if (subeventForm) subeventForm.reset();
@@ -562,11 +698,71 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('subevent-lugar').value = subevento.lugar;
             document.getElementById('subevent-imagen').value = subevento.imagen;
             
-            const d = new Date(subevento.fechaPublicacion);
-            const dateString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000 )).toISOString().slice(0, 16);
-            document.getElementById('subevent-fechaPublicacion').value = dateString;
+            // Prefill fechaPublicacion handling Timestamp or Date or string
+            try {
+                const fp = subevento.fechaPublicacion;
+                let d = null;
+                if (fp && typeof fp.toDate === 'function') d = fp.toDate();
+                else if (fp instanceof Date) d = fp;
+                else if (fp) d = new Date(fp);
+                if (d && !isNaN(d.getTime())) {
+                    const dateString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000 )).toISOString().slice(0, 16);
+                    document.getElementById('subevent-fechaPublicacion').value = dateString;
+                }
+            } catch (e) {
+                console.warn('No se pudo prellenar fecha de publicación del subevento:', e);
+            }
+            if (subeventModal) subeventModal.show();
+        }
+    }
 
-            if(subeventModal) subeventModal.show();
+    // ================================================
+    // SUBEVENT DETAIL PAGE (subeventoDetalle.html)
+    // ================================================
+
+    async function loadSubeventDetails() {
+        const subId = new URLSearchParams(window.location.search).get('id');
+        if (!subId) return showAlert('Actividad no especificada.', 'warning');
+        try {
+            const doc = await db.collection('subeventos').doc(subId).get();
+            if (!doc.exists) return showAlert('Actividad no encontrada.', 'warning');
+            const sub = { id: doc.id, ...doc.data() };
+
+            // Si no tenemos tipos cargados, loadEventTypes ya lo llamó en initPage
+            renderTypesList();
+
+            // Rellenar vista
+            const titleEl = document.getElementById('subevent-detail-title');
+            const descEl = document.getElementById('subevent-detail-description');
+            const dateEl = document.getElementById('subevent-detail-date');
+            const placeEl = document.getElementById('subevent-detail-place');
+            const tipoEl = document.getElementById('subevent-detail-tipo');
+            const imgEl = document.getElementById('subevent-detail-image');
+            const parentEl = document.getElementById('subevent-detail-parent');
+
+            if (titleEl) titleEl.textContent = sub.titulo || 'Sin título';
+            if (descEl) descEl.textContent = sub.descripcion || '';
+            if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${(sub.fechaEvento||'')} ${sub.horaEvento ? 'a las ' + sub.horaEvento : ''}`;
+            if (placeEl) placeEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${escapeHtml(sub.lugar || '')}`;
+            if (tipoEl) tipoEl.textContent = tiposCache.find(t => t.id === sub.tipoEventoId)?.nombre || 'Desconocido';
+            if (imgEl) {
+                const src = sub.imagen && sub.imagen.trim() ? sub.imagen.trim() : 'https://via.placeholder.com/1200x400?text=Sin+imagen';
+                imgEl.src = src;
+                imgEl.alt = sub.titulo || 'Imagen de la actividad';
+                imgEl.onerror = function() { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
+            }
+            if (parentEl) {
+                if (sub.eventoId) {
+                    const evDoc = await db.collection('eventos').doc(sub.eventoId).get();
+                    if (evDoc.exists) {
+                        const ev = evDoc.data();
+                        parentEl.innerHTML = `Evento padre: <a href="eventoDetalle.html?id=${sub.eventoId}">${escapeHtml(ev.titulo || 'Ver evento')}</a>`;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading subevent detail:', error);
+            showAlert('Error al cargar la actividad.', 'danger');
         }
     }
 
@@ -791,6 +987,9 @@ document.addEventListener('DOMContentLoaded', () => {
              if (eventForm) eventForm.reset();
             $('#event-id').val('');
             $('#event-modal-title').text('Crear Nuevo Evento');
+            // Asegurar que la UI del checkbox de 'continuo' esté en estado inicial
+            try { if (document.getElementById('event-continuo')) document.getElementById('event-continuo').checked = false; } catch(e){}
+            try { toggleEventContinuoUI(); } catch(e){}
             if(eventModal) eventModal.show();
         }
         if (target.is('#manage-types-btn')) if(manageTypesModal) manageTypesModal.show();
@@ -866,6 +1065,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     $(document).on('change', '#type-filter', function() {
         // Filtrar la vista de eventos por tipo seleccionado
+        renderViews();
+        if (eventosDataTable) eventosDataTable.responsive.recalc();
+    });
+
+    $(document).on('change', '#event-continuo', function() {
+        try { toggleEventContinuoUI(); } catch (e) { /* noop */ }
+    });
+
+    // Checkboxes para mostrar eventos / actividades
+    $(document).on('change', '#filter-show-events, #filter-show-activities', function() {
         renderViews();
         if (eventosDataTable) eventosDataTable.responsive.recalc();
     });

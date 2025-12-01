@@ -55,6 +55,16 @@
                     <select id="type-filter" class="form-select">
                         <option value="">Filtrar por tipo</option>
                     </select>
+                    <div class="mt-2">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="filter-show-events" checked>
+                            <label class="form-check-label" for="filter-show-events">Eventos</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="filter-show-activities" checked>
+                            <label class="form-check-label" for="filter-show-activities">Actividades</label>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Switch de Vista -->
@@ -129,13 +139,29 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="event-continuo">
+                                <label class="form-check-label" for="event-continuo">Evento continuo (rango de fechas)</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="event-fecha-col">
                             <label class="form-label">Fecha del Evento</label>
                             <input type="date" class="form-control" id="event-fecha" required>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3" id="event-hora-col">
                             <label class="form-label">Hora del Evento</label>
                             <input type="time" class="form-control" id="event-hora" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="event-fechaInicio-col" style="display:none;">
+                            <label class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" id="event-fechaInicio">
+                        </div>
+                        <div class="col-md-6 mb-3" id="event-fechaFin-col" style="display:none;">
+                            <label class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" id="event-fechaFin">
                         </div>
                     </div>
 
@@ -184,7 +210,7 @@
     </div>
 </div>
 
-<!-- Modal para Tipos de Subeventos -->
+<!-- Modal para Tipos de Actividades -->
 <div class="modal fade" id="manage-types-modal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">

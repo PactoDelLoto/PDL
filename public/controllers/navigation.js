@@ -7,8 +7,20 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => response.text())
         .then(html => {
             navbarContainer.innerHTML = html;
-            // Una vez cargado el navbar, podemos escuchar el estado de autenticación
-            setupAuthUI(); 
+            // Esperar a que Firebase esté inicializado antes de usarlo (evita app/no-app)
+            const ensureFirebaseReady = (cb, attempts = 0) => {
+                try {
+                    if (window.firebase && (firebase.apps && firebase.apps.length > 0)) return cb();
+                } catch (e) {
+                    // ignore
+                }
+                if (attempts > 50) {
+                    console.error('Firebase no se inicializó después de esperar.');
+                    return;
+                }
+                setTimeout(() => ensureFirebaseReady(cb, attempts + 1), 100);
+            };
+            ensureFirebaseReady(setupAuthUI);
         })
         .catch(error => console.error('Error al cargar el navbar:', error));
 
