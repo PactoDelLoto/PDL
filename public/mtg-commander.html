@@ -1,0 +1,569 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTG Commander - Pacto del Loto</title>
+
+    <!-- Metadatos y Favicon -->
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+
+    <!-- Estilos CSS -->
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+
+    <!-- Fuentes Externas -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet" />
+
+    <script src="/jquery-3.7.1.min.js"></script>
+
+    <style>
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: 500;
+            padding: 1rem 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #2c2c54;
+            border-bottom: 3px solid #f8c291;
+            background: transparent;
+        }
+
+        .card-custom {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05);
+            background: #ffffff;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-premium {
+            background-color: #2c2c54;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-premium:hover {
+            background-color: #f8c291;
+            color: #2c2c54;
+        }
+
+        .badge-draft {
+            background-color: #ffeaa7;
+            color: #d63031;
+        }
+
+        .badge-progress {
+            background-color: #81ecec;
+            color: #0984e3;
+        }
+
+        .badge-finished {
+            background-color: #55efc4;
+            color: #00b894;
+        }
+
+        /* Layout de Mesas */
+        .pod-card {
+            border-left: 5px solid #2c2c54;
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .pod-header {
+            font-weight: bold;
+            color: #2c2c54;
+            border-bottom: 1px solid #e9ecef;
+            padding: 0.5rem 1rem;
+        }
+    </style>
+</head>
+
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+    <header>
+        <!-- El navbar se cargarÃ¡ aquÃ­ -->
+    </header>
+
+    <!-- Contenido restringido para socios -->
+    <main class="container my-5 pt-5 flex-grow-1" id="restricted-content" style="display: none;">
+
+        <!-- PestaÃ±as Principales -->
+        <ul class="nav nav-tabs mb-4 justify-content-center" id="commanderTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="torneos-tab" data-bs-toggle="tab" data-bs-target="#torneos-section"
+                    type="button" role="tab" aria-controls="torneos-section" aria-selected="true">
+                    <i class="fa-solid fa-trophy me-2"></i>Torneos
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="ligas-tab" data-bs-toggle="tab" data-bs-target="#ligas-section"
+                    type="button" role="tab" aria-controls="ligas-section" aria-selected="false">
+                    <i class="fa-solid fa-ranking-star me-2"></i>Clasificación de Liga
+                </button>
+            </li>
+        </ul>
+
+        <!-- Contenedores de las PestaÃ±as -->
+        <div class="tab-content" id="commanderTabsContent">
+
+            <!-- SECCIÃ“N DE TORNEOS -->
+            <div class="tab-pane fade show active" id="torneos-section" role="tabpanel" aria-labelledby="torneos-tab">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold text-dark m-0">Gestión de Torneos MTG Commander</h2>
+                    <button class="btn btn-premium admin-controls" id="btn-nuevo-torneo" style="display: none;">
+                        <i class="fa-solid fa-plus me-2"></i>Crear Torneo
+                    </button>
+                </div>
+
+                <!-- Lista de Torneos -->
+                <div class="row g-4" id="lista-torneos-container">
+                    <!-- Se carga dinÃ¡micamente -->
+                </div>
+
+                <!-- Vista de Gestión de un Torneo Activo (Oculta por defecto) -->
+                <div class="card card-custom p-4 mt-4" id="gestion-torneo-container" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+                        <div>
+                            <span class="badge badge-progress mb-2" id="gt-estado">En Curso</span>
+                            <h3 class="fw-bold m-0" id="gt-nombre">Nombre del Torneo</h3>
+                            <small class="text-muted" id="gt-detalles">Fecha - Evento asociado</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-secondary me-2" id="btn-cerrar-gestion">Volver a
+                                Torneos</button>
+                            <button class="btn btn-success admin-controls" id="btn-finalizar-torneo"
+                                style="display: none;">Finalizar Torneo</button>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Panel de Jugadores del Torneo -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card bg-light border-0 p-3 h-100 rounded-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="fw-bold m-0">
+                                        <i class="fa-solid fa-users me-2"></i>Jugadores
+                                        <span class="badge bg-primary ms-2 fs-6" id="gt-count-jugadores"
+                                            style="font-size:0.75rem !important;">0</span>
+                                    </h5>
+                                    <button class="btn btn-sm btn-outline-primary admin-controls"
+                                        id="btn-modal-jugadores" style="display: none;">
+                                        <i class="fa-solid fa-user-plus"></i> Gestionar
+                                    </button>
+                                </div>
+                                <ol class="list-group list-group-numbered" id="gt-lista-jugadores">
+                                    <!-- Carga dinÃ¡mica -->
+                                </ol>
+                            </div>
+                        </div>
+
+                        <!-- Panel de Rondas / Clasificación Interna -->
+                        <div class="col-lg-8">
+                            <ul class="nav nav-pills mb-3" id="gestionSubTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="rondas-tab" data-bs-toggle="pill"
+                                        data-bs-target="#rondas-sub-section" type="button" role="tab">Rondas</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="clasificacion-interna-tab" data-bs-toggle="pill"
+                                        data-bs-target="#clasificacion-interna-sub-section" type="button"
+                                        role="tab">Clasificación Parcial</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content" id="gestionSubTabsContent">
+                                <!-- Subsección de Rondas -->
+                                <div class="tab-pane fade show active" id="rondas-sub-section" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="fw-bold m-0">Rondas Generadas</h5>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-outline-danger admin-controls"
+                                                id="btn-deshacer-ronda" style="display: none;"
+                                                title="Elimina la Ãºltima ronda generada">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> Deshacer Ronda
+                                            </button>
+                                            <button class="btn btn-sm btn-primary admin-controls" id="btn-nueva-ronda"
+                                                style="display: none;">
+                                                <i class="fa-solid fa-plus me-1"></i> Nueva Ronda
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="rondas-container">
+                                        <!-- Mesas y emparejamientos dinÃ¡micos -->
+                                    </div>
+                                </div>
+
+                                <!-- Clasificación Parcial del Torneo -->
+                                <div class="tab-pane fade" id="clasificacion-interna-sub-section" role="tabpanel">
+                                    <h5 class="fw-bold mb-3">Posiciones del Torneo</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Pos.</th>
+                                                    <th>Jugador</th>
+                                                    <th class="text-center">Puntos</th>
+                                                    <th class="text-center"
+                                                        title="Buchholz: suma de puntos de tus rivales, usado para desempate">
+                                                        BH</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tabla-clasificacion-interna">
+                                                <!-- Puntuaciones temporales -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÃ“N DE LIGAS -->
+            <div class="tab-pane fade" id="ligas-section" role="tabpanel" aria-labelledby="ligas-tab">
+                <div class="card card-custom p-4">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+                        <div class="flex-grow-1">
+                            <div class="w-100">
+                                <label for="select-liga-activa" class="form-label fw-bold">Seleccionar Liga</label>
+                                <select id="select-liga-activa" class="form-select">
+                                    <option value="" disabled selected>Cargando ligas...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-outline-danger admin-controls mt-lg-0" id="btn-eliminar-liga"
+                                style="display: none;" disabled>
+                                <i class="fa-solid fa-trash me-2"></i>Eliminar Liga
+                            </button>
+                            <button class="btn btn-premium admin-controls mt-lg-0" id="btn-nueva-liga"
+                                style="display: none;">
+                                <i class="fa-solid fa-plus me-2"></i>Crear Liga
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Clasificación General de la Liga -->
+                    <h4 class="fw-bold mb-3"><i class="fa-solid fa-trophy text-warning me-2"></i>Clasificación General
+                    </h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" style="width: 10%;">Posición</th>
+                                    <th scope="col">Nombre del Jugador</th>
+                                    <th scope="col" style="width: 20%;" class="text-center">Puntos Totales</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-clasificacion-liga">
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">Selecciona una liga para ver su
+                                        Clasificación</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Modal para Crear/Editar Torneo -->
+    <div class="modal fade" id="modal-torneo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-torneo-titulo">Crear Nuevo Torneo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-torneo">
+                    <div class="modal-body">
+                        <input type="hidden" id="torneo-id">
+
+                        <div class="mb-3">
+                            <label for="torneo-nombre" class="form-label">Nombre del Torneo</label>
+                            <input type="text" class="form-control" id="torneo-nombre" required
+                                placeholder="Ej: Jornada 1: Commander Semanal">
+                        </div>
+                        <div class="mb-3">
+                            <label for="torneo-fecha" class="form-label">Fecha y Hora</label>
+                            <input type="datetime-local" class="form-control" id="torneo-fecha" required>
+                        </div>
+
+                        <hr>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="torneo-esLiga">
+                            <label class="form-check-label fw-bold" for="torneo-esLiga">
+                                Â¿Este torneo pertenece a una Liga?
+                            </label>
+                        </div>
+
+                        <div id="torneo-liga-bloque" style="display: none;">
+                            <div class="mb-3">
+                                <label for="torneo-liga" class="form-label">Seleccionar Liga *</label>
+                                <select id="torneo-liga" class="form-select">
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="torneo-independiente-bloque">
+                            <div class="mb-3">
+                                <label for="torneo-evento" class="form-label">Asociar a Evento General
+                                    (Opcional)</label>
+                                <select id="torneo-evento" class="form-select">
+                                    <option value="">Ninguno</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="torneo-subevento" class="form-label">Asociar a Actividad / Subevento
+                                (Opcional)</label>
+                            <select id="torneo-subevento" class="form-select" disabled>
+                                <option value="">Selecciona un evento o liga primero</option>
+                            </select>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-guardar-torneo">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Crear Liga -->
+    <div class="modal fade" id="modal-liga" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crear Nueva Liga</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-liga">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="liga-nombre" class="form-label">Nombre de la Liga</label>
+                            <input type="text" class="form-control" id="liga-nombre" required
+                                placeholder="Ej: Liga de Commander Invierno 2026">
+                        </div>
+                        <div class="mb-3">
+                            <label for="liga-evento" class="form-label">Asociar a Evento Obligatorio *</label>
+                            <select id="liga-evento" class="form-select select2-buscable" required>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Crear Liga</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Gestionar Jugadores -->
+    <div class="modal fade" id="modal-jugadores" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Gestionar Participantes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- AÃ±adir Jugador -->
+                        <div class="col-md-6 border-end">
+                            <h6 class="fw-bold mb-3">Agregar Jugador Registrado</h6>
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <input type="text" id="input-buscar-usuario" class="form-control"
+                                        placeholder="Buscar socio..." autocomplete="off" list="datalist-usuarios">
+                                    <datalist id="datalist-usuarios"></datalist>
+                                    <button class="btn btn-primary" id="btn-agregar-usuario-lista">AÃ±adir</button>
+                                </div>
+                                <small class="text-muted">Escribe el nombre del socio y selecciónalo de la
+                                    lista.</small>
+                            </div>
+                            <hr>
+                            <h6 class="fw-bold mb-3">Agregar Jugador Invitado</h6>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="input-nombre-invitado"
+                                    placeholder="Nombre completo del invitado">
+                                <button class="btn btn-success" id="btn-agregar-invitado-lista">AÃ±adir
+                                    Invitado</button>
+                            </div>
+                        </div>
+                        <!-- Jugadores Actuales -->
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3">Jugadores en el Torneo (<span id="count-jugadores">0</span>)</h6>
+                            <ul class="list-group" id="lista-gestion-jugadores"
+                                style="max-height: 300px; overflow-y: auto;">
+                                <!-- Carga dinÃ¡mica -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal"
+                        id="btn-confirmar-jugadores">Confirmar y Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Registrar Resultados de una Mesa -->
+    <div class="modal fade" id="modal-resultados" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar Resultados - Mesa <span id="modal-res-mesa">1</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-resultados">
+                    <div class="modal-body">
+                        <p class="small text-muted">Selecciona la posición/lugar obtenido por cada jugador en la mesa.
+                            Los puntos se calcularÃ¡n automÃ¡ticamente segÃºn las reglas oficiales de Commander (Mesa de
+                            4:
+                            4/3/2/1 pts; Mesa de 3: 4/2.5/1 pts).</p>
+                        <div id="resultados-jugadores-fields">
+                            <!-- Campos dinÃ¡micos -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Registrar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación GenÃ©rico -->
+    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">Confirmar Acción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmation-modal-body-text">Â¿EstÃ¡s seguro de que quieres realizar esta acción?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirm-action-btn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <!-- El footer se cargarÃ¡ aquÃ­ -->
+    </footer>
+
+    <!-- Scripts de Bootstrap y Firebase -->
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Controladores de la aplicación -->
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/torneosController.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- Comprobación de Acceso de Socio -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const restrictedContent = document.getElementById('restricted-content');
+
+            const checkAuth = () => {
+                firebase.auth().onAuthStateChanged(async user => {
+                    if (user) {
+                        const isSocio = await window.isUserSocio();
+                        const isAdmin = await window.isUserAdmin();
+
+                        if (isSocio || isAdmin) {
+                            // Mostrar contenedor principal
+                            restrictedContent.style.display = 'block';
+
+                            // Mostrar controles de administración si es admin
+                            if (isAdmin) {
+                                document.querySelectorAll('.admin-controls').forEach(el => {
+                                    el.style.display = 'inline-block';
+                                });
+                            }
+
+                            // Inicializar el controlador de torneos si existe
+                            if (window.initializeTorneosController) {
+                                window.initializeTorneosController(isAdmin);
+                            }
+                        } else {
+                            restrictedContent.innerHTML = `
+                                <div class="row justify-content-center">
+                                    <div class="col-md-8 text-center">
+                                        <div class="alert alert-danger shadow-sm p-4 rounded-3" role="alert">
+                                            <i class="fa-solid fa-circle-xmark fa-3x mb-3 text-danger"></i>
+                                            <h3 class="fw-bold">Acceso Denegado</h3>
+                                            <p class="mb-0">Lo sentimos, esta sección es exclusiva para socios registrados. Si crees que esto es un error, por favor contacta con la administración.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            restrictedContent.style.display = 'block';
+                        }
+                    } else {
+                        restrictedContent.innerHTML = `
+                                <div class="row justify-content-center">
+                                    <div class="col-md-8 text-center">
+                                        <div class="alert alert-warning shadow-sm p-4 rounded-3" role="alert">
+                                            <i class="fa-solid fa-triangle-exclamation fa-3x mb-3 text-warning"></i>
+                                            <h3 class="fw-bold">Inicio de Sesión Requerido</h3>
+                                            <p class="mb-3">Debes iniciar sesión para poder acceder a esta sección de Torneos.</p>
+                                            <a href="/login.html" class="btn btn-primary px-4 py-2">Iniciar Sesión</a>
+                                        </div>
+                                    </div>
+                                </div>
+                        `;
+                        restrictedContent.style.display = 'block';
+                    }
+                });
+            };
+
+            const interval = setInterval(() => {
+                if (window.firebase && firebase.auth) {
+                    clearInterval(interval);
+                    checkAuth();
+                }
+            }, 100);
+        });
+    </script>
+
+</body>
+
+</html>

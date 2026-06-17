@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmModalElement = document.getElementById('confirm-modal');
     const manageTypesModalElement = document.getElementById('manage-types-modal');
     const subeventModalElement = document.getElementById('subevent-modal');
-    
+
     const eventForm = document.getElementById('event-form');
     const typeForm = document.getElementById('type-form');
     const subeventForm = document.getElementById('subevent-form');
@@ -120,29 +120,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ================================================
+    // OBSERVADOR DE AUTENTICACIÓN (CORREGIDO ASÍNCRONO)
+    // ================================================
     auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         if (user) {
-            const userDoc = await db.collection('usuarios').doc(user.uid).get();
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                if (userData.isAdmin) userRole = 'admin';
-                else if (userData.isSocio) userRole = 'socio';
-                else userRole = 'viewer';
-            } else {
-                userRole = 'viewer';
+            try {
+                // Forzamos la espera real de la consulta de usuario
+                const userDoc = await db.collection('usuarios').doc(user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.isAdmin) userRole = 'admin';
+                    else if (userData.isSocio) userRole = 'socio';
+                    else userRole = 'viewer';
+                } else {
+                    userRole = 'viewer';
+                }
+            } catch (error) {
+                console.error("Error obteniendo documento de usuario:", error);
+                userRole = 'viewer'; // Fallback seguro ante fallos
             }
         } else {
             userRole = 'viewer';
         }
+
+        // AHORA SÍ: initPage se ejecuta ÚNICAMENTE tras haber resuelto el rol de forma secuencial
         initPage();
     });
-
-    function initPage() {
+    async function initPage() {
         const path = window.location.pathname;
-        loadEventTypes();
 
-        // Evitar colisiones: comprobar primero la ruta de subevento (subeventoDetalle contiene 'eventoDetalle' como substring)
+        // Esperamos a que carguen los tipos antes de intentar renderizar cualquier otra cosa
+        await loadEventTypes();
+
+        // Evitar colisiones: comprobar primero la ruta de subevento
         if (path.includes('subeventoDetalle.html')) {
             if (window.loadSubeventDetails) window.loadSubeventDetails();
         } else if (path.includes('eventoDetalle.html')) {
@@ -204,10 +216,12 @@ document.addEventListener('DOMContentLoaded', () => {
             language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
             responsive: true, pageLength: 10, data: [],
             columns: [
-                { data: 'titulo', title: 'Título', render: (data, type, row) => {
-                    const badge = row.kind === 'actividad' ? '<span class="badge bg-success ms-2">Actividad</span>' : '<span class="badge bg-primary ms-2">Evento</span>';
-                    return `${data || ''} ${badge}`;
-                }},
+                {
+                    data: 'titulo', title: 'Título', render: (data, type, row) => {
+                        const badge = row.kind === 'actividad' ? '<span class="badge bg-success ms-2">Actividad</span>' : '<span class="badge bg-primary ms-2">Evento</span>';
+                        return `${data || ''} ${badge}`;
+                    }
+                },
                 {
                     data: null, title: 'Fecha y Hora',
                     render: (data) => {
@@ -224,15 +238,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 },
-                { data: 'lugar', title: 'Lugar', render: (data) => {
-                    if (!data) return '';
-                    const full = String(data);
-                    if (full.length > 40) {
-                        const short = full.slice(0,40) + '…';
-                        return `<span title="${escapeHtml(full)}">${escapeHtml(short)}</span>`;
+                {
+                    data: 'lugar', title: 'Lugar', render: (data) => {
+                        if (!data) return '';
+                        const full = String(data);
+                        if (full.length > 40) {
+                            const short = full.slice(0, 40) + '…';
+                            return `<span title="${escapeHtml(full)}">${escapeHtml(short)}</span>`;
+                        }
+                        return escapeHtml(full);
                     }
-                    return escapeHtml(full);
-                } },
+                },
                 {
                     data: null, title: 'Acciones',
                     orderable: false, searchable: false, className: 'text-center',
@@ -252,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             ],
-            drawCallback: function(settings) {
+            drawCallback: function (settings) {
                 // This is the key fix: run visibility update AFTER the table is drawn.
                 updateUIVisibility();
             }
@@ -432,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-    
+
     function openEventModalForEdit(id) {
         const evento = eventosCache.find(e => e.id === id);
         if (evento && eventForm) {
@@ -464,14 +480,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (fp && fp.toDate) d = fp.toDate();
                     else if (fp) d = new Date(fp);
                     if (d && !isNaN(d.getTime())) {
-                        const dateString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,16);
+                        const dateString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
                         pubEl.value = dateString;
                     }
                 }
             } catch (e) {
                 console.warn('No se pudo prellenar fecha de publicación:', e);
             }
-            if(eventModal) eventModal.show();
+            if (eventModal) eventModal.show();
         }
     }
 
@@ -527,21 +543,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 await db.collection('eventos').add(eventoData);
                 showAlert('Evento creado con éxito', 'success');
             }
-            if(eventModal) eventModal.hide();
+            if (eventModal) eventModal.hide();
             loadEvents();
         } catch (error) {
             console.error('Error saving event: ', error);
             showAlert('Error al guardar el evento.', 'danger');
         }
     }
-    
+
     function handleDeleteEvent(id) {
         const eventToDelete = eventosCache.find(e => e.id === id);
         if (!eventToDelete) return;
         itemToDeleteId = id;
         itemToDeleteType = 'evento';
         document.getElementById('confirm-modal-body').textContent = `¿Estás seguro de que quieres eliminar el evento "${eventToDelete.titulo}"?`;
-        if(confirmModal) showModalOnTop(confirmModal, confirmModalElement);
+        if (confirmModal) showModalOnTop(confirmModal, confirmModalElement);
     }
 
     // ================================================
@@ -616,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const src = evento.imagen && evento.imagen.trim() ? evento.imagen.trim() : 'https://via.placeholder.com/1200x400?text=Sin+imagen';
                 imgEl.src = src;
                 imgEl.alt = evento.titulo || 'Imagen del evento';
-                imgEl.onerror = function() { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
+                imgEl.onerror = function () { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
             }
 
             if (window.initSubeventosDataTable) window.initSubeventosDataTable();
@@ -716,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nombre = document.getElementById('type-name').value.trim();
         if (!nombre) return showAlert('El nombre del tipo no puede estar vacío.', 'warning');
         try {
-                if (id) {
+            if (id) {
                 await db.collection('tipoSubevento').doc(id).update({ nombre });
                 showAlert('Tipo actualizado correctamente.', 'success');
             } else {
@@ -768,7 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.socio-controls').forEach(c => c.style.display = (isAdmin || isSocio) ? 'revert' : 'none');
         document.querySelectorAll('.admin-only').forEach(c => c.style.display = isAdmin ? 'block' : 'none');
     }
-    
+
     function switchView(view) {
         $('#eventos-gallery-container, #eventos-table-container').hide();
         $(`#eventos-${view}-container`).show();
@@ -778,8 +794,8 @@ document.addEventListener('DOMContentLoaded', () => {
             eventosDataTable.responsive.recalc();
         }
     }
-    
-    function showAlert(message, type = 'info', duration = 5000) { 
+
+    function showAlert(message, type = 'info', duration = 5000) {
         const container = document.getElementById('alert-container');
         if (!container) return;
         const alertId = `alert-${Date.now()}`;
@@ -795,7 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 new bootstrap.Alert(activeAlert).close();
             }
         }, duration);
-     }
+    }
 
     function showRetryAlert(message) {
         const container = document.getElementById('alert-container');
@@ -816,7 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // eliminar alerta y reintentar
                 const existing = document.getElementById('retry-alert');
                 if (existing) existing.remove();
-                try { if (window.loadSubeventDetails) window.loadSubeventDetails(); } catch(e) { console.error('Error reintentando loadSubeventDetails:', e); }
+                try { if (window.loadSubeventDetails) window.loadSubeventDetails(); } catch (e) { console.error('Error reintentando loadSubeventDetails:', e); }
             });
         }, 50);
     }
@@ -824,7 +840,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Exponer helpers para otros controladores (p.ej. subeventosController)
     window.showAlert = showAlert;
     window.showRetryAlert = showRetryAlert;
-    window.renderTypesList = () => { try { return renderTypesList(); } catch(e) { console.warn('renderTypesList no disponible aún', e); } };
+    window.renderTypesList = () => { try { return renderTypesList(); } catch (e) { console.warn('renderTypesList no disponible aún', e); } };
     window.escapeHtml = (typeof escapeHtml === 'function') ? escapeHtml : (s => s);
 
     // --- GLOBAL EVENT LISTENERS ---
@@ -836,15 +852,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Main Events Page
         if (target.is('#create-event-btn')) {
-             if (eventForm) eventForm.reset();
+            if (eventForm) eventForm.reset();
             $('#event-id').val('');
             $('#event-modal-title').text('Crear Nuevo Evento');
             // Asegurar que la UI del checkbox de 'continuo' esté en estado inicial
-            try { if (document.getElementById('event-continuo')) document.getElementById('event-continuo').checked = false; } catch(e){}
-            try { toggleEventContinuoUI(); } catch(e){}
-            if(eventModal) eventModal.show();
+            try { if (document.getElementById('event-continuo')) document.getElementById('event-continuo').checked = false; } catch (e) { }
+            try { toggleEventContinuoUI(); } catch (e) { }
+            if (eventModal) eventModal.show();
         }
-        if (target.is('#manage-types-btn')) if(manageTypesModal) manageTypesModal.show();
+        if (target.is('#manage-types-btn')) if (manageTypesModal) manageTypesModal.show();
         if (target.is('.btn-edit-event')) openEventModalForEdit(target.data('id'));
         if (target.is('.btn-delete-event')) handleDeleteEvent(target.data('id'));
         if (target.is('#view-gallery-btn')) switchView('gallery');
@@ -859,7 +875,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (manageTypesModal) manageTypesModal.show();
             }
         }
-        
+
         // Detail Page
         if (target.is('#create-subevent-btn')) { if (window.openSubeventModalForCreate) window.openSubeventModalForCreate(); }
         if (target.is('.btn-edit-subevent')) {
@@ -887,7 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         if (target.is('.btn-delete-subevent')) { if (window.handleDeleteSubevent) window.handleDeleteSubevent(target.data('id')); }
-        
+
         // Confirmation Modal
         if (target.is('#confirm-modal-btn')) {
             if (!itemToDeleteId || !itemToDeleteType) return;
@@ -899,27 +915,27 @@ document.addEventListener('DOMContentLoaded', () => {
             db.collection(collectionName).doc(itemToDeleteId).delete()
                 .then(() => {
                     showAlert(`${itemToDeleteType.charAt(0).toUpperCase() + itemToDeleteType.slice(1)} eliminado con éxito.`, 'success');
-                            if (itemToDeleteType === 'evento') {
-                                loadEvents();
-                            } else if (itemToDeleteType === 'subevento') {
-                                const eventId = new URLSearchParams(window.location.search).get('id');
-                                if (window.loadSubeventos) window.loadSubeventos(eventId);
-                            } else if (itemToDeleteType === 'tipo') {
-                                loadEventTypes();
-                            }
+                    if (itemToDeleteType === 'evento') {
+                        loadEvents();
+                    } else if (itemToDeleteType === 'subevento') {
+                        const eventId = new URLSearchParams(window.location.search).get('id');
+                        if (window.loadSubeventos) window.loadSubeventos(eventId);
+                    } else if (itemToDeleteType === 'tipo') {
+                        loadEventTypes();
+                    }
                 })
                 .catch(error => {
                     console.error(`Error deleting ${itemToDeleteType}: `, error);
                     showAlert(`No se pudo eliminar el ${itemToDeleteType}.`, 'danger');
                 })
                 .finally(() => {
-                    if(confirmModal) confirmModal.hide();
+                    if (confirmModal) confirmModal.hide();
                     itemToDeleteId = null;
                     itemToDeleteType = null;
                 });
         }
     });
-    
+
     $(document).on('submit', (e) => {
         const form = $(e.target);
         if (form.is('#event-form')) handleEventFormSubmit(e);
@@ -927,26 +943,110 @@ document.addEventListener('DOMContentLoaded', () => {
         // El envío de '#subevent-form' lo gestiona `subeventosController.js`.
     });
 
-    $(document).on('change', '#type-filter', function() {
-        // Filtrar la vista de eventos por tipo seleccionado
+    // ==========================================
+    // ESCUCHADORES DE EVENTOS GLOBALES (SUBMITS Y FILTROS)
+    // ==========================================
+    $(document).on('change', '#type-filter', function () {
         renderViews();
         if (eventosDataTable) eventosDataTable.responsive.recalc();
     });
 
-    $(document).on('input', '#search-input', function() {
-        // Búsqueda por título/descripcion
+    $(document).on('input', '#search-input', function () {
         renderViews();
         if (eventosDataTable) eventosDataTable.responsive.recalc();
     });
 
-    $(document).on('change', '#event-continuo', function() {
+    $(document).on('change', '#event-continuo', function () {
         try { toggleEventContinuoUI(); } catch (e) { /* noop */ }
     });
 
-    // Checkboxes para mostrar eventos / actividades
-    $(document).on('change', '#filter-show-events, #filter-show-activities', function() {
+    $(document).on('change', '#filter-show-events, #filter-show-activities', function () {
+        renderViews();
+    });
+
+    $(document).on('submit', (e) => {
+        const form = $(e.target);
+        if (form.is('#event-form')) handleEventFormSubmit(e);
+        if (form.is('#type-form')) handleTypeFormSubmit(e);
+    });// ==========================================
+    // ESCUCHADORES DE EVENTOS GLOBALES (SUBMITS Y FILTROS)
+    // ==========================================
+    $(document).on('change', '#type-filter', function () {
         renderViews();
         if (eventosDataTable) eventosDataTable.responsive.recalc();
     });
 
+    $(document).on('input', '#search-input', function () {
+        renderViews();
+        if (eventosDataTable) eventosDataTable.responsive.recalc();
+    });
+
+    $(document).on('change', '#event-continuo', function () {
+        try { toggleEventContinuoUI(); } catch (e) { /* noop */ }
+    });
+
+    $(document).on('change', '#filter-show-events, #filter-show-activities', function () {
+        renderViews();
+    });
+
+    $(document).on('submit', (e) => {
+        const form = $(e.target);
+        if (form.is('#event-form')) handleEventFormSubmit(e);
+        if (form.is('#type-form')) handleTypeFormSubmit(e);
+    });
+
+
+    // ==========================================
+    // ARRANQUE SEGURO Y CONTROLADO DE LA PÁGINA
+    // ==========================================
+    let isInitialized = false; // Bandera para evitar ejecuciones duplicadas recurrentes
+
+    auth.onAuthStateChanged(async (user) => {
+        // Si ya se ha inicializado en este ciclo, ignoramos llamadas duplicadas del Auth
+        if (isInitialized) return;
+
+        currentUser = user;
+
+        if (user) {
+            isInitialized = true; // Bloqueamos futuras ejecuciones concurrentes
+
+            // 1. Resolvemos el rol del usuario de forma estrictamente secuencial
+            try {
+                const userDoc = await db.collection('usuarios').doc(user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.isAdmin) userRole = 'admin';
+                    else if (userData.isSocio) userRole = 'socio';
+                    else userRole = 'viewer';
+                } else {
+                    userRole = 'viewer';
+                }
+            } catch (err) {
+                console.error("Error al obtener rol de usuario en el arranque:", err);
+                userRole = 'viewer'; // Fallback seguro
+            }
+
+            // 2. Ahora que el usuario existe y su rol está resuelto, ejecutamos initPage de forma segura
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventIdParam = urlParams.get('id');
+
+            if (eventIdParam) {
+                await initPage(eventIdParam);
+            } else {
+                await initPage();
+            }
+
+        } else {
+            // Si no hay usuario, redirigimos o forzamos el rol viewer de inmediato sin consultar a Firestore
+            isInitialized = true;
+            currentUser = null;
+            userRole = 'viewer';
+
+            // Opcional: Si tu aplicación requiere login obligatorio para ver detalles, descomenta la siguiente línea:
+            // window.location.href = '/login.html';
+
+            initPage();
+        }
+    });
 });
+

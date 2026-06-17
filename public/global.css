@@ -108,4 +108,22 @@ footer, .bg-dark {
     .card-link-wrapper:hover .fa-users {
       color: #000000; /* azul más vivo, ajusta al gusto */
     }
-        
+
+    /* Mostrar dropdown en hover para pantallas de escritorio (>= 992px) */
+    @media (min-width: 992px) {
+      .navbar-nav .nav-item.dropdown:hover .dropdown-menu {
+        display: block;
+        margin-top: 0;
+      }
+    }
+
+    /* Estilos premium para elementos bloqueados en el menú desplegable */
+    .dropdown-menu .dropdown-item.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+      cursor: not-allowed;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #adb5bd !important;
+    }

@@ -46,7 +46,17 @@ async function populateNavbarLinks(isLoggedIn) {
         const isAdmin = await window.isUserAdmin();
         const isSocio = await window.isUserSocio();
 
-        if (isSocio) {
+        if (isSocio || isAdmin) {
+            links.push({
+                text: 'Torneos',
+                isDropdown: true,
+                items: [
+                    { text: 'MTG Commander', href: '/mtg-commander.html', locked: false },
+                    { text: 'MTG Modern', href: '/mtg-modern.html', locked: true },
+                    { text: 'Star Wars Unlimited', href: '/starwars-unlimited.html', locked: true },
+                    { text: 'Riftbound', href: '/riftbound.html', locked: true }
+                ]
+            });
             links.push({ text: 'Inventario', href: '/inventario.html' });
         }
         if (isAdmin) {
@@ -56,11 +66,51 @@ async function populateNavbarLinks(isLoggedIn) {
 
     const navbarList = document.getElementById('navbar-links');
     if (navbarList) {
-        navbarList.innerHTML = links.map(link => `
-            <li class="nav-item">
-                <a class="nav-link ${window.location.pathname === link.href ? 'active' : ''}" href="${link.href}">${link.text}</a>
-            </li>
-        `).join('');
+        navbarList.innerHTML = links.map(link => {
+            if (link.isDropdown) {
+                const isAnySubPageActive = link.items.some(item => window.location.pathname === item.href);
+                const dropdownClass = isAnySubPageActive ? 'active' : '';
+                
+                const itemsHtml = link.items.map(item => {
+                    if (item.locked) {
+                        return `
+                            <li>
+                                <span class="dropdown-item disabled">
+                                    ${item.text}
+                                    <i class="fas fa-lock ms-2"></i>
+                                </span>
+                            </li>
+                        `;
+                    } else {
+                        const isSubActive = window.location.pathname === item.href ? 'active' : '';
+                        return `
+                            <li>
+                                <a class="dropdown-item ${isSubActive}" href="${item.href}">
+                                    ${item.text}
+                                </a>
+                            </li>
+                        `;
+                    }
+                }).join('');
+
+                return `
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle ${dropdownClass}" href="#" id="navbarDropdownTorneos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            ${link.text}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDropdownTorneos">
+                            ${itemsHtml}
+                        </ul>
+                    </li>
+                `;
+            } else {
+                return `
+                    <li class="nav-item">
+                        <a class="nav-link ${window.location.pathname === link.href ? 'active' : ''}" href="${link.href}">${link.text}</a>
+                    </li>
+                `;
+            }
+        }).join('');
     }
 }
 

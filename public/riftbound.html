@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riftbound - Pacto del Loto</title>
+
+    <!-- Metadatos y Favicon -->
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+
+    <!-- Estilos CSS -->
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+
+    <!-- Fuentes Externas -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <header>
+        <!-- El navbar se cargará aquí -->
+    </header>
+
+    <main class="container my-5 pt-5 flex-grow-1" id="restricted-content" style="display: none;">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <div class="card shadow-lg p-5 rounded-4 border-0 bg-white">
+                    <div class="display-1 text-primary mb-4">
+                        <i class="fa-solid fa-gamepad"></i>
+                    </div>
+                    <h1 class="fw-bold mb-3">Riftbound</h1>
+                    <p class="lead text-muted">Bienvenido a la sección exclusiva de Riftbound. El contenido de los próximos torneos estará disponible aquí pronto.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <!-- El footer se cargará aquí -->
+    </footer>
+
+    <!-- Scripts de Bootstrap y Firebase -->
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Controladores de la aplicación -->
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+
+    <!-- Comprobación de Acceso de Socio -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const restrictedContent = document.getElementById('restricted-content');
+            
+            const checkAuth = () => {
+                firebase.auth().onAuthStateChanged(async user => {
+                    if (user) {
+                        const isSocio = await window.isUserSocio();
+                        const isAdmin = await window.isUserAdmin();
+                        
+                        if (isSocio || isAdmin) {
+                            restrictedContent.style.display = 'block';
+                        } else {
+                            restrictedContent.innerHTML = `
+                                <div class="row justify-content-center">
+                                    <div class="col-md-8 text-center">
+                                        <div class="alert alert-danger shadow-sm p-4 rounded-3" role="alert">
+                                            <i class="fa-solid fa-circle-xmark fa-3x mb-3 text-danger"></i>
+                                            <h3 class="fw-bold">Acceso Denegado</h3>
+                                            <p class="mb-0">Lo sentimos, esta sección es exclusiva para socios registrados. Si crees que esto es un error, por favor contacta con la administración.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            restrictedContent.style.display = 'block';
+                        }
+                    } else {
+                        restrictedContent.innerHTML = `
+                                <div class="row justify-content-center">
+                                    <div class="col-md-8 text-center">
+                                        <div class="alert alert-warning shadow-sm p-4 rounded-3" role="alert">
+                                            <i class="fa-solid fa-triangle-exclamation fa-3x mb-3 text-warning"></i>
+                                            <h3 class="fw-bold">Inicio de Sesión Requerido</h3>
+                                            <p class="mb-3">Debes iniciar sesión para poder acceder a esta sección de Torneos.</p>
+                                            <a href="/login.html" class="btn btn-primary px-4 py-2">Iniciar Sesión</a>
+                                        </div>
+                                    </div>
+                                </div>
+                        `;
+                        restrictedContent.style.display = 'block';
+                    }
+                });
+            };
+
+            const interval = setInterval(() => {
+                if (window.firebase && firebase.auth) {
+                    clearInterval(interval);
+                    checkAuth();
+                }
+            }, 100);
+        });
+    </script>
+
+</body>
+</html>

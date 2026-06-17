@@ -33,6 +33,76 @@
             <div class="mt-2 text-muted" id="subevent-detail-parent"></div>
         </div>
     </div>
+
+    <div class="row g-4 mb-5" id="subevent-registration-section">
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h2 class="h4 fw-bold mb-1">Inscripción</h2>
+                            <p class="text-muted mb-0" id="registration-capacity-text">Cargando plazas...</p>
+                        </div>
+                        <span class="badge bg-secondary" id="registration-user-status">Sin reserva</span>
+                    </div>
+
+                    <div class="alert alert-info py-2" id="registration-login-box" style="display:none;">
+                        Si ya tienes cuenta, puedes reservar en un click.
+                        <div class="mt-2 d-flex gap-2 flex-wrap">
+                            <a href="/login.html" class="btn btn-sm btn-outline-primary">Iniciar sesión</a>
+                            <a href="/registro.html" class="btn btn-sm btn-outline-secondary">Registrarse</a>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success w-100 mb-3" id="quick-register-btn" style="display:none;">
+                        <i class="fas fa-bolt me-2"></i>Reservar con mis datos
+                    </button>
+
+                    <form id="registration-form">
+                        <div class="mb-3">
+                            <label for="registration-fullname" class="form-label">Nombre completo</label>
+                            <input type="text" class="form-control" id="registration-fullname" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registration-email" class="form-label">Correo</label>
+                            <input type="email" class="form-control" id="registration-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registration-phone" class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="registration-phone" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" id="manual-register-btn">
+                            Reservar plaza
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7 admin-controls">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h2 class="h4 fw-bold mb-3">Gestión de inscripciones</h2>
+                    <ul class="nav nav-tabs" id="registration-admin-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="registered-tab" data-bs-toggle="tab" data-bs-target="#registered-pane" type="button" role="tab">Inscritos</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="reserved-tab" data-bs-toggle="tab" data-bs-target="#reserved-pane" type="button" role="tab">Reservados</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <div class="tab-pane fade show active" id="registered-pane" role="tabpanel">
+                            <div id="registered-list" class="list-group small"></div>
+                        </div>
+                        <div class="tab-pane fade" id="reserved-pane" role="tabpanel">
+                            <div id="reserved-list" class="list-group small"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 
 <!-- Modal para Crear/Editar Actividad (reusa mismos ids que en eventoDetalle) -->

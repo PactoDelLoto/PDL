@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,144 +19,152 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 </head>
+
 <body>
 
-<header>
-    <!-- El navbar se cargará aquí -->
-</header>
+    <header>
+        <!-- El navbar se cargará aquí -->
+    </header>
 
-<main class="container mt-5 pt-5">
-    <!-- Botón para volver a la lista de eventos -->
-    <div class="mb-4">
-        <a href="/eventos.html" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver a Eventos</a>
-    </div>
+    <main class="container mt-5 pt-5">
+        <!-- Botón para volver a la lista de eventos -->
+        <div class="mb-4">
+            <a href="/eventos.html" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver a
+                Eventos</a>
+        </div>
 
-    <!-- Contenedor de Detalles del Evento -->
-    <div class="card shadow-lg mb-5">
-        <img id="event-detail-image" src="" class="card-img-top" alt="Imagen del evento" style="max-height: 400px; object-fit: cover;">
-        <div class="card-body p-4">
-            <h1 id="event-detail-title" class="card-title display-5 fw-bold mb-3">Cargando...</h1>
-            <p id="event-detail-description" class="card-text fs-5 mb-4">Cargando descripción...</p>
-            
-            <div class="d-flex justify-content-between text-muted">
-                <span id="event-detail-date"><i class="fas fa-calendar-alt"></i> Cargando fecha...</span>
-                <span id="event-detail-place"><i class="fas fa-map-marker-alt"></i> Cargando lugar...</span>
+        <!-- Contenedor de Detalles del Evento -->
+        <div class="card shadow-lg mb-5">
+            <img id="event-detail-image" src="" class="card-img-top" alt="Imagen del evento"
+                style="max-height: 400px; object-fit: cover;">
+            <div class="card-body p-4">
+                <h1 id="event-detail-title" class="card-title display-5 fw-bold mb-3">Cargando...</h1>
+                <p id="event-detail-description" class="card-text fs-5 mb-4">Cargando descripción...</p>
+
+                <div class="d-flex justify-content-between text-muted">
+                    <span id="event-detail-date"><i class="fas fa-calendar-alt"></i> Cargando fecha...</span>
+                    <span id="event-detail-place"><i class="fas fa-map-marker-alt"></i> Cargando lugar...</span>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Sección de Actividades -->
-    <div class="mt-5 mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Actividades</h2>
-            <button id="create-subevent-btn" class="btn btn-primary socio-controls" style="display: none;">
-                <i class="fas fa-plus"></i> Crear Actividad
-            </button>
+        <!-- Sección de Actividades -->
+        <div class="mt-5 mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Actividades</h2>
+                <button id="create-subevent-btn" class="btn btn-primary socio-controls" style="display: none;">
+                    <i class="fas fa-plus"></i> Crear Actividad
+                </button>
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="subeventos-table" class="table table-striped table-hover" width="100%">
+                            <!-- Cabecera y cuerpo serán gestionados por DataTables -->
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table id="subeventos-table" class="table table-striped table-hover" width="100%">
-                        <!-- Cabecera y cuerpo serán gestionados por DataTables -->
-                    </table>
+
+    </main>
+
+    <!-- Modal para Crear/Editar Actividad -->
+    <div class="modal fade" id="subevent-modal" tabindex="-1" aria-labelledby="subevent-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="subevent-modal-title">Crear Nueva Actividad</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="subevent-form">
+                        <input type="hidden" id="subevent-id">
+
+                        <div class="mb-3">
+                            <label class="form-label">Título de la Actividad</label>
+                            <input type="text" class="form-control" id="subevent-titulo" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="subevent-descripcion" rows="3" required></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tipo de Actividad</label>
+                                <select id="subevent-tipo" class="form-select" required>
+                                    <option value="" disabled selected>Seleccione un tipo...</option>
+                                    <!-- Los tipos se cargarán aquí desde la DB -->
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Plazas Disponibles</label>
+                                <input type="number" class="form-control" id="subevent-plazas" min="0" value="0"
+                                    required>
+                                <div class="form-text">Si es 0, se considerará "Entrada libre".</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha de la Actividad</label>
+                                <input type="date" class="form-control" id="subevent-fechaEvento" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Hora de la Actividad</label>
+                                <input type="time" class="form-control" id="subevent-horaEvento" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Lugar</label>
+                            <input type="text" class="form-control" id="subevent-lugar" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Fecha de Publicación</label>
+                            <input type="datetime-local" class="form-control" id="subevent-fechaPublicacion" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">URL de Imagen (opcional)</label>
+                            <input type="text" class="form-control" id="subevent-imagen">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary" form="subevent-form" id="save-subevent-btn">Guardar</button>
                 </div>
             </div>
         </div>
     </div>
 
-</main>
+    <!-- Contenedor de Alertas -->
+    <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index:1055"></div>
 
-<!-- Modal para Crear/Editar Actividad -->
-<div class="modal fade" id="subevent-modal" tabindex="-1" aria-labelledby="subevent-modal-title" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="subevent-modal-title">Crear Nueva Actividad</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="subevent-form">
-                    <input type="hidden" id="subevent-id">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Título de la Actividad</label>
-                        <input type="text" class="form-control" id="subevent-titulo" required>
-                    </div>
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
 
-                    <div class="mb-3">
-                        <label class="form-label">Descripción</label>
-                        <textarea class="form-control" id="subevent-descripcion" rows="3" required></textarea>
-                    </div>
+    <!-- Scripts -->
+    <script src="/jquery-3.7.1.min.js"></script>
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Tipo de Actividad</label>
-                            <select id="subevent-tipo" class="form-select" required>
-                                <option value="" disabled selected>Seleccione un tipo...</option>
-                                <!-- Los tipos se cargarán aquí desde la DB -->
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Plazas Disponibles</label>
-                            <input type="number" class="form-control" id="subevent-plazas" min="0" value="0" required>
-                            <div class="form-text">Si es 0, se considerará "Entrada libre".</div>
-                        </div>
-                    </div>
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/subeventosController.js"></script>
+    <script src="/controllers/eventosController.js"></script>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Fecha de la Actividad</label>
-                            <input type="date" class="form-control" id="subevent-fechaEvento" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Hora de la Actividad</label>
-                            <input type="time" class="form-control" id="subevent-horaEvento" required>
-                        </div>
-                    </div>
+    <script src="/DataTables/datatables.min.js"></script>
 
-                    <div class="mb-3">
-                        <label class="form-label">Lugar</label>
-                        <input type="text" class="form-control" id="subevent-lugar" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Fecha de Publicación</label>
-                        <input type="datetime-local" class="form-control" id="subevent-fechaPublicacion" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">URL de Imagen (opcional)</label>
-                        <input type="text" class="form-control" id="subevent-imagen">
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button class="btn btn-primary" form="subevent-form" id="save-subevent-btn">Guardar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Contenedor de Alertas -->
-<div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index:1055"></div>
-
-<footer class="footer mt-auto py-3 bg-dark"></footer>
-
-<!-- Scripts -->
-<script src="/jquery-3.7.1.min.js"></script>
-<script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="/DataTables/datatables.min.js"></script>
-
-<script src="/controllers/firebase-config.js"></script>
-<script src="/js/utils.js"></script>
-<script src="/controllers/authController.js"></script>
-<script src="/controllers/navigation.js"></script>
-<script src="/controllers/subeventosController.js"></script>
-<script src="/controllers/eventosController.js"></script>
-
+    <script src="/controllers/eventosController.js"></script>
+    <script src="/controllers/subeventosController.js"></script>
 </body>
+
 </html>
