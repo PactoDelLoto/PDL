@@ -61,7 +61,22 @@ service cloud.firestore {
            // Permitir actualizar/eliminar inscripciones solo al usuario que la creó o a un administrador
            allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true);
          }
+    }
 
+    match /{document=**}/inscripciones/{inscripcionId} {
+      allow read: if request.auth != null &&
+        (
+          request.auth.uid == resource.data.userId ||
+          isAdmin()
+        );
+
+      allow create: if request.auth != null;
+
+      allow update, delete: if request.auth != null &&
+        (
+          request.auth.uid == resource.data.userId ||
+          isAdmin()
+        );
     }
 
     // REGLA PARA TIPOS DE ACTIVIDADES:

@@ -272,24 +272,28 @@ document.addEventListener('DOMContentLoaded', () => {
             prestamosActivosTable = $('#tabla-prestamos-activos').DataTable({
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
-                order: [[2, 'desc']],
+                order: [],
                 columns: [ null, null, null, null, null, { orderable: false, searchable: false } ]
             });
         }
         try {
-            const snapshot = await db.collection("prestamos").where("Estado", "==", "Pendiente").orderBy("fechaHoraPrestamo", "desc").get();
+            const snapshot = await db.collection("prestamos").where("Estado", "==", "Pendiente").get();
             const data = await Promise.all(snapshot.docs.map(async doc => {
                 const p = doc.data();
-                return [
-                    p.nombreArticulo,
-                    p.PersonaRecibe,
-                    p.fechaHoraPrestamo.toDate().toLocaleString(),
-                    '<span class="badge bg-warning text-dark">Pendiente</span>',
-                    await getUserName(p.IdUsuarioResponsable),
-                    `<button class="btn btn-success btn-sm btn-devolver" data-id="${doc.id}">Devolver</button>`
-                ];
+                return {
+                    fechaOrden: p.fechaHoraPrestamo ? p.fechaHoraPrestamo.toDate() : new Date(0),
+                    row: [
+                        p.nombreArticulo,
+                        p.PersonaRecibe,
+                        p.fechaHoraPrestamo ? p.fechaHoraPrestamo.toDate().toLocaleString() : 'N/A',
+                        '<span class="badge bg-warning text-dark">Pendiente</span>',
+                        await getUserName(p.IdUsuarioResponsable),
+                        `<button class="btn btn-success btn-sm btn-devolver" data-id="${doc.id}">Devolver</button>`
+                    ]
+                };
             }));
-            prestamosActivosTable.clear().rows.add(data).draw();
+            data.sort((a, b) => b.fechaOrden - a.fechaOrden);
+            prestamosActivosTable.clear().rows.add(data.map(item => item.row)).draw();
         } catch (error) {
             console.error("Error cargando préstamos activos: ", error);
         }
@@ -300,31 +304,41 @@ document.addEventListener('DOMContentLoaded', () => {
             prestamosHistorialTable = $('#tabla-prestamos-historial').DataTable({
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
-                order: [[3, "desc"]],
+                order: [],
                 columns: [ null, null, null, null, null, null, { orderable: false, searchable: false } ]
             });
         }
 
         try {
-            let query = db.collection("prestamos").where("Estado", "==", "Devuelto");
-            if ($('#filtro-articulo').val()) query = query.where("IdArticulo", "==", $('#filtro-articulo').val());
-            if ($('#filtro-responsable').val()) query = query.where("IdUsuarioResponsable", "==", $('#filtro-responsable').val());
-            if ($('#filtro-evento').val()) query = query.where("Evento", "==", $('#filtro-evento').val());
+            const filtroArticulo = $('#filtro-articulo').val();
+            const filtroResponsable = $('#filtro-responsable').val();
+            const filtroEvento = $('#filtro-evento').val();
 
-            const snapshot = await query.orderBy("fechaHoraDevolucion", "desc").get();
-            const data = await Promise.all(snapshot.docs.map(async doc => {
+            const snapshot = await db.collection("prestamos").where("Estado", "==", "Devuelto").get();
+            const prestamosFiltrados = snapshot.docs.filter(doc => {
                 const p = doc.data();
-                return [
-                    p.nombreArticulo,
-                    p.PersonaRecibe,
-                    p.fechaHoraPrestamo.toDate().toLocaleString(),
-                    p.fechaHoraDevolucion ? p.fechaHoraDevolucion.toDate().toLocaleString() : 'N/A',
-                    '<span class="badge bg-success">Devuelto</span>',
-                    await getUserName(p.IdUsuarioResponsable),
-                    `<button class="btn btn-warning btn-sm btn-cancelar-devolucion" data-id="${doc.id}">Anular</button>`
-                ];
+                return (!filtroArticulo || p.IdArticulo === filtroArticulo)
+                    && (!filtroResponsable || p.IdUsuarioResponsable === filtroResponsable)
+                    && (!filtroEvento || p.Evento === filtroEvento);
+            });
+
+            const data = await Promise.all(prestamosFiltrados.map(async doc => {
+                const p = doc.data();
+                return {
+                    fechaOrden: p.fechaHoraDevolucion ? p.fechaHoraDevolucion.toDate() : new Date(0),
+                    row: [
+                        p.nombreArticulo,
+                        p.PersonaRecibe,
+                        p.fechaHoraPrestamo ? p.fechaHoraPrestamo.toDate().toLocaleString() : 'N/A',
+                        p.fechaHoraDevolucion ? p.fechaHoraDevolucion.toDate().toLocaleString() : 'N/A',
+                        '<span class="badge bg-success">Devuelto</span>',
+                        await getUserName(p.IdUsuarioResponsable),
+                        `<button class="btn btn-warning btn-sm btn-cancelar-devolucion" data-id="${doc.id}">Anular</button>`
+                    ]
+                };
             }));
-            prestamosHistorialTable.clear().rows.add(data).draw();
+            data.sort((a, b) => b.fechaOrden - a.fechaOrden);
+            prestamosHistorialTable.clear().rows.add(data.map(item => item.row)).draw();
         } catch (error) {
             console.error("Error cargando historial de préstamos: ", error);
         }

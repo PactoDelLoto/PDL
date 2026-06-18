@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +13,8 @@
     <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
     <link href="/DataTables/datatables.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet" />
     <link href="/global.css" rel="stylesheet" />
 
     <!-- Fuentes Externas -->
@@ -23,6 +24,7 @@
     <!-- Script para cargar componentes comunes -->
     <script src="/jquery-3.7.1.min.js"></script>
 </head>
+
 <body>
     <header>
         <!-- El navbar se cargará aquí -->
@@ -37,20 +39,33 @@
         <!-- Pestañas de Navegación -->
         <ul class="nav nav-tabs" id="inventory-tabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="inventario-tab" data-bs-toggle="tab" data-bs-target="#inventario-section" type="button" role="tab" aria-controls="inventario-section" aria-selected="true">📦 Inventario General</button>
+                <button class="nav-link active" id="inventario-tab" data-bs-toggle="tab"
+                    data-bs-target="#inventario-section" type="button" role="tab" aria-controls="inventario-section"
+                    aria-selected="true">📦 Inventario General</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="prestamos-tab" data-bs-toggle="tab" data-bs-target="#prestamos-section" type="button" role="tab" aria-controls="prestamos-section" aria-selected="false">📋 Préstamos</button>
+                <button class="nav-link" id="prestamos-tab" data-bs-toggle="tab" data-bs-target="#prestamos-section"
+                    type="button" role="tab" aria-controls="prestamos-section" aria-selected="false">📋
+                    Préstamos</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias-section" type="button" role="tab" aria-controls="categorias-section" aria-selected="false">🏷️ Categorías</button>
+                <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias-section"
+                    type="button" role="tab" aria-controls="categorias-section" aria-selected="false">🏷️
+                    Categorías</button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats-section"
+                    type="button" role="tab" aria-controls="stats-section" aria-selected="false">📊
+                    Estadísticas</button>
+            </li>
+
         </ul>
 
         <!-- Contenido de las Pestañas -->
         <div class="tab-content" id="inventory-tabs-content">
             <!-- Sección de Inventario -->
-            <div class="tab-pane fade show active" id="inventario-section" role="tabpanel" aria-labelledby="inventario-tab">
+            <div class="tab-pane fade show active" id="inventario-section" role="tabpanel"
+                aria-labelledby="inventario-tab">
                 <div class="card shadow-sm mt-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Artículos en Inventario</h5>
@@ -84,7 +99,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Sección de Préstamos -->
             <div class="tab-pane fade" id="prestamos-section" role="tabpanel" aria-labelledby="prestamos-tab">
                 <div class="card shadow-sm mt-4">
@@ -100,7 +115,8 @@
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="persona" class="form-label">Persona que recibe</label>
-                                    <input type="text" class="form-control" id="persona" placeholder="Nombre completo" required>
+                                    <input type="text" class="form-control" id="persona" placeholder="Nombre completo"
+                                        required>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="evento" class="form-label">Evento</label>
@@ -119,14 +135,19 @@
                     <div class="card-body">
                         <ul class="nav nav-tabs" id="prestamosTabs" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="activos-tab" data-bs-toggle="tab" data-bs-target="#activos" type="button" role="tab" aria-controls="activos" aria-selected="true">Préstamos Activos</button>
+                                <button class="nav-link active" id="activos-tab" data-bs-toggle="tab"
+                                    data-bs-target="#activos" type="button" role="tab" aria-controls="activos"
+                                    aria-selected="true">Préstamos Activos</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial" type="button" role="tab" aria-controls="historial" aria-selected="false">Historial de Préstamos</button>
+                                <button class="nav-link" id="historial-tab" data-bs-toggle="tab"
+                                    data-bs-target="#historial" type="button" role="tab" aria-controls="historial"
+                                    aria-selected="false">Historial de Préstamos</button>
                             </li>
                         </ul>
                         <div class="tab-content" id="prestamosTabsContent">
-                            <div class="tab-pane fade show active" id="activos" role="tabpanel" aria-labelledby="activos-tab">
+                            <div class="tab-pane fade show active" id="activos" role="tabpanel"
+                                aria-labelledby="activos-tab">
                                 <h5 class="card-title mt-3">Préstamos Activos</h5>
                                 <div class="table-responsive">
                                     <table id="tabla-prestamos-activos" class="table table-striped" style="width:100%">
@@ -156,7 +177,8 @@
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label for="filtro-responsable" class="form-label">Filtrar por Responsable</label>
+                                        <label for="filtro-responsable" class="form-label">Filtrar por
+                                            Responsable</label>
                                         <select class="form-select" id="filtro-responsable">
                                             <!-- Opciones de filtro de responsables -->
                                         </select>
@@ -169,7 +191,8 @@
                                     </div>
                                 </div>
                                 <div class="table-responsive">
-                                    <table id="tabla-prestamos-historial" class="table table-striped" style="width:100%">
+                                    <table id="tabla-prestamos-historial" class="table table-striped"
+                                        style="width:100%">
                                         <thead class="text-center">
                                             <tr>
                                                 <th>Artículo</th>
@@ -205,7 +228,8 @@
                                 <form id="form-add-category" class="row g-3 align-items-end">
                                     <div class="col">
                                         <label for="new-category-name" class="form-label">Nombre de la Categoría</label>
-                                        <input type="text" class="form-control" id="new-category-name" placeholder="Ej: Juegos de Mesa" required>
+                                        <input type="text" class="form-control" id="new-category-name"
+                                            placeholder="Ej: Juegos de Mesa" required>
                                     </div>
                                     <div class="col-auto">
                                         <button type="submit" class="btn btn-primary">Añadir</button>
@@ -226,6 +250,29 @@
                                 <!-- Los datos de las categorías se cargarán aquí -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Estadísticas -->
+            <div class="tab-pane fade" id="stats-section" role="tabpanel" aria-labelledby="stats-tab">
+                <div class="row mb-3 mt-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Periodo de tiempo:</label>
+                        <select id="stats-time-filter" class="form-select">
+                            <option value="7">Últimos 7 días</option>
+                            <option value="30" selected>Últimos 30 días</option>
+                            <option value="90">Últimos 90 días</option>
+                            <option value="365">Último año</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Artículos más prestados</h5>
+                    </div>
+                    <div class="card-body" style="height: 450px;">
+                        <canvas id="loansChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -316,7 +363,8 @@
     </div>
 
     <!-- Modal de Confirmación Genérico -->
-    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -345,6 +393,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="/DataTables/datatables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Controladores de la aplicación (con cache buster) -->
     <script src="/controllers/firebase-config.js?v=1.1"></script>
@@ -356,4 +405,5 @@
     <script src="/controllers/inventarioController.js?v=1.1"></script>
     <script src="/controllers/prestamosController.js?v=1.1"></script>
 </body>
+
 </html>

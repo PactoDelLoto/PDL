@@ -17,14 +17,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
             } else {
-                 document.querySelector('main').innerHTML = '<div class="alert alert-danger">Acceso denegado. Por favor, inicie sesión.</div>';
+                document.querySelector('main').innerHTML = '<div class="alert alert-danger">Acceso denegado. Por favor, inicie sesión.</div>';
             }
         });
     }
 });
 
 let usersTable;
-const editUserModal = new bootstrap.Modal(document.getElementById('edit-user-modal'));
+const editUserModalEl = document.getElementById('edit-user-modal');
+const editUserModal = editUserModalEl ? new bootstrap.Modal(editUserModalEl) : null;
 
 function initializeUsersTable() {
     usersTable = $('#usuarios-table').DataTable({
@@ -56,8 +57,8 @@ function initializeUsersTable() {
                 data: null, orderable: false, searchable: false, className: 'text-center',
                 render: function (data, type, row) {
                     if (row.id === firebase.auth().currentUser.uid) return '';
-                    return row.isSocio ? 
-                        `<button class="btn btn-sm btn-warning toggle-socio-btn" data-id="${row.id}" data-name="${row.nombre}">Quitar Socio</button>` : 
+                    return row.isSocio ?
+                        `<button class="btn btn-sm btn-warning toggle-socio-btn" data-id="${row.id}" data-name="${row.nombre}">Quitar Socio</button>` :
                         `<button class="btn btn-sm btn-success toggle-socio-btn" data-id="${row.id}" data-name="${row.nombre}">Hacer Socio</button>`;
                 }
             },
@@ -65,8 +66,8 @@ function initializeUsersTable() {
                 data: null, orderable: false, searchable: false, className: 'text-center',
                 render: function (data, type, row) {
                     if (row.id === firebase.auth().currentUser.uid) return '<span class="badge bg-info">Eres tú</span>';
-                    return row.isAdmin ? 
-                        `<button class="btn btn-sm btn-danger toggle-admin-btn" data-id="${row.id}" data-name="${row.nombre}">Quitar Admin</button>` : 
+                    return row.isAdmin ?
+                        `<button class="btn btn-sm btn-danger toggle-admin-btn" data-id="${row.id}" data-name="${row.nombre}">Quitar Admin</button>` :
                         `<button class="btn btn-sm btn-primary toggle-admin-btn" data-id="${row.id}" data-name="${row.nombre}">Hacer Admin</button>`;
                 }
             },
@@ -135,9 +136,9 @@ function setupUserActionHandlers() {
     tbody.on('click', '.delete-user-btn', function () {
         const userId = $(this).data('id');
         const userName = $(this).data('name');
-        
+
         showConfirmationModal(
-            'Confirmar Eliminación', 
+            'Confirmar Eliminación',
             `¿Estás seguro de que quieres eliminar a ${userName}? Esta acción es permanente y eliminará sus datos de la aplicación (no su cuenta de Google).`,
             async () => {
                 try {
@@ -180,7 +181,7 @@ async function handleRoleToggle(button, role) {
     try {
         const doc = await userDocRef.get();
         if (!doc.exists) return;
-        
+
         const currentRoleState = doc.data()[role] || false;
         const actionText = currentRoleState ? `quitar rol de ${role.substring(2).toLowerCase()} a` : `hacer ${role.substring(2).toLowerCase()} a`;
 

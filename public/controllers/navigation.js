@@ -152,12 +152,15 @@ function setupAuthUI() {
                         <i class="fas fa-user-circle me-2"></i> ${userEmail}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu-desktop">
+                        <li><a class="dropdown-item" href="/perfil.html">Mi perfil</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" id="logout-button-desktop">Cerrar Sesión</a></li>
                     </ul>
                 </div>
             `;
             const mobileUI = `
                 <p class="text-light mb-2">${userEmail}</p>
+                <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html">Mi perfil</a>
                 <button class="btn btn-danger w-100" id="logout-button-mobile">Cerrar Sesión</button>
             `;
             userActionsDesktop.innerHTML = desktopUI;

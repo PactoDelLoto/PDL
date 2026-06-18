@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Pacto del Loto</title>
+
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <!-- El navbar se cargara aqui -->
+    </header>
+
+    <main class="container mt-5 pt-5">
+        <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055"></div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-7 col-xl-6">
+                <h1 class="mb-4">Mi perfil</h1>
+
+                <div id="profile-loading" class="card shadow-sm">
+                    <div class="card-body">
+                        Cargando datos...
+                    </div>
+                </div>
+
+                <div id="profile-denied" class="alert alert-warning d-none" role="alert">
+                    Para editar tu perfil necesitas iniciar sesion.
+                    <div class="mt-3">
+                        <a href="/login.html" class="btn btn-primary">Ir al login</a>
+                    </div>
+                </div>
+
+                <div id="profile-card" class="card shadow-sm d-none">
+                    <div class="card-body">
+                        <ul class="nav nav-tabs mb-4" id="profile-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="profile-data-tab" data-bs-toggle="tab"
+                                    data-bs-target="#profile-data-pane" type="button" role="tab"
+                                    aria-controls="profile-data-pane" aria-selected="true">
+                                    Datos personales
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="profile-activities-tab" data-bs-toggle="tab"
+                                    data-bs-target="#profile-activities-pane" type="button" role="tab"
+                                    aria-controls="profile-activities-pane" aria-selected="false">
+                                    Mis actividades
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="profile-tabs-content">
+                            <div class="tab-pane fade show active" id="profile-data-pane" role="tabpanel"
+                                aria-labelledby="profile-data-tab">
+                                <form id="profile-form">
+                                    <div class="mb-3">
+                                        <label for="profile-email" class="form-label">Correo</label>
+                                        <input type="email" class="form-control" id="profile-email" disabled>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="profile-name" class="form-label">Nombre</label>
+                                        <input type="text" class="form-control" id="profile-name" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="profile-lastname" class="form-label">Apellidos</label>
+                                        <input type="text" class="form-control" id="profile-lastname" required>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <span id="profile-socio-badge" class="badge bg-secondary me-2">Socio: No</span>
+                                        <span id="profile-admin-badge" class="badge bg-secondary">Admin: No</span>
+                                    </div>
+
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="/index.html" class="btn btn-outline-secondary">Cancelar</a>
+                                        <button type="submit" class="btn btn-primary" id="profile-save-btn">
+                                            Guardar cambios
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="tab-pane fade" id="profile-activities-pane" role="tabpanel"
+                                aria-labelledby="profile-activities-tab">
+                                <div id="profile-activities-loading" class="text-muted">
+                                    Cargando actividades...
+                                </div>
+                                <div id="profile-activities-empty" class="alert alert-info d-none" role="alert">
+                                    Todavia no estas apuntado a ninguna actividad.
+                                </div>
+                                <div id="profile-activities-list" class="list-group"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark">
+        <!-- El footer se cargara aqui -->
+    </footer>
+
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/js/utils.js"></script>
+
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/perfilController.js"></script>
+</body>
+
+</html>

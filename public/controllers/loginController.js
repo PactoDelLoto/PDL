@@ -37,14 +37,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.location.href = '/index.html';
             })
             .catch((error) => {
-                const errorMessage = getFirebaseErrorMessage(error.code);
+                console.error("Error de Firebase Auth:", error.code, error.message);
+
+                const errorMessage = getFirebaseErrorMessage(error.code, error.message);
+
                 errorDiv.textContent = errorMessage;
                 errorDiv.classList.remove('d-none');
                 loginForm.classList.remove('was-validated');
             });
     });
 
-    googleLoginButton.addEventListener('click', function() {
+    googleLoginButton.addEventListener('click', function () {
         const googleProvider = new firebase.auth.GoogleAuthProvider();
         auth.signInWithPopup(googleProvider)
             .then((result) => {
@@ -57,20 +60,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-function getFirebaseErrorMessage(errorCode) {
+function getFirebaseErrorMessage(errorCode, errorMessage = '') {
+    if (errorMessage.includes('INVALID_LOGIN_CREDENTIALS')) {
+        return 'Credenciales incorrectas. Por favor, revisa tu correo y contraseña.';
+    }
+
     switch (errorCode) {
-        case 'auth/user-not-found':
+        case 'auth/invalid-credential':
         case 'auth/wrong-password':
+        case 'auth/user-not-found':
             return 'Credenciales incorrectas. Por favor, revisa tu correo y contraseña.';
+        case 'auth/too-many-requests':
+            return 'Demasiados intentos fallidos. Inténtalo más tarde.';
         case 'auth/invalid-email':
             return 'El formato del correo electrónico no es válido.';
         case 'auth/user-disabled':
             return 'Este usuario ha sido deshabilitado.';
         case 'auth/popup-closed-by-user':
-            return 'El proceso de inicio de sesión de Google fue cancelado.';
-        case 'auth/account-exists-with-different-credential':
-            return 'Ya existe una cuenta con este correo electrónico pero con un método de inicio de sesión diferente.';
+            return 'Login con Google cancelado.';
         default:
-            return 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
+            return 'Ha ocurrido un error inesperado. Inténtalo de nuevo.';
     }
 }

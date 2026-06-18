@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,241 +24,250 @@
             transform: translateY(0);
             pointer-events: auto;
         }
+
         .admin-controls {
-            display: none; /* Oculto por defecto, se muestra con JS para admins */
+            display: none;
+            /* Oculto por defecto, se muestra con JS para admins */
         }
     </style>
 </head>
+
 <body>
 
-<header>
-    <!-- El navbar se cargará aquí -->
-</header>
+    <header>
+        <!-- El navbar se cargará aquí -->
+    </header>
 
-<main class="container mt-5 pt-5">
-    <div class="text-center mb-5">
-        <h1 class="display-5 fw-bold">Próximos Eventos y Actividades</h1>
-        <p class="lead text-muted">Descubre las actividades, torneos y partidas que hemos preparado para ti.</p>
-    </div>
+    <main class="container mt-5 pt-5">
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold">Próximos Eventos y Actividades</h1>
+            <p class="lead text-muted">Descubre las actividades, torneos y partidas que hemos preparado para ti.</p>
+        </div>
 
-    <!-- Barra de Controles -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <div class="row g-3 align-items-center">
+        <!-- Barra de Controles -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-center">
 
-                <!-- Buscador -->
-                <div class="col-md-4">
-                    <input type="search" id="search-input" class="form-control" placeholder="Buscar por título...">
-                </div>
+                    <!-- Buscador -->
+                    <div class="col-md-4">
+                        <input type="search" id="search-input" class="form-control" placeholder="Buscar por título...">
+                    </div>
 
-                <!-- Filtro por Tipo -->
-                <div class="col-md-3">
-                    <select id="type-filter" class="form-select">
-                        <option value="">Filtrar por tipo</option>
-                    </select>
-                    <div class="mt-2">
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" id="filter-show-events" checked>
-                            <label class="form-check-label" for="filter-show-events">Eventos</label>
+                    <!-- Filtro por Tipo -->
+                    <div class="col-md-3">
+                        <select id="type-filter" class="form-select">
+                            <option value="">Filtrar por tipo</option>
+                        </select>
+                        <div class="mt-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="filter-show-events" checked>
+                                <label class="form-check-label" for="filter-show-events">Eventos</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="filter-show-activities" checked>
+                                <label class="form-check-label" for="filter-show-activities">Actividades</label>
+                            </div>
                         </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" id="filter-show-activities" checked>
-                            <label class="form-check-label" for="filter-show-activities">Actividades</label>
+                    </div>
+
+                    <!-- Switch de Vista -->
+                    <div class="col-md-2">
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" id="view-gallery-btn" class="btn btn-outline-primary active"
+                                title="Vista de Galería"><i class="fas fa-th-large"></i></button>
+                            <button type="button" id="view-table-btn" class="btn btn-outline-primary"
+                                title="Vista de Tabla"><i class="fas fa-bars"></i></button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Switch de Vista -->
-                <div class="col-md-2">
-                    <div class="btn-group w-100" role="group">
-                        <button type="button" id="view-gallery-btn" class="btn btn-outline-primary active" title="Vista de Galería"><i class="fas fa-th-large"></i></button>
-                        <button type="button" id="view-table-btn" class="btn btn-outline-primary" title="Vista de Tabla"><i class="fas fa-bars"></i></button>
+                    <!-- Controles de Admin -->
+                    <div class="col-md-3 text-end admin-controls">
+                        <button id="create-event-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Crear
+                            Evento</button>
+                        <button id="manage-types-btn" class="btn btn-secondary"><i class="fas fa-cog"></i> Gestionar
+                            Tipos</button>
                     </div>
+
                 </div>
-
-                <!-- Controles de Admin -->
-                <div class="col-md-3 text-end admin-controls">
-                  <button id="create-event-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Crear Evento</button>
-                  <button id="manage-types-btn" class="btn btn-secondary"><i class="fas fa-cog"></i> Gestionar Tipos</button>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- Contenedor de Vistas -->
-    <div id="view-container">
-        <!-- Vista Galería -->
-        <div id="eventos-gallery-container">
-            <div class="row" id="eventos-gallery">
-                <!-- Eventos cargados aquí -->
             </div>
         </div>
 
-        <!-- Vista Tabla -->
-        <div id="eventos-table-container" style="display: none;">
-            <div class="table-responsive">
-                <table id="eventos-table" class="table table-striped table-hover" width="100%">
-                    <thead>
-                        <tr>
-                            <th>Título</th>
-                            <th>Fecha y Hora</th>
-                            <th>Lugar</th>
-                            <th class="admin-controls">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Datos cargados aquí -->
-                    </tbody>
-                </table>
+        <!-- Contenedor de Vistas -->
+        <div id="view-container">
+            <!-- Vista Galería -->
+            <div id="eventos-gallery-container">
+                <div class="row" id="eventos-gallery">
+                    <!-- Eventos cargados aquí -->
+                </div>
+            </div>
+
+            <!-- Vista Tabla -->
+            <div id="eventos-table-container" style="display: none;">
+                <div class="table-responsive">
+                    <table id="eventos-table" class="table table-striped table-hover" width="100%">
+                        <thead>
+                            <tr>
+                                <th>Título</th>
+                                <th>Fecha y Hora</th>
+                                <th>Lugar</th>
+                                <th class="admin-controls">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Datos cargados aquí -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
-</main>
+    </main>
 
-<!-- Modal para Crear/Editar Evento -->
-<div class="modal fade" id="event-modal" tabindex="-1" aria-labelledby="event-modal-title" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="event-modal-title">Crear Nuevo Evento</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+    <!-- Modal para Crear/Editar Evento -->
+    <div class="modal fade" id="event-modal" tabindex="-1" aria-labelledby="event-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="event-modal-title">Crear Nuevo Evento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
 
-            <div class="modal-body">
-                <form id="event-form">
-                    <input type="hidden" id="event-id">
+                <div class="modal-body">
+                    <form id="event-form">
+                        <input type="hidden" id="event-id">
 
-                    <div class="mb-3">
-                        <label class="form-label">Título del Evento</label>
-                        <input type="text" class="form-control" id="event-titulo" required>
-                    </div>
+                        <div class="mb-3">
+                            <label class="form-label">Título del Evento</label>
+                            <input type="text" class="form-control" id="event-titulo" required>
+                        </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Descripción</label>
-                        <textarea class="form-control" id="event-descripcion" rows="4" required></textarea>
-                    </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="event-descripcion" rows="4" required></textarea>
+                        </div>
 
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="" id="event-continuo">
-                                <label class="form-check-label" for="event-continuo">Evento continuo (rango de fechas)</label>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="event-continuo">
+                                    <label class="form-check-label" for="event-continuo">Evento continuo (rango de
+                                        fechas)</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3" id="event-fecha-col">
+                                <label class="form-label">Fecha del Evento</label>
+                                <input type="date" class="form-control" id="event-fecha" required>
+                            </div>
+                            <div class="col-md-6 mb-3" id="event-hora-col">
+                                <label class="form-label">Hora del Evento</label>
+                                <input type="time" class="form-control" id="event-hora" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3" id="event-fechaInicio-col" style="display:none;">
+                                <label class="form-label">Fecha Inicio</label>
+                                <input type="date" class="form-control" id="event-fechaInicio">
+                            </div>
+                            <div class="col-md-6 mb-3" id="event-fechaFin-col" style="display:none;">
+                                <label class="form-label">Fecha Fin</label>
+                                <input type="date" class="form-control" id="event-fechaFin">
                             </div>
                         </div>
 
-                        <div class="col-md-6 mb-3" id="event-fecha-col">
-                            <label class="form-label">Fecha del Evento</label>
-                            <input type="date" class="form-control" id="event-fecha" required>
-                        </div>
-                        <div class="col-md-6 mb-3" id="event-hora-col">
-                            <label class="form-label">Hora del Evento</label>
-                            <input type="time" class="form-control" id="event-hora" required>
+                        <div class="mb-3">
+                            <label class="form-label">Lugar</label>
+                            <input type="text" class="form-control" id="event-lugar" required>
                         </div>
 
-                        <div class="col-md-6 mb-3" id="event-fechaInicio-col" style="display:none;">
-                            <label class="form-label">Fecha Inicio</label>
-                            <input type="date" class="form-control" id="event-fechaInicio">
+                        <div class="mb-3">
+                            <label class="form-label">Fecha y Hora de Publicación</label>
+                            <input type="datetime-local" class="form-control" id="event-publicacion" required>
                         </div>
-                        <div class="col-md-6 mb-3" id="event-fechaFin-col" style="display:none;">
-                            <label class="form-label">Fecha Fin</label>
-                            <input type="date" class="form-control" id="event-fechaFin">
+
+                        <div class="mb-3">
+                            <label class="form-label">URL de Imagen (opcional)</label>
+                            <input type="text" class="form-control" id="event-imagen">
                         </div>
-                    </div>
+                    </form>
+                </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Lugar</label>
-                        <input type="text" class="form-control" id="event-lugar" required>
-                    </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary" form="event-form" id="save-event-btn">Guardar Evento</button>
+                </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Fecha y Hora de Publicación</label>
-                        <input type="datetime-local" class="form-control" id="event-publicacion" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">URL de Imagen (opcional)</label>
-                        <input type="text" class="form-control" id="event-imagen">
-                    </div>
-                </form>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button class="btn btn-primary" form="event-form" id="save-event-btn">Guardar Evento</button>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-<!-- Modal para Confirmaciones -->
-<div class="modal fade" id="confirm-modal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmar Acción</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="confirm-modal-body">
-                ¿Seguro que deseas continuar?
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button class="btn btn-danger" id="confirm-modal-btn">Confirmar</button>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Modal para Tipos de Actividades -->
-<div class="modal fade" id="manage-types-modal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title">Tipos de Actividades</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body">
-                <form id="type-form">
-                    <input type="hidden" id="type-id">
-                    <div class="mb-3">
-                        <label class="form-label">Nombre del Tipo</label>
-                        <input type="text" class="form-control" id="type-name" required>
-                    </div>
-                    <button class="btn btn-primary" id="save-type-btn">Guardar</button>
-                </form>
-
-                <hr>
-
-                <h6 class="mt-3">Tipos existentes</h6>
-                <div id="types-list-container"></div>
+    <!-- Modal para Confirmaciones -->
+    <div class="modal fade" id="confirmation-modal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Acción</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmation-modal-body-text">
+                    ¿Seguro que deseas continuar?
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-danger" id="confirm-action-btn">Confirmar</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Contenedor de Alertas -->
-<div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index:1055"></div>
+    <!-- Modal para Tipos de Actividades -->
+    <div class="modal fade" id="manage-types-modal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
 
-<footer class="footer mt-auto py-3 bg-dark"></footer>
+                <div class="modal-header">
+                    <h5 class="modal-title">Tipos de Actividades</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
 
-<!-- Scripts -->
-<script src="/jquery-3.7.1.min.js"></script>
-<script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="/DataTables/datatables.min.js"></script>
+                <div class="modal-body">
+                    <form id="type-form">
+                        <input type="hidden" id="type-id">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del Tipo</label>
+                            <input type="text" class="form-control" id="type-name" required>
+                        </div>
+                        <button class="btn btn-primary" id="save-type-btn">Guardar</button>
+                    </form>
 
-<script src="/controllers/firebase-config.js"></script>
-<script src="/js/utils.js"></script>
-<script src="/controllers/authController.js"></script>
-<script src="/controllers/navigation.js"></script>
-<script src="/controllers/subeventosController.js"></script>
-<script src="/controllers/eventosController.js"></script>
+                    <hr>
+
+                    <h6 class="mt-3">Tipos existentes</h6>
+                    <div id="types-list-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de Alertas -->
+    <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index:1055"></div>
+
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
+
+    <!-- Scripts -->
+    <script src="/jquery-3.7.1.min.js"></script>
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/DataTables/datatables.min.js"></script>
+
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/subeventosController.js"></script>
+    <script src="/controllers/eventosController.js"></script>
 
 </body>
+
 </html>

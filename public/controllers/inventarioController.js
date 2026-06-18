@@ -15,6 +15,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Data cache
     let currentItemHistory = [];
+    let statsChart = null;
+
+    // Filtros de tiempo para estadísticas (por defecto últimos 30 días)
+    let statsDateFilter = {
+        days: 30
+    };
 
     async function getUserName(userId) {
         if (!userId) {
@@ -44,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 select.innerHTML = '<option value="" disabled>Seleccione una categoría</option>';
                 snapshot.forEach(doc => {
                     const categoria = doc.data();
-                    select.add(new Option(categoria.nombreCategoria, doc.id)); 
+                    select.add(new Option(categoria.nombreCategoria, doc.id));
                 });
                 if (currentValue) select.value = currentValue;
             });
@@ -96,14 +102,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const categoryFormContainer = document.querySelector('#categorias-section .card-body > .card');
         if (userIsAdmin) {
             addItemBtn.style.display = 'block';
-            if(categoryFormContainer) categoryFormContainer.style.display = 'block';
+            if (categoryFormContainer) categoryFormContainer.style.display = 'block';
         } else {
             addItemBtn.style.display = 'none';
-            if(categoryFormContainer) categoryFormContainer.style.display = 'none';
+            if (categoryFormContainer) categoryFormContainer.style.display = 'none';
         }
         loadCategoriesForFilter();
         loadInventoryData();
         setupEventListeners();
+        if (document.getElementById('stats-section')) renderLoanStats();
         loadAndPopulateCategoriesForModal();
     }
 
@@ -163,11 +170,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function loadAndInitCategoriasTable(forceReload = false) {
         if ($.fn.DataTable.isDataTable('#categorias-table') && !forceReload) return;
-    
+
         try {
             const snapshot = await db.collection('categoriasInventario').orderBy('idCategoria').get();
             const categories = snapshot.docs.map(doc => ({ ...doc.data(), docId: doc.id }));
-    
+
             if ($.fn.DataTable.isDataTable('#categorias-table')) {
                 categoriasTable.clear().rows.add(categories).draw();
             } else {
@@ -196,13 +203,21 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Error al cargar categorías: ", error);
         }
     }
-    
+
     // --- EVENT LISTENERS & HANDLERS ---
 
     function setupEventListeners() {
-        $('#category-filter').on('change', function() { inventarioTable.column(1).search($(this).val()).draw(); });
+        $('#category-filter').on('change', function () { inventarioTable.column(1).search($(this).val()).draw(); });
         $('button[data-bs-target="#categorias-section"]').on('shown.bs.tab', () => loadAndInitCategoriasTable());
         $('#inventario-table tbody').on('click', '.info-btn', function () { openInfoModal($(this).data('id'), $(this).data('name')); });
+
+        // Eventos para Estadísticas
+        $('button[data-bs-target="#stats-section"]').on('shown.bs.tab', () => renderLoanStats());
+        $(document).on('change', '#stats-time-filter', function () {
+            statsDateFilter.days = parseInt($(this).val());
+            renderLoanStats();
+        });
+
         $('#info-filtro-responsable, #info-filtro-evento').on('change', applyInfoFilters);
 
         if (userIsAdmin) {
@@ -324,15 +339,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function handleDeleteCategory(docId, categoryName) {
         const inventorySnapshot = await db.collection('inventario').where('idCategoria', '==', docId).get();
-    
+
         if (!inventorySnapshot.empty) {
             const itemNames = inventorySnapshot.docs.map(doc => doc.data().nombre).join(', ');
             showAlert(`No se puede eliminar "${categoryName}" porque está asignada a: ${itemNames}.`, 'danger', 10000);
             return;
         }
-    
+
         showConfirmationModal(
-            'Confirmar Eliminación', 
+            'Confirmar Eliminación',
             `¿Estás seguro de que quieres eliminar la categoría "${categoryName}"? Esta acción no se puede deshacer.`,
             async () => {
                 try {
@@ -395,6 +410,78 @@ document.addEventListener('DOMContentLoaded', function () {
         const eventFiltro = $('#info-filtro-evento').val();
         const filtered = currentItemHistory.filter(item => (!respFiltro || item.Responsable === respFiltro) && (!eventFiltro || item.Evento === eventFiltro));
         infoHistorialTable.clear().rows.add(filtered).draw();
+    }
+
+    // --- STATISTICS FUNCTIONS ---
+
+    async function renderLoanStats() {
+        const canvas = document.getElementById('loansChart');
+        if (!canvas) return;
+
+        try {
+            const now = new Date();
+            const filterDate = new Date();
+            filterDate.setDate(now.getDate() - statsDateFilter.days);
+
+            // Consultar préstamos en el periodo
+            const snapshot = await db.collection('prestamos')
+                .where('fechaHoraPrestamo', '>=', filterDate)
+                .get();
+
+            const counts = {};
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const nombre = data.nombreArticulo || 'Desconocido';
+                counts[nombre] = (counts[nombre] || 0) + 1;
+            });
+
+            // Ordenar y tomar los 10 mejores
+            const sortedData = Object.entries(counts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            const labels = sortedData.map(d => d[0]);
+            const values = sortedData.map(d => d[1]);
+
+            if (statsChart) statsChart.destroy();
+
+            if (sortedData.length === 0) {
+                const ctx = canvas.getContext('2d');
+                ctx.font = "16px sans-serif";
+                ctx.fillText("No hay datos de préstamos en este periodo.", 10, 50);
+                return;
+            }
+
+            statsChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Número de préstamos',
+                        data: values,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: `Top Artículos Prestados (Últimos ${statsDateFilter.days} días)`
+                        }
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("Error al generar estadísticas: ", error);
+            showAlert('No se pudieron cargar las estadísticas.', 'danger');
+        }
     }
 
     document.addEventListener('inventarioActualizado', () => {
