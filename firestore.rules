@@ -2,108 +2,85 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Función auxiliar para verificar si el usuario es administrador
+    function isAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Función auxiliar para verificar si el usuario es socio
+    function isSocio() {
+      return request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true;
+    }
+
     // REGLA PARA USUARIOS:
     match /usuarios/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+      allow write: if request.auth.uid == userId || isAdmin();
     }
 
     // REGLA PARA CATEGORÍAS DE INVENTARIO:
     match /categoriasInventario/{docId} {
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true
-      );
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+      allow read: if isSocio() || isAdmin();
+      allow write: if isAdmin();
     }
     
     // REGLA PARA EVENTOS (NUEVA):
     match /eventos/{docId} {
-        allow read: if request.auth != null && (
-            get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true ||
-            get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true
-        );
-        allow write: if request.auth != null &&
-            get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+        // Lectura: Pública para todo el mundo (invitados incluidos)
+        allow read: if true;
+        allow write: if isAdmin();
     }
 
     // REGLA PARA INVENTARIO:
     match /inventario/{docId} {
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true
-      );
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+      allow read: if isSocio() || isAdmin();
+      allow write: if isAdmin();
     }
 
     // REGLA PARA PRÉSTAMOS:
     match /prestamos/{docId} {
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true
-      );
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+      allow read: if isSocio() || isAdmin();
+      allow write: if isSocio() || isAdmin();
     }
 
     // REGLA PARA SUBEVENTOS:
     match /subeventos/{docId} {
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true
-      );
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+      // Lectura: Pública para todo el mundo (invitados incluidos)
+      allow read: if true;
+      allow write: if isAdmin();
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plazasOcupadas'])
+        && resource.data.pagoPrevioEvento == true
+        && request.resource.data.plazasOcupadas == resource.data.plazasOcupadas + 1
+        && (resource.data.plazas == 0 || request.resource.data.plazasOcupadas <= resource.data.plazas);
 
       match /inscripciones/{inscripcionId} {
-        allow create: if request.resource.data.pagado == false
-          && (!('userId' in request.resource.data)
-            || request.resource.data.userId == null
-            || (request.auth != null && request.resource.data.userId == request.auth.uid))
-          && request.resource.data.nombreCompleto is string
-          && request.resource.data.correo is string
-          && request.resource.data.telefono is string;
+           // Permitir a cualquier usuario autenticado crear una inscripción
+           allow create: if request.auth != null;
+           // Permitir leer inscripciones solo al usuario que la creó o a un administrador
+           allow read: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true);
+           // Permitir actualizar/eliminar inscripciones solo al usuario que la creó o a un administrador
+           allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true);
+         }
 
-        allow read: if request.auth != null && (
-          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true ||
-          resource.data.userId == request.auth.uid
-        );
-
-        allow update, delete: if request.auth != null &&
-          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
-      }
     }
 
     // REGLA PARA TIPOS DE ACTIVIDADES:
     match /tipoSubevento/{docId} {
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true
-      );
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+      // Lectura: Pública para todo el mundo (invitados incluidos)
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // REGLA PARA TORNEOS:
     match /torneos/{docId} {
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true
-      );
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+      allow read: if isSocio() || isAdmin();
+      allow write: if isAdmin();
     }
 
     // REGLA PARA LIGAS:
     match /ligas/{docId} {
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true
-      );
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+      allow read: if isSocio() || isAdmin();
+      allow write: if isAdmin();
     }
   }
 }

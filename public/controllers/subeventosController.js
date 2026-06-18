@@ -129,6 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try { document.getElementById('subevent-horaEvento').value = subevento.horaEvento; } catch (e) { }
             try { document.getElementById('subevent-lugar').value = subevento.lugar; } catch (e) { }
             try { document.getElementById('subevent-imagen').value = subevento.imagen; } catch (e) { }
+            try { document.getElementById('subevent-bases-url').value = subevento.basesUrl || ''; } catch (e) { }
+            try { document.getElementById('subevent-pago-previo').checked = subevento.pagoPrevioEvento === true; } catch (e) { }
 
             try {
                 const fp = subevento.fechaPublicacion;
@@ -193,13 +195,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return registrationsCache.filter(r => r.pagado === true).length;
     }
 
+    function areRegistrationTermsAccepted() {
+        const terms = document.getElementById('registration-terms');
+        return !terms || terms.checked;
+    }
+
+    function updateRegistrationButtons(canReserve) {
+        const quickBtn = document.getElementById('quick-register-btn');
+        const manualBtn = document.getElementById('manual-register-btn');
+        const shouldDisable = !canReserve || !areRegistrationTermsAccepted();
+
+        if (quickBtn) quickBtn.disabled = shouldDisable;
+        if (manualBtn) manualBtn.disabled = shouldDisable;
+    }
+
     function hasAvailablePaidSlot() {
         if (!currentSubevent) return false;
         const plazas = parseInt(currentSubevent.plazas || 0, 10);
         if (plazas <= 0) return true;
-        const paidCount = Number.isFinite(parseInt(currentSubevent.plazasOcupadas, 10))
-            ? parseInt(currentSubevent.plazasOcupadas, 10)
-            : getPaidCount();
+        const paidCount = parseInt(currentSubevent.plazasOcupadas || 0, 10);
         return paidCount < plazas;
     }
 
@@ -249,9 +263,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentSubevent) return;
 
         const plazas = parseInt(currentSubevent.plazas || 0, 10);
-        const paidCount = Number.isFinite(parseInt(currentSubevent.plazasOcupadas, 10))
-            ? parseInt(currentSubevent.plazasOcupadas, 10)
-            : getPaidCount();
+        const paidCount = parseInt(currentSubevent.plazasOcupadas || 0, 10);
+
+        // Centrar el formulario si el usuario no es admin
+        const regForm = document.getElementById('registration-form');
+        if (regForm && !isAdminUser()) {
+            const col = regForm.closest('[class*="col-"]');
+            if (col) {
+                col.classList.add('mx-auto', 'float-none');
+                if (col.parentElement) col.parentElement.classList.add('justify-content-center');
+            }
+        }
 
         if (capacityText) {
             capacityText.textContent = plazas > 0
@@ -278,9 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (quickBtn) quickBtn.style.display = auth.currentUser && canReserve ? 'block' : 'none';
         if (loginBox) loginBox.style.display = !auth.currentUser && canReserve ? 'block' : 'none';
         if (manualBtn) {
-            manualBtn.disabled = !canReserve;
             manualBtn.textContent = canReserve ? 'Reservar plaza' : (alreadyReserved ? 'Ya tienes una reserva' : 'Sin plazas disponibles');
         }
+        updateRegistrationButtons(canReserve);
     }
 
     function renderRegistrationLists() {
@@ -296,16 +318,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const renderItem = (registration) => `
             <div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-start gap-3">
+                <div class="d-flex justify-content-between align-items-center gap-3">
                     <div>
                         <div class="fw-bold">${escapeRegistrationText(registration.nombreCompleto || 'Sin nombre')}</div>
                         <div>${escapeRegistrationText(registration.correo)}</div>
                         <div>${escapeRegistrationText(registration.telefono)}</div>
                         <div class="text-muted">${formatRegistrationDate(registration.timestamp)}</div>
                     </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input registration-paid-switch" type="checkbox" data-id="${registration.id}" ${registration.pagado ? 'checked' : ''}>
-                        <label class="form-check-label">Pagado</label>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input registration-paid-switch" type="checkbox" data-id="${registration.id}" ${registration.pagado ? 'checked' : ''}>
+                            <label class="form-check-label">Pagado</label>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger btn-delete-registration" data-id="${registration.id}" title="Eliminar reserva">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -364,6 +391,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const subId = getSubeventIdFromUrl();
         if (!subId || !currentSubevent) return;
 
+        if (!areRegistrationTermsAccepted()) {
+            if (window.showAlert) window.showAlert('Debes aceptar las bases antes de reservar plaza.', 'warning');
+            updateRegistrationButtons(hasAvailablePaidSlot() && !currentUserRegistration);
+            return;
+        }
+
         if (!hasAvailablePaidSlot()) {
             if (window.showAlert) window.showAlert('No quedan plazas disponibles para nuevas reservas.', 'warning');
             return;
@@ -374,25 +407,55 @@ document.addEventListener('DOMContentLoaded', () => {
             correo: normalizeEmail(data.correo),
             telefono: String(data.telefono || '').trim(),
             userId: data.userId || null,
-            pagado: false,
+            pagado: currentSubevent.pagoPrevioEvento === true ? false : true,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        if (!payload.nombreCompleto || !payload.correo || !payload.telefono) {
-            if (window.showAlert) window.showAlert('Completa nombre, correo y teléfono.', 'warning');
+        if (!payload.nombreCompleto || !payload.correo) {
+            if (window.showAlert) window.showAlert('Por favor, completa al menos el nombre y el correo.', 'warning');
             return;
         }
 
         try {
-            if (payload.userId) {
-                await getRegistrationCollection(subId).doc(`user_${payload.userId}`).set(payload, { merge: true });
+            const autoPaid = !currentSubevent.pagoPrevioEvento; // Auto-pagado solo si NO hay pago previo
+
+            if (autoPaid) {
+                await db.runTransaction(async transaction => {
+                    const subRef = db.collection('subeventos').doc(subId);
+                    const regRef = payload.userId
+                        ? getRegistrationCollection(subId).doc(`user_${payload.userId}`)
+                        : getRegistrationCollection(subId).doc();
+                    const subDoc = await transaction.get(subRef);
+
+                    if (!subDoc.exists) throw new Error('La actividad no existe.');
+
+                    const subData = subDoc.data();
+                    const plazas = parseInt(subData.plazas || 0, 10);
+                    const ocupadas = parseInt(subData.plazasOcupadas || 0, 10) || 0;
+
+                    if (plazas > 0 && ocupadas >= plazas) {
+                        throw new Error('No quedan plazas disponibles para nuevas inscripciones.');
+                    }
+
+                    transaction.set(regRef, { ...payload, pagado: true });
+                    transaction.update(subRef, { plazasOcupadas: ocupadas + 1 });
+                });
+            } else if (payload.userId) {
+                await getRegistrationCollection(subId).doc(`user_${payload.userId}`).set(payload);
             } else {
                 await getRegistrationCollection(subId).add(payload);
             }
             if (registrationForm) registrationForm.reset();
-            if (window.showAlert) window.showAlert('Reserva registrada. Quedará como inscrita cuando se marque como pagada.', 'success');
+            const terms = document.getElementById('registration-terms');
+            if (terms) terms.checked = false;
+            if (window.showAlert) {
+                const msg = autoPaid
+                    ? 'Inscripcion registrada directamente como pagada.'
+                    : 'Reserva registrada. Quedara como inscrita cuando se marque como pagada.';
+                window.showAlert(msg, 'success');
+            }
             if (auth.currentUser) {
-                await loadRegistrations(subId);
+                await refreshSubeventAndRegistrations(subId);
             } else {
                 currentUserRegistration = { ...payload, timestamp: new Date() };
                 renderRegistrationSummary();
@@ -414,9 +477,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleQuickRegistration() {
+        console.log('Iniciando proceso de inscripción rápida...');
         const profile = await loadCurrentUserProfile();
         if (!profile) {
             if (window.showAlert) window.showAlert('Inicia sesión para reservar con tus datos.', 'warning');
+            return;
+        }
+
+        if (!currentSubevent) {
+            console.error('Error: currentSubevent es null');
+            if (window.showAlert) window.showAlert('No se ha podido cargar la información de la actividad. Recarga la página.', 'danger');
             return;
         }
 
@@ -468,6 +538,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function handleDeleteRegistration(registrationId) {
+        if (!isAdminUser()) return;
+
+        const subId = getSubeventIdFromUrl();
+        if (!subId) return;
+
+        const registration = registrationsCache.find(r => r.id === registrationId);
+        if (!registration) return;
+
+        if (!confirm(`¿Estás seguro de que quieres eliminar la inscripción de "${registration.nombreCompleto}"?`)) return;
+
+        try {
+            await db.runTransaction(async transaction => {
+                const subRef = db.collection('subeventos').doc(subId);
+                const regRef = getRegistrationCollection(subId).doc(registrationId);
+
+                const subDoc = await transaction.get(subRef);
+                if (!subDoc.exists) throw new Error("La actividad no existe.");
+
+                const currentOcupadas = parseInt(subDoc.data().plazasOcupadas || 0, 10);
+
+                // Si estaba marcado como pagado, restamos una plaza del contador global
+                if (registration.pagado) {
+                    transaction.update(subRef, { plazasOcupadas: Math.max(0, currentOcupadas - 1) });
+                }
+
+                transaction.delete(regRef);
+            });
+
+            if (window.showAlert) window.showAlert('Inscripción eliminada con éxito.', 'success');
+            await refreshSubeventAndRegistrations(subId);
+        } catch (error) {
+            console.error('Error al eliminar inscripción:', error);
+            if (window.showAlert) window.showAlert('Error al eliminar: ' + error.message, 'danger');
+        }
+    }
+
     async function loadSubeventDetails() {
         const subId = new URLSearchParams(window.location.search).get('id');
         console.log('subeventosController.loadSubeventDetails() subId=', subId);
@@ -491,7 +598,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const parentEl = document.getElementById('subevent-detail-parent');
 
             if (titleEl) titleEl.textContent = sub.titulo || 'Sin título';
-            if (descEl) descEl.textContent = sub.descripcion || '';
+            if (descEl) {
+                const description = window.escapeHtml ? window.escapeHtml(sub.descripcion || '') : (sub.descripcion || '');
+                const basesUrl = String(sub.basesUrl || '').trim();
+                const safeBasesUrl = window.escapeHtml ? window.escapeHtml(basesUrl) : basesUrl;
+                descEl.innerHTML = description;
+                if (basesUrl) {
+                    descEl.innerHTML += `<div class="mt-3"><a href="${safeBasesUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-alt me-1"></i> Ver bases</a></div>`;
+                }
+            }
             if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${(sub.fechaEvento || '')} ${sub.horaEvento ? 'a las ' + sub.horaEvento : ''}`;
             if (placeEl) placeEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${window.escapeHtml ? window.escapeHtml(sub.lugar || '') : (sub.lugar || '')}`;
             if (tipoEl) tipoEl.textContent = (window.getTiposCache ? (window.getTiposCache().find(t => t.id === sub.tipoEventoId)?.nombre) : '') || 'Desconocido';
@@ -543,6 +658,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tipoEventoId: document.getElementById('subevent-tipo') ? document.getElementById('subevent-tipo').value : '',
             eventoId: eventId,
             imagen: document.getElementById('subevent-imagen') ? document.getElementById('subevent-imagen').value : '',
+            basesUrl: document.getElementById('subevent-bases-url') ? document.getElementById('subevent-bases-url').value.trim() : '',
+            pagoPrevioEvento: document.getElementById('subevent-pago-previo') ? document.getElementById('subevent-pago-previo').checked : false,
             fechaEvento: document.getElementById('subevent-fechaEvento') ? document.getElementById('subevent-fechaEvento').value : '',
             horaEvento: document.getElementById('subevent-horaEvento') ? document.getElementById('subevent-horaEvento').value : '',
             fechaPublicacion: fechaPublicacion,
@@ -570,18 +687,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleDeleteSubevent(id) {
-        const subeventToDelete = subeventosCache.find(e => e.id === id);
-        if (!subeventToDelete) return;
+        console.log("[Subeventos] Iniciando handleDeleteSubevent para ID:", id);
+
+        // Buscar en la caché local o en la caché del controlador de eventos si estamos en la principal
+        let subeventToDelete = subeventosCache.find(e => e.id === id);
+        if (!subeventToDelete && window._eventosSubCache) {
+            console.log("[Subeventos] No encontrado en caché local, buscando en caché global...");
+            subeventToDelete = window._eventosSubCache().find(e => e.id === id);
+        }
+
+        if (!subeventToDelete) {
+            console.error("[Subeventos] Error: No se encontró la actividad en ninguna caché. ID buscado:", id);
+            return;
+        }
+
+        // Creamos el modal dinámicamente si no existe
+        let modalEl = document.getElementById('confirmation-modal');
+        if (!modalEl) {
+            const modalHtml = `
+                <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-hidden="true" style="z-index: 2000;">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title">Confirmar Eliminación</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p id="confirmation-modal-body-text" class="mb-0"></p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-danger" id="confirm-action-btn">Eliminar definitivamente</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            modalEl = document.getElementById('confirmation-modal');
+        }
+
         window.itemToDeleteId = id;
         window.itemToDeleteType = 'subevento';
-        const confirmModalElement = document.getElementById('confirm-modal');
-        const confirmModal = confirmModalElement ? new bootstrap.Modal(confirmModalElement) : null;
-        const body = document.getElementById('confirm-modal-body');
-        if (body) body.textContent = `¿Estás seguro de que quieres eliminar el subevento "${subeventToDelete.titulo}"?`;
-        if (confirmModal) confirmModal.show();
+
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        // Si estamos dentro de otro modal, ajustar z-index
+
+        modalInstance.show();
     }
 
     // Listeners específicos de subeventos
+
+    // Listener para controlar el bloqueo/desbloqueo de los botones de reserva según las bases
+    $(document).on('change', '#registration-terms', function (e) {
+        // The updateRegistrationButtons function already checks areRegistrationTermsAccepted()
+        // and hasAvailablePaidSlot() and currentUserRegistration.
+        // So, we just need to trigger it.
+        updateRegistrationButtons(hasAvailablePaidSlot() && !currentUserRegistration);
+    });
+
     $(document).on('click', (e) => {
         const target = $(e.target).closest('button, a');
         if (!target.length) return;
@@ -592,6 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openSubeventModalForEdit(sid);
         }
         if (target.is('.btn-delete-subevent')) handleDeleteSubevent(target.data('id'));
+        if (target.is('.btn-delete-registration')) handleDeleteRegistration(target.data('id'));
     });
 
     $(document).on('submit', (e) => {
@@ -614,4 +778,17 @@ document.addEventListener('DOMContentLoaded', () => {
     window.handleSubeventFormSubmit = handleSubeventFormSubmit;
     window.handleDeleteSubevent = handleDeleteSubevent;
 
+    const checkBases = document.getElementById('registration-terms');
+    if (checkBases) {
+        checkBases.checked = false; // Nos aseguramos de que empiece desmarcado
+    }
+
+    // Al resetear el formulario o cerrar el proceso, volvemos a bloquear los botones por seguridad:
+    const quickRegisterBtn = document.getElementById('quick-register-btn');
+    const submitRegistrationBtn = document.getElementById('manual-register-btn');
+
+    if (quickRegisterBtn) quickRegisterBtn.disabled = true;
+    if (submitRegistrationBtn) submitRegistrationBtn.disabled = true;
+
 });
+

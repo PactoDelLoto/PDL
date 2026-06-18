@@ -891,8 +891,64 @@ window.initializeTorneosController = function (isAdmin) {
         if (!selectedTournament) return;
 
         tempJugadores = selectedTournament.jugadores ? [...selectedTournament.jugadores] : [];
+        updateImportarInscritosButton();
         renderTempJugadoresList();
         modalJugadores.show();
+    }
+
+    function updateImportarInscritosButton() {
+        const btn = document.getElementById('btn-importar-inscritos-jornada');
+        if (!btn) return;
+
+        const hasSubevento = !!(selectedTournament && selectedTournament.subeventoId);
+        btn.disabled = !hasSubevento;
+        btn.title = hasSubevento
+            ? 'Traer jugadores inscritos de la actividad asociada'
+            : 'Asocia una actividad al torneo para importar inscritos';
+    }
+
+    async function handleImportarInscritosJornada() {
+        if (!selectedTournament || !selectedTournament.subeventoId) {
+            if (window.showAlert) window.showAlert('Este torneo no tiene una actividad asociada.', 'warning');
+            return;
+        }
+
+        try {
+            const snapshot = await db.collection('subeventos')
+                .doc(selectedTournament.subeventoId)
+                .collection('inscripciones')
+                .where('pagado', '==', true)
+                .get();
+
+            const inscritos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (!inscritos.length) {
+                if (window.showAlert) window.showAlert('No hay inscritos pagados en la actividad asociada.', 'info');
+                return;
+            }
+
+            let addedCount = 0;
+            inscritos.forEach(inscripcion => {
+                const jugadorId = inscripcion.userId || `inscripcion_${inscripcion.id}`;
+                if (tempJugadores.some(j => j.id === jugadorId)) return;
+
+                tempJugadores.push({
+                    id: jugadorId,
+                    nombre: inscripcion.nombreCompleto || inscripcion.correo || 'Sin nombre'
+                });
+                addedCount++;
+            });
+
+            renderTempJugadoresList();
+            if (window.showAlert) {
+                const msg = addedCount
+                    ? `${addedCount} jugador(es) importado(s) desde la actividad.`
+                    : 'Los inscritos de la actividad ya estaban en el torneo.';
+                window.showAlert(msg, addedCount ? 'success' : 'info');
+            }
+        } catch (error) {
+            console.error('Error importando inscritos de la actividad:', error);
+            if (window.showAlert) window.showAlert('No se pudieron importar los inscritos de la actividad.', 'danger');
+        }
     }
 
     function populateAgregarUsuarioSelect() {
@@ -996,6 +1052,7 @@ window.initializeTorneosController = function (isAdmin) {
             if (localTorneo) localTorneo.jugadores = tempJugadores;
 
             renderTournamentsList();
+            renderGestionJugadoresList();
             if (window.showAlert) window.showAlert("Participantes actualizados correctamente.", "success");
         } catch (error) {
             console.error("Error al actualizar jugadores en Firestore:", error);
@@ -1294,6 +1351,9 @@ window.initializeTorneosController = function (isAdmin) {
 
         const btnAgregarUsuario = document.getElementById('btn-agregar-usuario-lista');
         if (btnAgregarUsuario) btnAgregarUsuario.addEventListener('click', handleAgregarUsuarioALista);
+
+        const btnImportarInscritos = document.getElementById('btn-importar-inscritos-jornada');
+        if (btnImportarInscritos) btnImportarInscritos.addEventListener('click', handleImportarInscritosJornada);
 
         // También añadir al pulsar Enter en el buscador
         const inputBuscarUsuario = document.getElementById('input-buscar-usuario');

@@ -9,16 +9,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let tiposCache = [];
     let tiposCountMap = {};
     let subeventosCache = [];
-    let itemToDeleteId = null;
-    let itemToDeleteType = null; // 'evento' or 'subevento'
     // Exponer getters simples para otros controladores (subeventos)
+    window._eventosSubCache = () => subeventosCache;
     window.getTiposCache = () => tiposCache;
     window.getUserRole = () => userRole;
 
     // --- UI ELEMENTS ---
     let eventModal, confirmModal, manageTypesModal, subeventModal;
     const eventModalElement = document.getElementById('event-modal');
-    const confirmModalElement = document.getElementById('confirm-modal');
+    // Quitamos la referencia estática al confirmModalElement ya que lo crearemos dinámicamente
     const manageTypesModalElement = document.getElementById('manage-types-modal');
     const subeventModalElement = document.getElementById('subevent-modal');
 
@@ -48,9 +47,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZATION ---
     if (eventModalElement) eventModal = new bootstrap.Modal(eventModalElement);
-    if (confirmModalElement) confirmModal = new bootstrap.Modal(confirmModalElement);
     if (manageTypesModalElement) manageTypesModal = new bootstrap.Modal(manageTypesModalElement);
     if (subeventModalElement) subeventModal = new bootstrap.Modal(subeventModalElement);
+
+    // Función para asegurar que el modal de confirmación existe en el DOM
+    function getConfirmationModal() {
+        let modalEl = document.getElementById('confirmation-modal');
+        if (!modalEl) {
+            const modalHtml = `
+                <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true" style="z-index: 2000;">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title" id="confirmationModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirmar Eliminación</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p id="confirmation-modal-body-text" class="mb-0"></p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-danger" id="confirm-action-btn">Eliminar definitivamente</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            modalEl = document.getElementById('confirmation-modal');
+        }
+        return { element: modalEl, instance: bootstrap.Modal.getOrCreateInstance(modalEl) };
+    }
 
     // Helper para mostrar un modal por encima de otros (corrige stacking cuando hay múltiples modales)
     function showModalOnTop(modalInstance, modalElement) {
@@ -120,34 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ================================================
-    // OBSERVADOR DE AUTENTICACIÓN (CORREGIDO ASÍNCRONO)
-    // ================================================
-    auth.onAuthStateChanged(async (user) => {
-        currentUser = user;
-        if (user) {
-            try {
-                // Forzamos la espera real de la consulta de usuario
-                const userDoc = await db.collection('usuarios').doc(user.uid).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    if (userData.isAdmin) userRole = 'admin';
-                    else if (userData.isSocio) userRole = 'socio';
-                    else userRole = 'viewer';
-                } else {
-                    userRole = 'viewer';
-                }
-            } catch (error) {
-                console.error("Error obteniendo documento de usuario:", error);
-                userRole = 'viewer'; // Fallback seguro ante fallos
-            }
-        } else {
-            userRole = 'viewer';
-        }
-
-        // AHORA SÍ: initPage se ejecuta ÚNICAMENTE tras haber resuelto el rol de forma secuencial
-        initPage();
-    });
     async function initPage() {
         const path = window.location.pathname;
 
@@ -554,10 +552,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleDeleteEvent(id) {
         const eventToDelete = eventosCache.find(e => e.id === id);
         if (!eventToDelete) return;
-        itemToDeleteId = id;
-        itemToDeleteType = 'evento';
-        document.getElementById('confirm-modal-body').textContent = `¿Estás seguro de que quieres eliminar el evento "${eventToDelete.titulo}"?`;
-        if (confirmModal) showModalOnTop(confirmModal, confirmModalElement);
+        window.itemToDeleteId = id;
+        window.itemToDeleteType = 'evento';
+        const modalData = getConfirmationModal();
+        const bodyText = document.getElementById('confirmation-modal-body-text');
+        if (bodyText) bodyText.textContent = `¿Estás seguro de que quieres eliminar el evento "${eventToDelete.titulo}"? Esta acción borrará también todas sus actividades asociadas.`;
+        showModalOnTop(modalData.instance, modalData.element);
     }
 
     // ================================================
@@ -766,10 +766,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        itemToDeleteId = id;
-        itemToDeleteType = 'tipo';
-        document.getElementById('confirm-modal-body').textContent = `¿Estás seguro de que deseas eliminar el tipo "${tipo.nombre}"?`;
-        if (confirmModal) showModalOnTop(confirmModal, confirmModalElement);
+        window.itemToDeleteId = id;
+        window.itemToDeleteType = 'tipo';
+        const modalData = getConfirmationModal();
+        const bodyText = document.getElementById('confirmation-modal-body-text');
+        if (bodyText) bodyText.textContent = `¿Estás seguro de que deseas eliminar el tipo "${tipo.nombre}"?`;
+        showModalOnTop(modalData.instance, modalData.element);
     }
 
     // ================================================
@@ -844,7 +846,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.escapeHtml = (typeof escapeHtml === 'function') ? escapeHtml : (s => s);
 
     // --- GLOBAL EVENT LISTENERS ---
-    $(document).off('click submit change');
+    // Eliminamos .off() para no borrar los listeners de otros controladores como subeventosController
 
     $(document).on('click', (e) => {
         const target = $(e.target).closest('button, a');
@@ -905,33 +907,46 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.is('.btn-delete-subevent')) { if (window.handleDeleteSubevent) window.handleDeleteSubevent(target.data('id')); }
 
         // Confirmation Modal
-        if (target.is('#confirm-modal-btn')) {
-            if (!itemToDeleteId || !itemToDeleteType) return;
+        if (target.is('#confirm-action-btn')) {
+            if (!window.itemToDeleteId || !window.itemToDeleteType) {
+                console.warn("Intento de borrado sin datos de destino.");
+                return;
+            }
+            console.log("[Eventos] Ejecutando borrado de:", window.itemToDeleteType, window.itemToDeleteId);
 
             let collectionName = 'subeventos';
-            if (itemToDeleteType === 'evento') collectionName = 'eventos';
-            else if (itemToDeleteType === 'tipo') collectionName = 'tipoSubevento';
+            if (window.itemToDeleteType === 'evento') collectionName = 'eventos';
+            else if (window.itemToDeleteType === 'tipo') collectionName = 'tipoSubevento';
 
-            db.collection(collectionName).doc(itemToDeleteId).delete()
+            db.collection(collectionName).doc(window.itemToDeleteId).delete()
                 .then(() => {
-                    showAlert(`${itemToDeleteType.charAt(0).toUpperCase() + itemToDeleteType.slice(1)} eliminado con éxito.`, 'success');
-                    if (itemToDeleteType === 'evento') {
+                    showAlert(`${window.itemToDeleteType.charAt(0).toUpperCase() + window.itemToDeleteType.slice(1)} eliminado con éxito.`, 'success');
+                    if (window.itemToDeleteType === 'evento') {
                         loadEvents();
-                    } else if (itemToDeleteType === 'subevento') {
+                    } else if (window.itemToDeleteType === 'subevento') {
                         const eventId = new URLSearchParams(window.location.search).get('id');
-                        if (window.loadSubeventos) window.loadSubeventos(eventId);
-                    } else if (itemToDeleteType === 'tipo') {
+                        if (eventId && window.loadSubeventos) {
+                            window.loadSubeventos(eventId);
+                        } else {
+                            // Si estamos en la página principal, recargar todo para limpiar la vista
+                            loadEvents().then(() => loadAllSubeventos().then(() => renderViews()));
+                        }
+                    } else if (window.itemToDeleteType === 'tipo') {
                         loadEventTypes();
                     }
                 })
                 .catch(error => {
-                    console.error(`Error deleting ${itemToDeleteType}: `, error);
-                    showAlert(`No se pudo eliminar el ${itemToDeleteType}.`, 'danger');
+                    console.error(`Error deleting ${window.itemToDeleteType}: `, error);
+                    showAlert(`No se pudo eliminar el ${window.itemToDeleteType}.`, 'danger');
                 })
                 .finally(() => {
-                    if (confirmModal) confirmModal.hide();
-                    itemToDeleteId = null;
-                    itemToDeleteType = null;
+                    // Cerrar el modal sea cual sea su ID
+                    const modalEl = document.getElementById('confirmation-modal') || document.getElementById('confirm-modal');
+                    if (modalEl) {
+                        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                    }
+                    window.itemToDeleteId = null;
+                    window.itemToDeleteType = null;
                 });
         }
     });
@@ -942,59 +957,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (form.is('#type-form')) handleTypeFormSubmit(e);
         // El envío de '#subevent-form' lo gestiona `subeventosController.js`.
     });
-
-    // ==========================================
-    // ESCUCHADORES DE EVENTOS GLOBALES (SUBMITS Y FILTROS)
-    // ==========================================
-    $(document).on('change', '#type-filter', function () {
-        renderViews();
-        if (eventosDataTable) eventosDataTable.responsive.recalc();
-    });
-
-    $(document).on('input', '#search-input', function () {
-        renderViews();
-        if (eventosDataTable) eventosDataTable.responsive.recalc();
-    });
-
-    $(document).on('change', '#event-continuo', function () {
-        try { toggleEventContinuoUI(); } catch (e) { /* noop */ }
-    });
-
-    $(document).on('change', '#filter-show-events, #filter-show-activities', function () {
-        renderViews();
-    });
-
-    $(document).on('submit', (e) => {
-        const form = $(e.target);
-        if (form.is('#event-form')) handleEventFormSubmit(e);
-        if (form.is('#type-form')) handleTypeFormSubmit(e);
-    });// ==========================================
-    // ESCUCHADORES DE EVENTOS GLOBALES (SUBMITS Y FILTROS)
-    // ==========================================
-    $(document).on('change', '#type-filter', function () {
-        renderViews();
-        if (eventosDataTable) eventosDataTable.responsive.recalc();
-    });
-
-    $(document).on('input', '#search-input', function () {
-        renderViews();
-        if (eventosDataTable) eventosDataTable.responsive.recalc();
-    });
-
-    $(document).on('change', '#event-continuo', function () {
-        try { toggleEventContinuoUI(); } catch (e) { /* noop */ }
-    });
-
-    $(document).on('change', '#filter-show-events, #filter-show-activities', function () {
-        renderViews();
-    });
-
-    $(document).on('submit', (e) => {
-        const form = $(e.target);
-        if (form.is('#event-form')) handleEventFormSubmit(e);
-        if (form.is('#type-form')) handleTypeFormSubmit(e);
-    });
-
 
     // ==========================================
     // ARRANQUE SEGURO Y CONTROLADO DE LA PÁGINA
@@ -1049,4 +1011,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
