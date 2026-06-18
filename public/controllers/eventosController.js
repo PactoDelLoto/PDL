@@ -469,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('event-lugar').value = evento.lugar;
             document.getElementById('event-descripcion').value = evento.descripcion;
             document.getElementById('event-imagen').value = evento.imagen;
+            if (document.getElementById('event-bases-url')) document.getElementById('event-bases-url').value = evento.basesUrl || '';
             // Prefill publication datetime if present
             try {
                 const pubEl = document.getElementById('event-publicacion');
@@ -497,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const lugar = document.getElementById('event-lugar').value;
         const imagen = document.getElementById('event-imagen').value;
         const continuo = document.getElementById('event-continuo') ? document.getElementById('event-continuo').checked : false;
+        const basesUrl = document.getElementById('event-bases-url') ? document.getElementById('event-bases-url').value.trim() : '';
         const fecha = document.getElementById('event-fecha') ? document.getElementById('event-fecha').value : '';
         const hora = document.getElementById('event-hora') ? document.getElementById('event-hora').value : '';
         const fechaInicio = document.getElementById('event-fechaInicio') ? document.getElementById('event-fechaInicio').value : '';
@@ -507,6 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
             descripcion,
             lugar,
             imagen,
+            basesUrl,
             continuo: !!continuo
         };
 
@@ -627,7 +630,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${fecha} ${evento.hora ? 'a las ' + evento.hora : ''}`;
             if (placeEl) placeEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${escapeHtml(evento.lugar || '')}`;
             if (titleEl) titleEl.textContent = evento.titulo || 'Sin título';
-            if (descEl) descEl.textContent = evento.descripcion || '';
+            if (descEl) {
+                const description = window.escapeHtml ? window.escapeHtml(evento.descripcion || '') : (evento.descripcion || '');
+                const bUrl = String(evento.basesUrl || '').trim();
+                const safeBasesUrl = window.escapeHtml ? window.escapeHtml(bUrl) : bUrl;
+
+                descEl.innerHTML = description;
+                if (bUrl) {
+                    descEl.innerHTML += `<div class="mt-3"><a href="${safeBasesUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-alt me-1"></i> Ver bases</a></div>`;
+                }
+            }
             if (imgEl) {
                 const src = evento.imagen && evento.imagen.trim() ? evento.imagen.trim() : 'https://via.placeholder.com/1200x400?text=Sin+imagen';
                 imgEl.src = src;

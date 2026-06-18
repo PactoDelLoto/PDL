@@ -98,6 +98,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) { console.warn('No se pudo setear parent id en create modal', e); }
 
+        // Añadir el aviso sobre las bases del padre si no existe
+        const basesInput = document.getElementById('subevent-bases-url');
+        if (basesInput && !document.getElementById('bases-inheritance-hint')) {
+            const hint = document.createElement('small');
+            hint.id = 'bases-inheritance-hint';
+            hint.className = 'text-muted d-block mt-1';
+            hint.textContent = 'Si se deja en blanco, se usarán las bases del evento principal.';
+            basesInput.parentNode.appendChild(hint);
+        }
+
         if (subeventModal) subeventModal.show();
     }
 
@@ -160,6 +170,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     parentInput.value = subevento.eventoId || '';
                 }
             } catch (e) { console.warn('No se pudo setear parent id en edit modal', e); }
+
+            // Asegurar el aviso de herencia también en edición
+            const basesInput = document.getElementById('subevent-bases-url');
+            if (basesInput && !document.getElementById('bases-inheritance-hint')) {
+                const hint = document.createElement('small');
+                hint.id = 'bases-inheritance-hint';
+                hint.className = 'text-muted d-block mt-1';
+                hint.textContent = 'Si se deja en blanco, se usarán las bases del evento principal.';
+                basesInput.parentNode.appendChild(hint);
+            }
+
             if (subeventModal) subeventModal.show();
         }
     }
@@ -600,11 +621,27 @@ document.addEventListener('DOMContentLoaded', () => {
             if (titleEl) titleEl.textContent = sub.titulo || 'Sin título';
             if (descEl) {
                 const description = window.escapeHtml ? window.escapeHtml(sub.descripcion || '') : (sub.descripcion || '');
-                const basesUrl = String(sub.basesUrl || '').trim();
-                const safeBasesUrl = window.escapeHtml ? window.escapeHtml(basesUrl) : basesUrl;
+                let bUrl = String(sub.basesUrl || '').trim();
+                let usingParentBases = false;
+
+                // Lógica de herencia: si la actividad no tiene bases, buscamos en el padre
+                if (!bUrl && sub.eventoId) {
+                    try {
+                        const evDoc = await db.collection('eventos').doc(sub.eventoId).get();
+                        if (evDoc.exists && evDoc.data().basesUrl) {
+                            bUrl = String(evDoc.data().basesUrl).trim();
+                            usingParentBases = true;
+                        }
+                    } catch (e) {
+                        console.warn('Error al intentar heredar bases del evento padre:', e);
+                    }
+                }
+
+                const safeBasesUrl = window.escapeHtml ? window.escapeHtml(bUrl) : bUrl;
                 descEl.innerHTML = description;
-                if (basesUrl) {
-                    descEl.innerHTML += `<div class="mt-3"><a href="${safeBasesUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-alt me-1"></i> Ver bases</a></div>`;
+                if (bUrl) {
+                    const label = usingParentBases ? 'Ver bases del evento' : 'Ver bases';
+                    descEl.innerHTML += `<div class="mt-3"><a href="${safeBasesUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-alt me-1"></i> ${label}</a></div>`;
                 }
             }
             if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${(sub.fechaEvento || '')} ${sub.horaEvento ? 'a las ' + sub.horaEvento : ''}`;
@@ -791,4 +828,3 @@ document.addEventListener('DOMContentLoaded', () => {
     if (submitRegistrationBtn) submitRegistrationBtn.disabled = true;
 
 });
-
