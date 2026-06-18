@@ -13,10 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // DataTables
     let prestamosActivosTable, prestamosHistorialTable;
-    
+
     // State
     let currentUser = null;
     let userCache = {}; // Cache for user names to reduce DB reads
+    let statsChart = null;
+    let statsDateFilter = {
+        days: 30
+    };
 
     // --- INITIALIZATION ---
     auth.onAuthStateChanged(user => {
@@ -37,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadFiltros();
         setupEventListeners();
         loadPrestamosActivos();
+        if (document.getElementById('stats-section')) renderLoanStats();
     }
 
     // --- DATA LOADING ---
@@ -50,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const snapshot = await db.collection("inventario").orderBy('nombre').get();
             articuloSelect.innerHTML = '<option value="">Seleccione un artículo</option>';
-            
+
             snapshot.forEach(doc => {
                 const item = doc.data();
                 const total = item.cantidad;
@@ -86,11 +91,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const snapshot = await db.collection("eventos").orderBy('nombre').get();
+            const snapshot = await db.collection("eventos").orderBy('titulo').get();
             filtroEvento.innerHTML = '<option value="">Todos</option>';
             snapshot.forEach(doc => {
-                 filtroEvento.add(new Option(doc.data().nombre, doc.data().nombre));
+                filtroEvento.add(new Option(doc.data().titulo, doc.data().titulo));
             });
+
+            // También poblamos el filtro de eventos de las estadísticas
+            const statsEventFilter = document.getElementById('stats-event-filter');
+            if (statsEventFilter) {
+                statsEventFilter.innerHTML = '<option value="">Todos los eventos</option>';
+                snapshot.forEach(doc => {
+                    statsEventFilter.add(new Option(doc.data().titulo, doc.data().titulo));
+                });
+            }
         } catch (error) {
             console.error("Error cargando eventos para filtro: ", error);
         }
@@ -111,10 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadEventos() {
         try {
-            const snapshot = await db.collection("eventos").orderBy('nombre').get();
+            const snapshot = await db.collection("eventos").orderBy('titulo').get();
             eventoSelect.innerHTML = '<option value="">Desconocido/Ninguno</option>';
             snapshot.forEach(doc => {
-                eventoSelect.add(new Option(doc.data().nombre, doc.data().nombre));
+                eventoSelect.add(new Option(doc.data().titulo, doc.data().titulo));
             });
         } catch (error) {
             console.error("Error cargando eventos: ", error);
@@ -128,6 +142,15 @@ document.addEventListener('DOMContentLoaded', () => {
         $('#filtro-articulo, #filtro-responsable, #filtro-evento').on('change', loadHistorialPrestamos);
         $('button[data-bs-target="#activos"]').on('shown.bs.tab', loadPrestamosActivos);
         $('button[data-bs-target="#historial"]').on('shown.bs.tab', loadHistorialPrestamos);
+        $('button[data-bs-target="#stats-section"]').on('shown.bs.tab', () => renderLoanStats());
+        $(document).on('change', '#stats-time-filter', function () {
+            statsDateFilter.days = parseInt($(this).val()); // Solo actualiza 'days' si el filtro de tiempo cambia
+            renderLoanStats();
+        });
+        $(document).on('change', '#stats-event-filter', function () {
+            // El filtro de evento se lee directamente en renderLoanStats, solo necesitamos llamar a la función
+            renderLoanStats();
+        });
         $('#tabla-prestamos-activos tbody').on('click', '.btn-devolver', handleDevolucion);
         $('#tabla-prestamos-historial tbody').on('click', '.btn-cancelar-devolucion', handleCancelarDevolucion);
     }
@@ -198,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await db.runTransaction(async (transaction) => {
                     const prestamoDoc = await transaction.get(prestamoRef);
                     if (!prestamoDoc.exists) throw "El préstamo ya no existe.";
-                    
+
                     const prestamoData = prestamoDoc.data();
                     const articuloRef = db.collection('inventario').doc(prestamoData.IdArticulo);
                     const articuloDoc = await transaction.get(articuloRef);
@@ -210,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             transaction.update(articuloRef, { cantidadRestante: disponibles + 1 });
                         }
                     }
-                    
+
                     transaction.update(prestamoRef, { Estado: 'Devuelto', fechaHoraDevolucion: firebase.firestore.FieldValue.serverTimestamp() });
                 });
 
@@ -232,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const prestamoRef = db.collection('prestamos').doc(prestamoId);
 
         showConfirmationModal('Cancelar Devolución', '¿Anular la devolución? El préstamo volverá a estar pendiente.', async () => {
-             try {
+            try {
                 await db.runTransaction(async (transaction) => {
                     const prestamoDoc = await transaction.get(prestamoRef);
                     if (!prestamoDoc.exists) throw "El préstamo ya no existe.";
@@ -241,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const articuloRef = db.collection('inventario').doc(prestamoData.IdArticulo);
                     const articuloDoc = await transaction.get(articuloRef);
 
-                     if (articuloDoc.exists) {
+                    if (articuloDoc.exists) {
                         const item = articuloDoc.data();
                         const disponibles = (item.cantidadRestante === undefined || item.cantidadRestante === null) ? item.cantidad : item.cantidadRestante;
                         if (disponibles > 0) {
@@ -273,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
                 order: [],
-                columns: [ null, null, null, null, null, { orderable: false, searchable: false } ]
+                columns: [null, null, null, null, null, null, { orderable: false, searchable: false }]
             });
         }
         try {
@@ -285,6 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row: [
                         p.nombreArticulo,
                         p.PersonaRecibe,
+                        p.Evento || 'N/A',
                         p.fechaHoraPrestamo ? p.fechaHoraPrestamo.toDate().toLocaleString() : 'N/A',
                         '<span class="badge bg-warning text-dark">Pendiente</span>',
                         await getUserName(p.IdUsuarioResponsable),
@@ -305,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
                 responsive: true,
                 order: [],
-                columns: [ null, null, null, null, null, null, { orderable: false, searchable: false } ]
+                columns: [null, null, null, null, null, null, null, { orderable: false, searchable: false }]
             });
         }
 
@@ -329,6 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row: [
                         p.nombreArticulo,
                         p.PersonaRecibe,
+                        p.Evento || 'N/A',
                         p.fechaHoraPrestamo ? p.fechaHoraPrestamo.toDate().toLocaleString() : 'N/A',
                         p.fechaHoraDevolucion ? p.fechaHoraDevolucion.toDate().toLocaleString() : 'N/A',
                         '<span class="badge bg-success">Devuelto</span>',
@@ -345,6 +370,93 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UTILITY FUNCTIONS ---
+
+    async function renderLoanStats() {
+        const canvas = document.getElementById('loansChart');
+        if (!canvas) return;
+
+        try {
+            const eventFilter = document.getElementById('stats-event-filter')?.value || '';
+            const now = new Date();
+            const filterDate = new Date();
+            filterDate.setDate(now.getDate() - statsDateFilter.days);
+
+            let query = db.collection('prestamos')
+                .where('fechaHoraPrestamo', '>=', filterDate)
+
+            const snapshot = await query.get();
+
+            const counts = {};
+            snapshot.forEach(doc => {
+                const data = doc.data();
+
+                // Filtro local por evento para evitar necesidad de índices compuestos complejos
+                if (eventFilter && data.Evento !== eventFilter) return;
+
+                const nombre = data.nombreArticulo || 'Desconocido';
+                counts[nombre] = (counts[nombre] || 0) + 1;
+            });
+
+            const sortedData = Object.entries(counts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            const labels = sortedData.map(d => {
+                const name = d[0];
+                return name.length > 30 ? name.substring(0, 27) + "..." : name;
+            });
+            const values = sortedData.map(d => d[1]);
+
+            if (statsChart) {
+                statsChart.destroy();
+                statsChart = null;
+            }
+
+            if (sortedData.length === 0) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#6c757d";
+
+                // Mensaje simpático
+                ctx.font = "bold 32px sans-serif";
+                ctx.fillText("🕵️", canvas.width / 2, canvas.height / 2 - 40);
+
+                ctx.font = "600 16px 'Roboto', sans-serif";
+                ctx.fillText("¡Vaya! No hay préstamos que coincidan...", canvas.width / 2, canvas.height / 2 + 10);
+
+                ctx.font = "400 14px 'Roboto', sans-serif";
+                ctx.fillText("Prueba a cambiar el periodo o el evento seleccionado.", canvas.width / 2, canvas.height / 2 + 40);
+                return;
+            }
+
+            statsChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Número de préstamos',
+                        data: values,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Error al generar estadísticas: ", error);
+        }
+    }
 
     async function getUserName(userId) {
         if (!userId) return "Desconocido";

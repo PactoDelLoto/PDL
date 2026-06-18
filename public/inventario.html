@@ -53,11 +53,6 @@
                     type="button" role="tab" aria-controls="categorias-section" aria-selected="false">🏷️
                     Categorías</button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats-section"
-                    type="button" role="tab" aria-controls="stats-section" aria-selected="false">📊
-                    Estadísticas</button>
-            </li>
 
         </ul>
 
@@ -144,6 +139,12 @@
                                     data-bs-target="#historial" type="button" role="tab" aria-controls="historial"
                                     aria-selected="false">Historial de Préstamos</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="stats-tab" data-bs-toggle="tab"
+                                    data-bs-target="#stats-section" type="button" role="tab"
+                                    aria-controls="stats-section" aria-selected="false">📊
+                                    Estadísticas</button>
+                            </li>
                         </ul>
                         <div class="tab-content" id="prestamosTabsContent">
                             <div class="tab-pane fade show active" id="activos" role="tabpanel"
@@ -155,6 +156,7 @@
                                             <tr>
                                                 <th>Artículo</th>
                                                 <th>Persona</th>
+                                                <th>Evento</th>
                                                 <th>Fecha y Hora del Préstamo</th>
                                                 <th>Estado</th>
                                                 <th>Responsable</th>
@@ -197,7 +199,7 @@
                                             <tr>
                                                 <th>Artículo</th>
                                                 <th>Persona</th>
-                                                <th>Fecha y Hora del Préstamo</th>
+                                                <th>Evento</th>
                                                 <th>Fecha y Hora de Devolución</th>
                                                 <th>Estado</th>
                                                 <th>Responsable</th>
@@ -208,6 +210,31 @@
                                             <!-- El historial de préstamos se cargarán aquí -->
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                            <!-- Sección de Estadísticas (Movida aquí dentro) -->
+                            <div class="tab-pane fade" id="stats-section" role="tabpanel" aria-labelledby="stats-tab">
+                                <div class="row mb-3 mt-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Periodo de tiempo:</label>
+                                        <select id="stats-time-filter" class="form-select">
+                                            <option value="7">Últimos 7 días</option>
+                                            <option value="30" selected>Últimos 30 días</option>
+                                            <option value="90">Últimos 90 días</option>
+                                            <option value="365">Último año</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Filtrar por Evento:</label>
+                                        <select id="stats-event-filter" class="form-select">
+                                            <option value="">Todos los eventos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card shadow-sm">
+                                    <div class="card-body" style="height: 450px;">
+                                        <canvas id="loansChart"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -250,29 +277,6 @@
                                 <!-- Los datos de las categorías se cargarán aquí -->
                             </tbody>
                         </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sección de Estadísticas -->
-            <div class="tab-pane fade" id="stats-section" role="tabpanel" aria-labelledby="stats-tab">
-                <div class="row mb-3 mt-4">
-                    <div class="col-md-4">
-                        <label class="form-label">Periodo de tiempo:</label>
-                        <select id="stats-time-filter" class="form-select">
-                            <option value="7">Últimos 7 días</option>
-                            <option value="30" selected>Últimos 30 días</option>
-                            <option value="90">Últimos 90 días</option>
-                            <option value="365">Último año</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="card shadow-sm">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0">Artículos más prestados</h5>
-                    </div>
-                    <div class="card-body" style="height: 450px;">
-                        <canvas id="loansChart"></canvas>
                     </div>
                 </div>
             </div>

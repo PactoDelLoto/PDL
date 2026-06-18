@@ -222,7 +222,9 @@
                                                 <tr>
                                                     <th>Pos.</th>
                                                     <th>Jugador</th>
-                                                    <th class="text-center">Puntos</th>
+                                                    <th class="text-center">Pts. Mesa</th>
+                                                    <th class="text-center">Extra</th>
+                                                    <th class="text-center">Total</th>
                                                     <th class="text-center"
                                                         title="Buchholz: suma de puntos de tus rivales, usado para desempate">
                                                         BH</th>
@@ -452,10 +454,15 @@
                 </div>
                 <form id="form-resultados">
                     <div class="modal-body">
-                        <p class="small text-muted">Selecciona la posición/lugar obtenido por cada jugador en la mesa.
-                            Los puntos se calcularÃ¡n automÃ¡ticamente segÃºn las reglas oficiales de Commander (Mesa de
-                            4:
-                            4/3/2/1 pts; Mesa de 3: 4/2.5/1 pts).</p>
+                        <p class="small text-muted">Registra la posición para los puntos automáticos y añade puntos
+                            adicionales por logros o penalizaciones si aplica.</p>
+                        <div class="d-flex justify-content-between mb-2 px-2 small fw-bold text-muted">
+                            <span>Jugador</span>
+                            <div class="d-flex gap-2" style="width: 250px;">
+                                <span style="flex: 1;">Posición</span>
+                                <span style="width: 70px;">Extra</span>
+                            </div>
+                        </div>
                         <div id="resultados-jugadores-fields">
                             <!-- Campos dinÃ¡micos -->
                         </div>

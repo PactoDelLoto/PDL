@@ -399,14 +399,15 @@ window.initializeTorneosController = function (isAdmin) {
         const btnNuevaRonda = document.getElementById('btn-nueva-ronda');
         const btnDeshacerRonda = document.getElementById('btn-deshacer-ronda');
         const btnGestionarJugadores = document.getElementById('btn-modal-jugadores');
-        const tieneRondas = selectedTournament.rondas && selectedTournament.rondas.length > 0;
+        const numRondas = selectedTournament.rondas ? selectedTournament.rondas.length : 0;
+        const tieneRondas = numRondas > 0;
 
         if (isAdmin && selectedTournament.estado === 'en_curso') {
             btnFinalizar.style.display = 'inline-block';
             btnNuevaRonda.style.display = 'inline-block';
-            // Ocultar gestor de participantes si ya hay rondas generadas
+            // El botón de gestionar desaparece a partir de que se lanza la segunda ronda (numRondas >= 2)
             if (btnGestionarJugadores) {
-                btnGestionarJugadores.style.display = tieneRondas ? 'none' : 'inline-block';
+                btnGestionarJugadores.style.display = (numRondas >= 2) ? 'none' : 'inline-block';
             }
             // Mostrar deshacer ronda solo si hay al menos una ronda
             if (btnDeshacerRonda) {
@@ -538,8 +539,7 @@ window.initializeTorneosController = function (isAdmin) {
         try {
             await db.collection('torneos').doc(selectedTournament.id).update({ rondas: nuevasRondas });
             selectedTournament.rondas = nuevasRondas;
-            renderRondas();
-            renderClasificacionInterna();
+            openTournamentManagement(selectedTournament.id); // Refrescar toda la vista para actualizar visibilidad de botones
             if (window.showAlert) window.showAlert(`Ronda ${numeroRonda} generada. ${mesas.length} mesa(s) formadas.`, "success");
         } catch (error) {
             console.error("Error al guardar la ronda en Firestore:", error);
@@ -613,10 +613,12 @@ window.initializeTorneosController = function (isAdmin) {
                 const jugadoresHtml = mesa.jugadores.map(jId => {
                     const jugadorObj = selectedTournament.jugadores.find(jg => jg.id === jId);
                     const nombre = jugadorObj ? jugadorObj.nombre : "Desconocido";
-                    const puntosMesa = mesa.resultados[jId] !== undefined ? mesa.resultados[jId] : 0;
+                    const pMesa = mesa.resultados[jId] || 0;
+                    const pExtra = (mesa.puntosAdicionales && mesa.puntosAdicionales[jId]) ? mesa.puntosAdicionales[jId] : 0;
+                    const totalMesa = pMesa + pExtra;
 
                     let placementBadge = '';
-                    const anyResultsSet = mesa.jugadores.some(id => (mesa.resultados[id] || 0) > 0);
+                    const anyResultsSet = mesa.jugadores.some(id => (mesa.resultados[id] || 0) > 0 || (mesa.puntosAdicionales && mesa.puntosAdicionales[id]));
                     if (anyResultsSet) {
                         const placement = placementMap[jId] || 1;
                         const colorClass = placementColors[Math.min(placement - 1, placementColors.length - 1)];
@@ -627,7 +629,7 @@ window.initializeTorneosController = function (isAdmin) {
                     return `
                         <div class="d-flex justify-content-between align-items-center py-2 px-3 border-bottom bg-white">
                             <span>${nombre} ${placementBadge}</span>
-                            <span class="fw-bold">${puntosMesa > 0 ? puntosMesa + ' pts' : '-'}</span>
+                            <span class="fw-bold">${totalMesa > 0 ? totalMesa + ' pts' : '-'}</span>
                         </div>
                     `;
                 }).join('');
@@ -679,7 +681,9 @@ window.initializeTorneosController = function (isAdmin) {
             <tr>
                 <td class="fw-bold">${index + 1}</td>
                 <td>${player.nombre}</td>
-                <td class="fw-bold text-center">${Number(player.puntos).toFixed(1)}</td>
+                <td class="text-center">${Number(player.puntosMesa).toFixed(1)}</td>
+                <td class="text-center text-success">+${Number(player.puntosExtra).toFixed(1)}</td>
+                <td class="fw-bold text-center text-primary">${Number(player.puntos).toFixed(1)}</td>
                 <td class="text-center text-muted small" title="Buchholz (desempate): suma de puntos de tus rivales">${Number(player.buchholz || 0).toFixed(1)}</td>
             </tr>
         `).join('');
@@ -697,14 +701,18 @@ window.initializeTorneosController = function (isAdmin) {
         // Acumular puntos y registrar rivales
         const scores = {};
         jugadores.forEach(j => {
-            scores[j.id] = { id: j.id, nombre: j.nombre, puntos: 0, rivalIds: [] };
+            scores[j.id] = { id: j.id, nombre: j.nombre, puntos: 0, puntosMesa: 0, puntosExtra: 0, rivalIds: [] };
         });
 
         rondas.forEach(r => {
             r.mesas.forEach(m => {
                 m.jugadores.forEach(jId => {
                     if (scores[jId]) {
-                        scores[jId].puntos += (m.resultados[jId] || 0);
+                        const pMesa = (m.resultados[jId] || 0);
+                        const pExtra = (m.puntosAdicionales && m.puntosAdicionales[jId]) ? m.puntosAdicionales[jId] : 0;
+                        scores[jId].puntosMesa += pMesa;
+                        scores[jId].puntosExtra += pExtra;
+                        scores[jId].puntos += (pMesa + pExtra);
                         // Registrar rivales de la mesa
                         m.jugadores.forEach(rivId => {
                             if (rivId !== jId) scores[jId].rivalIds.push(rivId);
@@ -742,6 +750,7 @@ window.initializeTorneosController = function (isAdmin) {
             const jugador = selectedTournament.jugadores.find(jg => jg.id === jId);
             const nombre = jugador ? jugador.nombre : "Desconocido";
             const actualVal = mesa.resultados[jId] !== undefined ? mesa.resultados[jId] : 0;
+            const actualExtra = (mesa.puntosAdicionales && mesa.puntosAdicionales[jId]) ? mesa.puntosAdicionales[jId] : 0;
 
             // Intentar deducir la posición actual en base a los puntos guardados
             let actualPlacement = '';
@@ -760,13 +769,14 @@ window.initializeTorneosController = function (isAdmin) {
             }).join('');
 
             return `
-                <div class="mb-3 d-flex align-items-center justify-content-between">
+                <div class="mb-2 d-flex align-items-center justify-content-between">
                     <label class="form-label mb-0 fw-bold">${nombre}</label>
-                    <div style="width: 200px;">
-                        <select class="form-select select-placement-player" data-id="${jId}" required>
+                    <div class="d-flex gap-2" style="width: 250px;">
+                        <select class="form-select select-placement-player" data-id="${jId}" style="flex: 1;" required>
                             <option value="" disabled ${actualPlacement === '' ? 'selected' : ''}>-- Posición --</option>
                             ${options}
                         </select>
+                        <input type="number" class="form-control input-extra-points" data-id="${jId}" value="${actualExtra}" step="0.5" style="width: 70px;">
                     </div>
                 </div>
             `;
@@ -792,6 +802,8 @@ window.initializeTorneosController = function (isAdmin) {
         const mesa = ronda.mesas.find(m => m.numero === mesaNum);
         const size = mesa.jugadores.length;
 
+        const puntosAdicionales = {};
+
         // Leer inputs de posiciones
         const selects = form.querySelectorAll('.select-placement-player');
         let hasUnselected = false;
@@ -808,6 +820,9 @@ window.initializeTorneosController = function (isAdmin) {
             const jId = select.dataset.id;
             const placement = parseInt(select.value);
 
+            const extraInput = form.querySelector(`.input-extra-points[data-id="${jId}"]`);
+            puntosAdicionales[jId] = parseFloat(extraInput.value) || 0;
+
             // Fórmula: points = 4 - (placement - 1) * (3 / (size - 1))
             let score = 4;
             if (size > 1) {
@@ -815,6 +830,8 @@ window.initializeTorneosController = function (isAdmin) {
             }
             mesa.resultados[jId] = score;
         });
+
+        mesa.puntosAdicionales = puntosAdicionales;
 
         try {
             await db.collection('torneos').doc(selectedTournament.id).update({ rondas });

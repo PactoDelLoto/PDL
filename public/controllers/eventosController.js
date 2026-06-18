@@ -958,6 +958,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // El envío de '#subevent-form' lo gestiona `subeventosController.js`.
     });
 
+    $(document).on('change', '#event-continuo', toggleEventContinuoUI);
+
     // ==========================================
     // ARRANQUE SEGURO Y CONTROLADO DE LA PÁGINA
     // ==========================================
