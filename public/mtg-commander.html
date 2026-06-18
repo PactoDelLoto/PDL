@@ -121,11 +121,18 @@
 
             <!-- SECCIÃ“N DE TORNEOS -->
             <div class="tab-pane fade show active" id="torneos-section" role="tabpanel" aria-labelledby="torneos-tab">
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
                     <h2 class="fw-bold text-dark m-0">Gestión de Torneos MTG Commander</h2>
-                    <button class="btn btn-premium admin-controls" id="btn-nuevo-torneo" style="display: none;">
-                        <i class="fa-solid fa-plus me-2"></i>Crear Torneo
-                    </button>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <div style="min-width: 250px;">
+                            <select id="filter-torneo-liga" class="form-select">
+                                <option value="">-- Todas las Ligas --</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-premium admin-controls" id="btn-nuevo-torneo" style="display: none;">
+                            <i class="fa-solid fa-plus me-2"></i>Crear Torneo
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Lista de Torneos -->

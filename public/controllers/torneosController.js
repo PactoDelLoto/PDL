@@ -21,6 +21,7 @@ window.initializeTorneosController = function (isAdmin) {
     // Elementos DOM (Asegúrate de que coincidan con estos nombres)
     const listaTorneos = document.getElementById('lista-torneos-container');
     const selectLigaActiva = document.getElementById('select-liga-activa');
+    const filterTorneoLiga = document.getElementById('filter-torneo-liga');
     const btnEliminarLiga = document.getElementById('btn-eliminar-liga');
     const selectTorneoLiga = document.getElementById('torneo-liga');
     const selectTorneoEvento = document.getElementById('torneo-evento');
@@ -86,16 +87,23 @@ window.initializeTorneosController = function (isAdmin) {
     // --- RENDERIZADO DE INTERFAZ ---
 
     // Lista general de torneos
-    function renderTournamentsList() {
+    function renderTournamentsList(filterLigaId = null) {
         if (!listaTorneos) return;
+
+        const currentFilter = filterLigaId !== null ? filterLigaId : (filterTorneoLiga ? filterTorneoLiga.value : '');
 
         if (torneosCache.length === 0) {
             listaTorneos.innerHTML = `<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-folder-open fa-3x mb-3"></i><p>No hay torneos registrados de momento.</p></div>`;
             return;
         }
 
+        let filteredTorneos = [...torneosCache];
+        if (currentFilter) {
+            filteredTorneos = filteredTorneos.filter(t => t.ligaId === currentFilter);
+        }
+
         // Ordenar torneos por fecha descendente
-        const sortedTorneos = [...torneosCache].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        const sortedTorneos = filteredTorneos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
         listaTorneos.innerHTML = sortedTorneos.map(torneo => {
             let badgeClass = 'badge-draft';
@@ -123,6 +131,7 @@ window.initializeTorneosController = function (isAdmin) {
             }
 
             const jugadoresCount = torneo.jugadores ? torneo.jugadores.length : 0;
+            const capacityText = (subeventoAsociado && subeventoAsociado.plazas > 0) ? ` / ${subeventoAsociado.plazas}` : '';
             const ligaMatchBadge = torneo.esJornadaLiga ? `<span class="badge bg-purple ms-2" style="background-color:#6c5ce7;">Liga</span>` : '';
 
             // Botones según rol y estado
@@ -160,7 +169,7 @@ window.initializeTorneosController = function (isAdmin) {
                         <h5 class="fw-bold text-dark mb-1">${torneo.nombre} ${ligaMatchBadge}</h5>
                         <p class="small text-muted mb-3"><i class="fa-solid fa-calendar-day me-2"></i>${asociacionText}</p>
                         <div class="d-flex justify-content-between align-items-center mt-auto border-top pt-2">
-                            <span class="small text-muted"><i class="fa-solid fa-user-group me-1"></i> ${jugadoresCount} jugadores</span>
+                            <span class="small text-muted"><i class="fa-solid fa-user-group me-1"></i> ${jugadoresCount}${capacityText} jugadores</span>
                             <div class="d-flex gap-1">
                                 ${buttons}
                             </div>
@@ -245,12 +254,28 @@ window.initializeTorneosController = function (isAdmin) {
 
         if (selectTorneoLiga) {
             const previousValue = selectTorneoLiga.value;
-            const allOptionsHtml = ligasCache
-                .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }))
+            const allOptionsHtml = ligasOrdenadas
                 .map(liga => `<option value="${liga.id}">${liga.nombre}</option>`)
                 .join('');
             selectTorneoLiga.innerHTML = `<option value="">-- Selecciona una Liga --</option>` + allOptionsHtml;
             selectTorneoLiga.value = ligasCache.some(liga => liga.id === previousValue) ? previousValue : '';
+            initSelect2(selectTorneoLiga, {
+                dropdownParent: $('#modal-torneo'),
+                placeholder: '-- Escribe para buscar una liga --'
+            });
+        }
+
+        if (filterTorneoLiga) {
+            const previousValue = filterTorneoLiga.value;
+            filterTorneoLiga.innerHTML = `<option value="">-- Todas las Ligas --</option>` + optionsHtml;
+            filterTorneoLiga.value = ligasCache.some(liga => liga.id === previousValue) ? previousValue : '';
+            initSelect2(filterTorneoLiga, {
+                placeholder: '-- Filtrar torneos por liga --',
+                allowClear: true
+            });
+            $(filterTorneoLiga).off('change.filterTorneo').on('change.filterTorneo', function () {
+                renderTournamentsList(this.value);
+            });
         }
     }
 
