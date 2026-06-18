@@ -1,101 +1,114 @@
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{database}/documents {
+match /databases/{database}/documents {
 
-    // Función auxiliar para verificar si el usuario es administrador
-    function isAdmin() {
-      return request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
-    }
+// Función auxiliar para verificar si el usuario es administrador
+function isAdmin() {
+  return request.auth != null &&
+    get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+}
 
-    // Función auxiliar para verificar si el usuario es socio
-    function isSocio() {
-      return request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true;
-    }
+// Función auxiliar para verificar si el usuario es socio
+function isSocio() {
+  return request.auth != null &&
+    get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true;
+}
 
-    // REGLA PARA USUARIOS:
-    match /usuarios/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId || isAdmin();
-    }
+// USUARIOS
+match /usuarios/{userId} {
+  allow read: if request.auth != null;
+  allow write: if request.auth.uid == userId || isAdmin();
+}
 
-    // REGLA PARA CATEGORÍAS DE INVENTARIO:
-    match /categoriasInventario/{docId} {
-      allow read: if isSocio() || isAdmin();
-      allow write: if isAdmin();
-    }
-    
-    // REGLA PARA EVENTOS (NUEVA):
-    match /eventos/{docId} {
-        // Lectura: Pública para todo el mundo (invitados incluidos)
-        allow read: if true;
-        allow write: if isAdmin();
-    }
+// CATEGORÍAS DE INVENTARIO
+match /categoriasInventario/{docId} {
+  allow read: if isSocio() || isAdmin();
+  allow write: if isAdmin();
+}
 
-    // REGLA PARA INVENTARIO:
-    match /inventario/{docId} {
-      allow read: if isSocio() || isAdmin();
-      allow write: if isAdmin();
-    }
+// EVENTOS
+match /eventos/{docId} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
 
-    // REGLA PARA PRÉSTAMOS:
-    match /prestamos/{docId} {
-      allow read: if isSocio() || isAdmin();
-      allow write: if isSocio() || isAdmin();
-    }
+// INVENTARIO
+match /inventario/{docId} {
+  allow read: if isSocio() || isAdmin();
+  allow write: if isAdmin();
+}
 
-    // REGLA PARA SUBEVENTOS:
-    match /subeventos/{docId} {
-      // Lectura: Pública para todo el mundo (invitados incluidos)
-      allow read: if true;
-      allow write: if isAdmin();
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plazasOcupadas'])
-        && resource.data.pagoPrevioEvento == true
-        && request.resource.data.plazasOcupadas == resource.data.plazasOcupadas + 1
-        && (resource.data.plazas == 0 || request.resource.data.plazasOcupadas <= resource.data.plazas);
+// PRÉSTAMOS
+match /prestamos/{docId} {
+  allow read: if isSocio() || isAdmin();
+  allow write: if isSocio() || isAdmin();
+}
 
-      match /inscripciones/{inscripcionId} {
-           // Permitir a cualquier usuario autenticado crear una inscripción
-           allow create: if request.auth != null;
-           // Permitir leer inscripciones solo al usuario que la creó o a un administrador
-           allow read: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true);
-           // Permitir actualizar/eliminar inscripciones solo al usuario que la creó o a un administrador
-           allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true);
-         }
-    }
+// SUBEVENTOS
+match /subeventos/{docId} {
 
-    match /{document=**}/inscripciones/{inscripcionId} {
-      allow read: if request.auth != null &&
-        (
-          request.auth.uid == resource.data.userId ||
-          isAdmin()
-        );
+  allow read: if true;
+  allow write: if isAdmin();
 
-      allow create: if request.auth != null;
+  // Permitir actualizar únicamente plazasOcupadas
+  allow update: if
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plazasOcupadas'])
+    && resource.data.pagoPrevioEvento == false // Permite actualizar plazasOcupadas si no requiere pago previo (inscripción directa)
+    && request.resource.data.plazasOcupadas == resource.data.plazasOcupadas + 1
+    && (
+      resource.data.plazas == 0 ||
+      request.resource.data.plazasOcupadas <= resource.data.plazas
+    );
+}
 
-      allow update, delete: if request.auth != null &&
-        (
-          request.auth.uid == resource.data.userId ||
-          isAdmin()
-        );
-    }
+// INSCRIPCIONES (collection group)
+match /{path=**}/inscripciones/{inscripcionId} {
 
-    // REGLA PARA TIPOS DE ACTIVIDADES:
-    match /tipoSubevento/{docId} {
-      // Lectura: Pública para todo el mundo (invitados incluidos)
-      allow read: if true;
-      allow write: if isAdmin();
-    }
+  // Lectura: propietario o administrador
+  allow read: if request.auth != null &&
+    (
+      resource.data.userId == request.auth.uid ||
+      isAdmin()
+    );
 
-    // REGLA PARA TORNEOS:
-    match /torneos/{docId} {
-      allow read: if isSocio() || isAdmin();
-      allow write: if isAdmin();
-    }
+  // Creación:
+  // - Usuario autenticado: solo puede crearse a sí mismo
+  // - Invitado: userId debe ser null o no existir
+  allow create: if
+    (
+      request.auth != null &&
+      request.resource.data.userId == request.auth.uid
+    )
+    ||
+    (
+      request.auth == null &&
+      (
+        !("userId" in request.resource.data) ||
+        request.resource.data.userId == null
+      )
+    );
 
-    // REGLA PARA LIGAS:
-    match /ligas/{docId} {
-      allow read: if isSocio() || isAdmin();
-      allow write: if isAdmin();
-    }
-  }
+  // Solo administradores pueden modificar o borrar
+  allow update, delete: if isAdmin();
+}
+
+// TIPOS DE ACTIVIDADES
+match /tipoSubevento/{docId} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
+
+// TORNEOS
+match /torneos/{docId} {
+  allow read: if isSocio() || isAdmin();
+  allow write: if isAdmin();
+}
+
+// LIGAS
+match /ligas/{docId} {
+  allow read: if isSocio() || isAdmin();
+  allow write: if isAdmin();
+}
+
+}
 }

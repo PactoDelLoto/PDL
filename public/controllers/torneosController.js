@@ -367,7 +367,10 @@ window.initializeTorneosController = function (isAdmin) {
         tbody.innerHTML = clasifArray.map((row, index) => `
             <tr>
                 <td class="fw-bold">${index + 1}</td>
-                <td>${row.nombre}</td>
+                <td>
+                    ${row.nombre}
+                    ${row.id.startsWith('invitado_') ? ` <span class="badge bg-secondary">${row.id.split('_')[1]}</span>` : ''}
+                </td>
                 <td class="text-center fw-bold text-primary">${row.puntos}</td>
             </tr>
         `).join('');
@@ -969,15 +972,40 @@ window.initializeTorneosController = function (isAdmin) {
             }
 
             let addedCount = 0;
-            inscritos.forEach(inscripcion => {
-                const jugadorId = inscripcion.userId || `inscripcion_${inscripcion.id}`;
-                if (tempJugadores.some(j => j.id === jugadorId)) return;
+            const ligaAsociada = selectedTournament.ligaId ? ligasCache.find(l => l.id === selectedTournament.ligaId) : null;
 
-                tempJugadores.push({
-                    id: jugadorId,
-                    nombre: inscripcion.nombreCompleto || inscripcion.correo || 'Sin nombre'
-                });
-                addedCount++;
+            inscritos.forEach(inscripcion => {
+                // Determinar el ID del jugador para verificar si ya existe
+                const playerIdToCheck = inscripcion.userId || (inscripcion.leagueCode ? `invitado_${inscripcion.leagueCode}` : null);
+
+                // Si ya está añadido, saltar
+                if (playerIdToCheck && tempJugadores.some(j => j.id === playerIdToCheck)) return;
+
+                if (inscripcion.userId) {
+                    // Jugador con cuenta
+                    tempJugadores.push({
+                        id: inscripcion.userId,
+                        nombre: inscripcion.nombreCompleto || 'Sin nombre'
+                    });
+                    addedCount++;
+                } else {
+                    // Invitado desde inscripción (sin userId)
+                    const email = inscripcion.correo ? inscripcion.correo.toLowerCase() : '';
+                    // Intentar buscar si este correo ya tiene un código en la liga
+                    let existingCode = '';
+                    if (ligaAsociada && ligaAsociada.clasificacion) {
+                        const found = Object.entries(ligaAsociada.clasificacion).find(([id, data]) => (data.email || '').toLowerCase() === email);
+                        if (found) existingCode = found[0].replace('invitado_', '');
+                    }
+
+                    tempJugadores.push({
+                        id: existingCode ? `invitado_${existingCode}` : `temp_${Date.now()}_${addedCount}`,
+                        nombre: inscripcion.nombreCompleto || 'Invitado',
+                        leagueCode: existingCode,
+                        needsCode: !existingCode
+                    });
+                    addedCount++;
+                }
             });
 
             renderTempJugadoresList();
@@ -1036,19 +1064,50 @@ window.initializeTorneosController = function (isAdmin) {
         input.focus();
     }
 
-    function handleAgregarInvitadoALista() {
-        const input = document.getElementById('input-nombre-invitado');
-        const nombre = input.value.trim();
-        if (!nombre) return;
+    // Genera un código aleatorio de 6 caracteres alfanuméricos
+    // (Esta función ya estaba definida arriba, la dejo aquí para referencia si se movió)
 
-        const idInvitado = 'invitado_' + Date.now();
+    function generateLeagueCode() {
+        const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+            result += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return result;
+    }
+
+
+    function handleAgregarInvitadoALista() {
+        const inputNombre = document.getElementById('input-nombre-invitado');
+        const inputCodigo = document.getElementById('input-codigo-invitado');
+        const nombre = inputNombre.value.trim();
+        let codigo = inputCodigo.value.trim().toUpperCase();
+
+        if (!nombre) {
+            if (window.showAlert) window.showAlert("El nombre del invitado no puede estar vacío.", "warning");
+            return;
+        }
+
+        if (!codigo) {
+            codigo = generateLeagueCode();
+        }
+
+        const idInvitado = 'invitado_' + codigo;
+
+        if (tempJugadores.some(j => j.id === idInvitado)) {
+            if (window.showAlert) window.showAlert("Este código de invitado ya está en la lista.", "warning");
+            return;
+        }
+
         tempJugadores.push({
             id: idInvitado,
-            nombre: nombre + ' (Invitado)'
+            nombre: nombre + ' (Invitado)',
+            leagueCode: codigo
         });
 
         renderTempJugadoresList();
-        input.value = '';
+        inputNombre.value = '';
+        inputCodigo.value = '';
     }
 
     function handleRemoveJugadorTemp(jId) {
@@ -1068,22 +1127,58 @@ window.initializeTorneosController = function (isAdmin) {
             return;
         }
 
-        list.innerHTML = tempJugadores.map((j, i) => `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span>
-                    <span class="badge bg-secondary me-2" style="min-width:1.8rem;">${i + 1}</span>
-                    ${j.nombre}
-                </span>
-                <button class="btn btn-sm btn-outline-danger btn-quitar-jugador-temp" data-id="${j.id}"
-                    title="Quitar jugador"><i class="fa-solid fa-times"></i></button>
-            </li>
-        `).join('');
+        list.innerHTML = tempJugadores.map((j, i) => {
+            const isGuest = j.id.startsWith('invitado_') || j.id.startsWith('temp_') || j.needsCode;
+            const itemClass = j.needsCode ? 'list-group-item-danger' : '';
+
+            let guestInfoHtml = '';
+            if (isGuest) {
+                if (j.needsCode) {
+                    guestInfoHtml = `
+                        <div class="mt-2 d-flex gap-2">
+                            <input type="text" class="form-control form-control-sm input-assign-code" data-index="${i}" placeholder="Asignar Código" maxlength="6" style="text-transform: uppercase;">
+                            <button class="btn btn-sm btn-success btn-gen-code-row" data-index="${i}"><i class="fa-solid fa-dice"></i></button>
+                        </div>
+                    `;
+                } else {
+                    guestInfoHtml = `<span class="badge bg-dark ms-2">Cod: ${j.leagueCode}</span>`;
+                }
+            }
+
+            return `
+                <li class="list-group-item ${itemClass} d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <span>
+                            <span class="badge bg-secondary me-2" style="min-width:1.8rem;">${i + 1}</span>
+                            ${j.nombre} ${guestInfoHtml && !j.needsCode ? guestInfoHtml : ''}
+                        </span>
+                        <button class="btn btn-sm btn-outline-danger btn-quitar-jugador-temp" data-id="${j.id}"
+                            title="Quitar jugador"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                    ${j.needsCode ? guestInfoHtml : ''}
+                </li>
+            `;
+        }).join('');
     }
 
     async function handleConfirmJugadores() {
         if (!selectedTournament) return;
 
+        // Validar que no haya jugadores con 'needsCode'
+        if (tempJugadores.some(j => j.needsCode)) {
+            if (window.showAlert) window.showAlert("Hay invitados sin código de liga asignado. Por favor, genera o introduce sus códigos (marcados en rojo).", "danger");
+            return;
+        }
+
         try {
+            // Antes de guardar, asegurarse de que los IDs de los jugadores temporales con código asignado
+            // se actualicen a 'invitado_CODIGO' si aún están como 'temp_...'
+            tempJugadores = tempJugadores.map(j => {
+                if (j.id.startsWith('temp_') && j.leagueCode) {
+                    return { ...j, id: `invitado_${j.leagueCode}` };
+                }
+                return j;
+            });
             await db.collection('torneos').doc(selectedTournament.id).update({
                 jugadores: tempJugadores
             });
@@ -1127,6 +1222,7 @@ window.initializeTorneosController = function (isAdmin) {
 
     // Cuando se selecciona una liga, buscamos a qué evento pertenece para filtrar los subeventos
     function handleTorneoLigaChange(ligaId) {
+        console.log('handleTorneoLigaChange - received ligaId:', ligaId); // Debugging
         if (!ligaId) {
             if (selectTorneoSubevento) {
                 selectTorneoSubevento.innerHTML = '<option value="">Selecciona una liga primero</option>';
@@ -1136,9 +1232,11 @@ window.initializeTorneosController = function (isAdmin) {
         }
 
         const ligaAsociada = ligasCache.find(l => l.id === ligaId);
+        console.log('handleTorneoLigaChange - found ligaAsociada:', ligaAsociada); // Debugging
         if (ligaAsociada && ligaAsociada.eventoId) {
             // Reutilizamos tu función handleEventoChange pasándole el ID del evento de la liga
             handleEventoChange(ligaAsociada.eventoId);
+            console.log('handleTorneoLigaChange - Calling handleEventoChange with eventoId:', ligaAsociada.eventoId); // Debugging
         } else {
             if (selectTorneoSubevento) {
                 selectTorneoSubevento.innerHTML = '<option value="">Esta liga no tiene un evento válido asignado</option>';
@@ -1149,6 +1247,7 @@ window.initializeTorneosController = function (isAdmin) {
 
     // Guardar/Editar Torneo
     async function handleTorneoFormSubmit(e) {
+        console.log('handleTorneoFormSubmit - Submitting form...'); // Debugging
         e.preventDefault();
         const torneoId = document.getElementById('torneo-id').value;
 
@@ -1158,6 +1257,7 @@ window.initializeTorneosController = function (isAdmin) {
 
         if (esLiga) {
             finalLigaId = selectTorneoLiga.value;
+            console.log('handleTorneoFormSubmit - esLiga is true, finalLigaId:', finalLigaId); // Debugging
             // Extraer el eventoId directamente de la configuración de la Liga elegida
             const ligaObj = ligasCache.find(l => l.id === finalLigaId);
             finalEventoId = ligaObj ? ligaObj.eventoId : null;
@@ -1195,7 +1295,7 @@ window.initializeTorneosController = function (isAdmin) {
         }
     }
 
-    // Crear Nueva Liga (Guardando el Evento Asociado)
+    // Crear Nueva Liga
     async function handleLigaFormSubmit(e) {
         e.preventDefault();
         const eventId = selectLigaEvento.value;
@@ -1216,34 +1316,6 @@ window.initializeTorneosController = function (isAdmin) {
             modalLiga.hide();
             document.getElementById('form-liga').reset();
             $('#liga-evento').val(null).trigger('change');
-            if (window.showAlert) window.showAlert("Liga creada y asociada al evento con éxito.", "success");
-            await loadInitialData();
-        } catch (error) {
-            console.error("Error al guardar liga:", error);
-            if (window.showAlert) window.showAlert("Error al guardar la liga.", "danger");
-        }
-    }
-
-    // Crear Nueva Liga (Guardando el Evento Asociado)
-    async function handleLigaFormSubmit(e) {
-        e.preventDefault();
-        const eventId = selectLigaEvento.value;
-        const eventoObj = eventosCache.find(e => e.id === eventId);
-
-        const data = {
-            nombre: document.getElementById('liga-nombre').value.trim(),
-            juego: 'mtg-commander',
-            activa: true,
-            eventoId: eventId,
-            eventoTitulo: eventoObj ? eventoObj.titulo : '', // Backup para búsquedas rápidas
-            creado: firebase.firestore.Timestamp.now(),
-            clasificacion: {}
-        };
-
-        try {
-            await db.collection('ligas').add(data);
-            modalLiga.hide();
-            document.getElementById('form-liga').reset();
             if (window.showAlert) window.showAlert("Liga creada y asociada al evento con éxito.", "success");
             await loadInitialData();
         } catch (error) {
@@ -1323,7 +1395,9 @@ window.initializeTorneosController = function (isAdmin) {
 
         // Cuando cambia la liga seleccionada en el formulario de torneo
         if (selectTorneoLiga) {
-            selectTorneoLiga.addEventListener('change', (e) => handleTorneoLigaChange(e.target.value));
+            $(selectTorneoLiga).off('change.torneoLiga').on('change.torneoLiga', function () {
+                handleTorneoLigaChange(this.value);
+            });
         }
 
         // Cambio de evento en formulario (Solo aplica en modo independiente)
@@ -1408,6 +1482,13 @@ window.initializeTorneosController = function (isAdmin) {
         const btnAgregarInvitado = document.getElementById('btn-agregar-invitado-lista');
         if (btnAgregarInvitado) btnAgregarInvitado.addEventListener('click', handleAgregarInvitadoALista);
 
+        const btnGenerarCodigo = document.getElementById('btn-generar-codigo-invitado');
+        if (btnGenerarCodigo) {
+            btnGenerarCodigo.addEventListener('click', () => {
+                document.getElementById('input-codigo-invitado').value = generateLeagueCode();
+            });
+        }
+
         const btnConfirmarJugadores = document.getElementById('btn-confirmar-jugadores');
         if (btnConfirmarJugadores) btnConfirmarJugadores.addEventListener('click', handleConfirmJugadores);
 
@@ -1478,6 +1559,28 @@ window.initializeTorneosController = function (isAdmin) {
             if (target.classList.contains('btn-resultados-mesa')) {
                 openMesaResultsModal(target.dataset.ronda, target.dataset.mesa);
             }
+        });
+
+        // Listener para los inputs de asignación manual de código en la lista
+        $(document).on('input', '.input-assign-code', function () {
+            const index = parseInt(this.dataset.index);
+            const code = this.value.trim().toUpperCase();
+            if (code.length === 6) {
+                tempJugadores[index].leagueCode = code;
+                tempJugadores[index].id = `invitado_${code}`; // Actualizar el ID para que sea consistente
+                tempJugadores[index].needsCode = false;
+                renderTempJugadoresList(); // Volver a renderizar para que se quite el rojo
+            }
+        });
+
+        // Listener para los botones de generar código en la lista
+        $(document).on('click', '.btn-gen-code-row', function () {
+            const index = parseInt(this.dataset.index);
+            const code = generateLeagueCode();
+            tempJugadores[index].leagueCode = code;
+            tempJugadores[index].id = `invitado_${code}`; // Actualizar el ID para que sea consistente
+            tempJugadores[index].needsCode = false;
+            renderTempJugadoresList(); // Volver a renderizar para que se quite el rojo
         });
     }
 
