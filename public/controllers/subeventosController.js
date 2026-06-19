@@ -25,6 +25,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function initSubeventosDataTable() {
         if (!document.getElementById('subeventos-table')) return;
         if ($.fn.DataTable.isDataTable('#subeventos-table')) return;
+
+        // Registrar filtro de actividades pasadas (solo una vez)
+        if (!window._subeventPastFilterRegistered) {
+            window._subeventPastFilterRegistered = true;
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                // Solo aplicar a la tabla de subeventos
+                if (settings.nTable.id !== 'subeventos-table') return true;
+
+                const showPast = document.getElementById('show-past-subevents')?.checked || false;
+                if (showPast) return true;
+
+                const rowData = subeventosDataTable ? subeventosDataTable.row(dataIndex).data() : null;
+                if (!rowData || !rowData.fechaEvento) return true;
+
+                const today = new Date().toISOString().split('T')[0];
+                return rowData.fechaEvento >= today;
+            });
+        }
+
         subeventosDataTable = $('#subeventos-table').DataTable({
             language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
             responsive: true, data: [],
@@ -46,6 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
             ],
             drawCallback: function (settings) {
                 if (window.updateUIVisibility) window.updateUIVisibility();
+            },
+            createdRow: function (row, data) {
+                $(row).css('cursor', 'pointer').on('click', function (e) {
+                    if ($(e.target).closest('a, button').length) return;
+                    window.location.href = `subeventoDetalle.html?id=${data.id}`;
+                });
             }
         });
     }
@@ -69,6 +94,15 @@ document.addEventListener('DOMContentLoaded', () => {
             subeventosCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), fechaPublicacion: doc.data().fechaPublicacion && typeof doc.data().fechaPublicacion.toDate === 'function' ? doc.data().fechaPublicacion.toDate() : doc.data().fechaPublicacion }));
             if (subeventosDataTable) {
                 subeventosDataTable.clear().rows.add(subeventosCache).draw();
+            }
+
+            // Vincular checkbox de actividades pasadas
+            const checkbox = document.getElementById('show-past-subevents');
+            if (checkbox && !checkbox.dataset.bound) {
+                checkbox.dataset.bound = 'true';
+                checkbox.addEventListener('change', () => {
+                    if (subeventosDataTable) subeventosDataTable.draw();
+                });
             }
         } catch (error) {
             console.error('Error loading subevents: ', error);
@@ -469,11 +503,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (registrationForm) registrationForm.reset();
             const terms = document.getElementById('registration-terms');
             if (terms) terms.checked = false;
-            if (window.showAlert) {
-                const msg = autoPaid
-                    ? 'Inscripcion registrada directamente como pagada.'
-                    : 'Reserva registrada. Quedara como inscrita cuando se marque como pagada.';
-                window.showAlert(msg, 'success');
+            if (currentSubevent.pagoPrevioEvento) {
+                if (window.showAlert) window.showAlert('Reserva realizada. Recuerda que debes realizar el pago para confirmar tu plaza.', 'success');
+            } else {
+                if (window.showAlert) window.showAlert('Inscripción realizada con éxito.', 'success');
             }
             if (auth.currentUser) {
                 await refreshSubeventAndRegistrations(subId);
@@ -651,6 +684,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const src = sub.imagen && sub.imagen.trim() ? sub.imagen.trim() : 'https://via.placeholder.com/1200x400?text=Sin+imagen';
                 imgEl.src = src; imgEl.alt = sub.titulo || 'Imagen de la actividad';
                 imgEl.onerror = function () { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
+            }
+
+            // Open Graph
+            if (window.updateOGTags) {
+                window.updateOGTags(
+                    sub.titulo || 'Actividad - Pacto del Loto',
+                    sub.descripcion || '',
+                    sub.imagen || ''
+                );
+            }
+
+            if (sub.eventoId) {
+                const backLink = document.getElementById('back-to-parent-link');
+                if (backLink) backLink.href = `eventoDetalle.html?id=${sub.eventoId}`;
             }
             if (parentEl && sub.eventoId) {
                 const evDoc = await db.collection('eventos').doc(sub.eventoId).get();

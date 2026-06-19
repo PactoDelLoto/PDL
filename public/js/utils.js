@@ -4,10 +4,16 @@
  * @param {string} type - El tipo de alerta (e.g., 'success', 'danger', 'warning', 'info').
  */
 function showAlert(message, type = 'success') {
-    const alertContainer = document.getElementById('alert-container');
+    let alertContainer = document.getElementById('alert-container');
     if (!alertContainer) {
-        console.error('El contenedor de alertas no se encontró en el DOM.');
-        return;
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alert-container';
+        document.body.appendChild(alertContainer);
+    }
+    // Asegurar que esté fijo en esquina superior derecha y fuera del flujo
+    if (!alertContainer.classList.contains('position-fixed')) {
+        alertContainer.className = 'position-fixed top-0 end-0 p-3';
+        alertContainer.style.zIndex = '1055';
     }
 
     const alertId = `alert-${Date.now()}`;
@@ -53,4 +59,34 @@ function showConfirmationModal(title, bodyText, onConfirm) {
     });
 
     confirmationModal.show();
+}
+
+/**
+ * Actualiza las etiquetas Open Graph para previsualización en redes sociales.
+ * @param {string} title - Título del evento/actividad.
+ * @param {string} description - Descripción.
+ * @param {string} imageUrl - URL de la imagen del cartel.
+ */
+function updateOGTags(title, description, imageUrl) {
+    const setMeta = (property, content) => {
+        let el = document.querySelector(`meta[property="${property}"]`);
+        if (!el) {
+            el = document.createElement('meta');
+            el.setAttribute('property', property);
+            document.head.appendChild(el);
+        }
+        el.setAttribute('content', content || '');
+    };
+
+    const origin = window.location.origin;
+    const defaultTitle = 'Pacto del Loto';
+    const defaultDesc = 'Asociación de juegos de mesa y rol';
+    const defaultImage = origin + '/media/img/logo.png';
+
+    setMeta('og:title', title || defaultTitle);
+    setMeta('og:description', description || defaultDesc);
+    setMeta('og:image', imageUrl || defaultImage);
+    setMeta('og:url', window.location.href);
+    setMeta('og:type', 'website');
+    document.title = title || defaultTitle;
 }

@@ -966,6 +966,12 @@ window.initializeTorneosController = function (isAdmin) {
         tempJugadores = selectedTournament.jugadores ? [...selectedTournament.jugadores] : [];
         updateImportarInscritosButton();
         renderTempJugadoresList();
+        loadJugadoresPrevios().catch(e => console.error(e));
+        // Limpiar filtros
+        const fActuales = document.getElementById('filter-jugadores-actuales');
+        if (fActuales) fActuales.value = '';
+        const fPrevios = document.getElementById('filter-jugadores-previos');
+        if (fPrevios) fPrevios.value = '';
         modalJugadores.show();
     }
 
@@ -1146,16 +1152,24 @@ window.initializeTorneosController = function (isAdmin) {
     function renderTempJugadoresList() {
         const list = document.getElementById('lista-gestion-jugadores');
         const count = document.getElementById('count-jugadores');
+        const filterInput = document.getElementById('filter-jugadores-actuales');
         if (!list || !count) return;
 
         count.textContent = tempJugadores.length;
 
-        if (tempJugadores.length === 0) {
-            list.innerHTML = `<li class="list-group-item text-center text-muted py-3">No hay participantes agregados.</li>`;
+        const term = filterInput ? filterInput.value.trim().toLowerCase() : '';
+        const filtered = term
+            ? tempJugadores.filter(j => j.nombre.toLowerCase().includes(term))
+            : tempJugadores;
+
+        if (filtered.length === 0) {
+            list.innerHTML = `<li class="list-group-item text-center text-muted py-3">${
+                term ? 'No hay coincidencias.' : 'No hay participantes agregados.'
+            }</li>`;
             return;
         }
 
-        list.innerHTML = tempJugadores.map((j, i) => {
+        list.innerHTML = filtered.map((j, i) => {
             const isGuest = j.id.startsWith('invitado_') || j.id.startsWith('temp_') || j.needsCode;
             const itemClass = j.needsCode ? 'list-group-item-danger' : '';
 
@@ -1164,8 +1178,8 @@ window.initializeTorneosController = function (isAdmin) {
                 if (j.needsCode) {
                     guestInfoHtml = `
                         <div class="mt-2 d-flex gap-2">
-                            <input type="text" class="form-control form-control-sm input-assign-code" data-index="${i}" placeholder="Asignar Código" maxlength="6" style="text-transform: uppercase;">
-                            <button class="btn btn-sm btn-success btn-gen-code-row" data-index="${i}"><i class="fa-solid fa-dice"></i></button>
+                            <input type="text" class="form-control form-control-sm input-assign-code" data-playerid="${j.id}" placeholder="Asignar Código" maxlength="6" style="text-transform: uppercase;">
+                            <button class="btn btn-sm btn-success btn-gen-code-row" data-playerid="${j.id}"><i class="fa-solid fa-dice"></i></button>
                         </div>
                     `;
                 } else {
@@ -1222,6 +1236,154 @@ window.initializeTorneosController = function (isAdmin) {
         } catch (error) {
             console.error("Error al actualizar jugadores en Firestore:", error);
         }
+    }
+
+    // --- JUGADORES DE JORNADAS ANTERIORES ---
+    let _jugadoresPrevios = [];
+    let _previosPage = 1;
+    const PREVIOS_PER_PAGE = 10;
+
+    async function loadJugadoresPrevios() {
+        _jugadoresPrevios = [];
+        _previosPage = 1;
+
+        if (!selectedTournament || !selectedTournament.ligaId) {
+            renderJugadoresPrevios();
+            return;
+        }
+
+        // Cargar clasificación actual de la liga para detectar fusiones
+        let mergedMap = {};
+        try {
+            const ligaDoc = await db.collection('ligas').doc(selectedTournament.ligaId).get();
+            if (ligaDoc.exists) {
+                const clasificacion = ligaDoc.data().clasificacion || {};
+                for (const [key, entry] of Object.entries(clasificacion)) {
+                    if (key.startsWith('invitado_') && entry.userId) {
+                        mergedMap[key] = entry.userId;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('No se pudo cargar la clasificación de la liga:', e);
+        }
+
+        const torneosLiga = torneosCache.filter(t =>
+            t.ligaId === selectedTournament.ligaId &&
+            t.id !== selectedTournament.id &&
+            t.jugadores && t.jugadores.length > 0
+        );
+
+        const seen = new Set();
+        torneosLiga.forEach(t => {
+            (t.jugadores || []).forEach(j => {
+                // Si el jugador ya está en tempJugadores, saltar
+                if (tempJugadores.some(tj => tj.id === j.id)) return;
+
+                // Si es invitado fusionado a un usuario registrado, mostrar el perfil registrado
+                if (j.id.startsWith('invitado_') && mergedMap[j.id]) {
+                    const userId = mergedMap[j.id];
+                    if (!seen.has(userId)) {
+                        seen.add(userId);
+                        const user = usuariosCache.find(u => u.id === userId);
+                        if (user) {
+                            _jugadoresPrevios.push({
+                                id: userId,
+                                nombre: `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.correo,
+                                leagueCode: j.id.split('_')[1]
+                            });
+                        } else {
+                            // Usuario no encontrado en cache, mostrar entrada original
+                            seen.add(j.id);
+                            _jugadoresPrevios.push({ ...j });
+                        }
+                    }
+                    return;
+                }
+
+                if (!seen.has(j.id)) {
+                    seen.add(j.id);
+                    _jugadoresPrevios.push({ ...j });
+                }
+            });
+        });
+
+        renderJugadoresPrevios();
+    }
+
+    function renderJugadoresPrevios() {
+        const tbody = document.getElementById('lista-jugadores-previos');
+        const paginationNav = document.getElementById('pagination-jugadores-previos');
+        const filterInput = document.getElementById('filter-jugadores-previos');
+        if (!tbody) return;
+
+        const term = filterInput ? filterInput.value.trim().toLowerCase() : '';
+        const filtered = term
+            ? _jugadoresPrevios.filter(j => j.nombre.toLowerCase().includes(term))
+            : _jugadoresPrevios;
+
+        const totalPages = Math.ceil(filtered.length / PREVIOS_PER_PAGE) || 1;
+        if (_previosPage > totalPages) _previosPage = totalPages;
+        const start = (_previosPage - 1) * PREVIOS_PER_PAGE;
+        const page = filtered.slice(start, start + PREVIOS_PER_PAGE);
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">${
+                term ? 'No hay coincidencias.' : 'No hay jugadores de jornadas anteriores.'
+            }</td></tr>`;
+            if (paginationNav) paginationNav.innerHTML = '';
+            return;
+        }
+
+        tbody.innerHTML = page.map((j, i) => {
+            const code = j.id.startsWith('invitado_') ? j.id.split('_')[1] : (j.leagueCode || '—');
+            const badge = j.id.startsWith('invitado_')
+                ? `<span class="badge bg-secondary">Invitado</span>`
+                : `<span class="badge bg-primary">Registrado</span>`;
+            return `
+                <tr>
+                    <td>${start + i + 1}</td>
+                    <td>${j.nombre} ${badge}</td>
+                    <td><code>${code}</code></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-success btn-add-previo" data-id="${j.id}" data-nombre="${j.nombre.replace(/"/g, '&quot;')}" data-leaguecode="${j.leagueCode || ''}">
+                            <i class="fa-solid fa-plus"></i> Añadir
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        if (paginationNav) {
+            if (totalPages <= 1) {
+                paginationNav.innerHTML = '';
+            } else {
+                let html = '<ul class="pagination pagination-sm justify-content-center mb-0">';
+                html += `<li class="page-item ${_previosPage === 1 ? 'disabled' : ''}"><button class="page-link" data-page-prev="${_previosPage - 1}">&laquo;</button></li>`;
+                for (let i = 1; i <= totalPages; i++) {
+                    html += `<li class="page-item ${i === _previosPage ? 'active' : ''}"><button class="page-link" data-page-prev="${i}">${i}</button></li>`;
+                }
+                html += `<li class="page-item ${_previosPage === totalPages ? 'disabled' : ''}"><button class="page-link" data-page-prev="${_previosPage + 1}">&raquo;</button></li>`;
+                html += '</ul>';
+                paginationNav.innerHTML = html;
+            }
+        }
+    }
+
+    function addJugadorPrevio(id, nombre, leagueCode) {
+        if (tempJugadores.some(j => j.id === id)) {
+            if (window.showAlert) window.showAlert('Este jugador ya está en la lista.', 'warning');
+            return;
+        }
+        tempJugadores.push({
+            id: id,
+            nombre: nombre,
+            leagueCode: leagueCode || undefined
+        });
+        renderTempJugadoresList();
+        // Quitarlo de la lista de previos y re-renderizar
+        _jugadoresPrevios = _jugadoresPrevios.filter(j => j.id !== id);
+        renderJugadoresPrevios();
     }
 
     // --- ACCIONES DE CREACIÓN DE TORNEO Y LIGA ---
@@ -1648,30 +1810,63 @@ window.initializeTorneosController = function (isAdmin) {
 
         // Listener para los inputs de asignación manual de código en la lista
         $(document).on('input', '.input-assign-code', function () {
-            const index = parseInt(this.dataset.index);
+            const playerId = this.dataset.playerid;
             const code = this.value.trim().toUpperCase();
             if (code.length === 6) {
-                tempJugadores[index].leagueCode = code;
-                tempJugadores[index].id = `invitado_${code}`; // Actualizar el ID para que sea consistente
-                tempJugadores[index].needsCode = false;
-                renderTempJugadoresList(); // Volver a renderizar para que se quite el rojo
+                const player = tempJugadores.find(j => j.id === playerId);
+                if (player) {
+                    player.leagueCode = code;
+                    player.id = `invitado_${code}`;
+                    player.needsCode = false;
+                    renderTempJugadoresList();
+                }
             }
         });
 
         // Listener para los botones de generar código en la lista
         $(document).on('click', '.btn-gen-code-row', function () {
-            const index = parseInt(this.dataset.index);
-            const code = generateLeagueCode();
-            tempJugadores[index].leagueCode = code;
-            tempJugadores[index].id = `invitado_${code}`; // Actualizar el ID para que sea consistente
-            tempJugadores[index].needsCode = false;
-            renderTempJugadoresList(); // Volver a renderizar para que se quite el rojo
+            const playerId = this.dataset.playerid;
+            const player = tempJugadores.find(j => j.id === playerId);
+            if (player) {
+                const code = generateLeagueCode();
+                player.leagueCode = code;
+                player.id = `invitado_${code}`;
+                player.needsCode = false;
+                renderTempJugadoresList();
+            }
         });
 
         // Checkbox de mostrar finalizados
         if (filterShowFinalized) {
             filterShowFinalized.addEventListener('change', () => renderTournamentsList());
         }
+
+        // Filtro en lista actual de jugadores (modal)
+        const filterActuales = document.getElementById('filter-jugadores-actuales');
+        if (filterActuales) {
+            filterActuales.addEventListener('input', () => renderTempJugadoresList());
+        }
+
+        // Filtro y paginación en jugadores previos (modal)
+        const filterPrevios = document.getElementById('filter-jugadores-previos');
+        if (filterPrevios) {
+            filterPrevios.addEventListener('input', () => {
+                _previosPage = 1;
+                renderJugadoresPrevios();
+            });
+        }
+
+        $(document).on('click', '.btn-add-previo', function () {
+            const id = this.dataset.id;
+            const nombre = this.dataset.nombre;
+            const leagueCode = this.dataset.leaguecode || '';
+            addJugadorPrevio(id, nombre, leagueCode);
+        });
+
+        $(document).on('click', '[data-page-prev]', function () {
+            _previosPage = parseInt(this.dataset.pagePrev);
+            renderJugadoresPrevios();
+        });
     }
 
     // --- FUSIONAR PUNTOS DE INVITADO A USUARIO ---

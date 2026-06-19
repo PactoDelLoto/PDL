@@ -281,6 +281,13 @@ document.addEventListener('DOMContentLoaded', () => {
             drawCallback: function (settings) {
                 // This is the key fix: run visibility update AFTER the table is drawn.
                 updateUIVisibility();
+            },
+            createdRow: function (row, data, dataIndex) {
+                const href = data.kind === 'actividad' ? `subeventoDetalle.html?id=${data.id}` : `eventoDetalle.html?id=${data.id}`;
+                $(row).css('cursor', 'pointer').on('click', function (e) {
+                    if ($(e.target).closest('a, button').length) return;
+                    window.location.href = href;
+                });
             }
         });
     }
@@ -340,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const badge = kind === 'evento' ? `<span class="badge bg-primary">Evento</span>` : `<span class="badge bg-success">Actividad</span>`;
             const viewHref = kind === 'evento' ? `eventoDetalle.html?id=${item.id}` : `subeventoDetalle.html?id=${item.id}`;
             col.innerHTML = `
-                <div class="card h-100 shadow-sm">
+                <div class="card h-100 shadow-sm" style="cursor:pointer" data-href="${viewHref}">
                     <img src="${imagen}" class="card-img-top">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -700,8 +707,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 imgEl.onerror = function () { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
             }
 
+            // Open Graph
+            if (window.updateOGTags) {
+                window.updateOGTags(
+                    evento.titulo || 'Evento - Pacto del Loto',
+                    evento.descripcion || '',
+                    evento.imagen || ''
+                );
+            }
+
             if (window.initSubeventosDataTable) window.initSubeventosDataTable();
             if (window.loadSubeventos) await window.loadSubeventos(eventId);
+
+            // Comprobar si el evento tiene una liga vinculada
+            await loadEventLiga(eventId);
 
             // Si venimos con editSubeventId en la URL, abrir la edición de ese subevento
             const params = new URLSearchParams(window.location.search);
@@ -710,6 +729,65 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Error loading event details:", error);
             showAlert("Error al cargar los detalles del evento.", "danger");
+        }
+    }
+
+    async function loadEventLiga(eventId) {
+        try {
+            const ligaSnap = await db.collection('ligas')
+                .where('eventoId', '==', eventId)
+                .limit(1)
+                .get();
+
+            const ligaTabLi = document.getElementById('liga-tab-li');
+            const tbody = document.getElementById('liga-standings-tbody');
+            if (!ligaTabLi || !tbody) return;
+
+            if (ligaSnap.empty) {
+                // No hay liga, ocultar toda la barra de tabs y mostrar actividades directamente
+                const tabsNav = document.getElementById('eventTabs');
+                if (tabsNav) tabsNav.style.display = 'none';
+                return;
+            }
+
+            // Asegurar que la barra de tabs sea visible
+            const tabsNav = document.getElementById('eventTabs');
+            if (tabsNav) tabsNav.style.display = '';
+
+            const ligaDoc = ligaSnap.docs[0];
+            const liga = { id: ligaDoc.id, ...ligaDoc.data() };
+
+            // Mostrar el tab de liga
+            ligaTabLi.style.display = '';
+
+            // Renderizar clasificación
+            if (!liga.clasificacion || Object.keys(liga.clasificacion).length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">No hay jugadores registrados en esta liga todavía.</td></tr>`;
+                return;
+            }
+
+            const clasifArray = Object.entries(liga.clasificacion)
+                .map(([key, data]) => ({
+                    id: key,
+                    nombre: data.nombre || 'Desconocido',
+                    puntos: data.puntos || 0,
+                    mergedFromGuest: data.mergedFromGuest || false
+                }))
+                .sort((a, b) => b.puntos - a.puntos);
+
+            tbody.innerHTML = clasifArray.map((row, index) => `
+                <tr>
+                    <td class="fw-bold">${index + 1}</td>
+                    <td>
+                        ${row.nombre}
+                        ${row.id.startsWith('invitado_') ? ` <span class="badge bg-secondary">${row.id.split('_')[1]}</span>` : ''}
+                        ${row.mergedFromGuest ? ` <i class="fas fa-user-check text-success ms-1" title="Puntos fusionados de invitado"></i>` : ''}
+                    </td>
+                    <td class="text-center fw-bold text-primary">${row.puntos}</td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Error al cargar liga del evento:', error);
         }
     }
 
@@ -912,6 +990,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GLOBAL EVENT LISTENERS ---
     // Eliminamos .off() para no borrar los listeners de otros controladores como subeventosController
+
+    // Click en card de eventos (gallery) para ir al detalle
+    $(document).on('click', '.card[data-href]', (e) => {
+        if ($(e.target).closest('a, button').length) return;
+        window.location.href = e.currentTarget.dataset.href;
+    });
 
     $(document).on('click', (e) => {
         const target = $(e.target).closest('button, a');

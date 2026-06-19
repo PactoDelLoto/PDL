@@ -57,10 +57,9 @@ function initializeUsersTable() {
             {
                 data: null, orderable: false, searchable: false, className: 'text-center',
                 render: function (data, type, row) {
-                    const checked = row.alCorriente ? 'checked' : '';
-                    return `<div class="form-check form-switch mb-0 justify-content-center">
-                        <input class="form-check-input user-paid-switch" type="checkbox" data-id="${row.id}" ${checked}>
-                    </div>`;
+                    return row.alCorriente
+                        ? '<span class="badge bg-success"><i class="fa-solid fa-check"></i></span>'
+                        : '<span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>';
                 }
             },
             {
@@ -168,21 +167,6 @@ function setupUserActionHandlers() {
                 }
             }
         );
-    });
-
-    // Cambio del switch alCorriente
-    tbody.on('change', '.user-paid-switch', async function () {
-        const userId = $(this).data('id');
-        const checked = $(this).prop('checked');
-        try {
-            await db.collection('usuarios').doc(userId).update({
-                alCorriente: checked,
-                isSocio: checked
-            });
-        } catch (error) {
-            showAlert('Error al actualizar estado de pago.', 'danger');
-            $(this).prop('checked', !checked);
-        }
     });
 
     // Cambio del input pagadoHasta
