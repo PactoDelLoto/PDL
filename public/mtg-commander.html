@@ -254,11 +254,16 @@
                                 </select>
                             </div>
                         </div>
+
                         <div class="d-flex gap-2 flex-wrap">
                             <button class="btn btn-outline-danger admin-controls mt-lg-0" id="btn-eliminar-liga"
                                 style="display: none;" disabled>
                                 <i class="fa-solid fa-trash me-2"></i>Eliminar Liga
                             </button>
+                            <button id="btn-open-merge-modal" class="btn btn-info btn-sm"
+                                title="Fusionar puntos de invitado a usuario"><i class="fas fa-user-plus"></i> Fusionar
+                                Puntos</button>
+
                             <button class="btn btn-premium admin-controls mt-lg-0" id="btn-nueva-liga"
                                 style="display: none;">
                                 <i class="fa-solid fa-plus me-2"></i>Crear Liga
@@ -292,6 +297,46 @@
         </div>
 
     </main>
+
+    <!-- Modal para Fusionar Puntos de Invitado a Usuario -->
+    <div class="modal fade" id="merge-points-modal" tabindex="-1" aria-labelledby="mergePointsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="mergePointsModalLabel"><i class="fas fa-user-plus me-2"></i>Fusionar
+                        Puntos de Invitado</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <form id="form-merge-points">
+                    <div class="modal-body">
+                        <p class="text-muted">Selecciona un código de liga de invitado y un usuario registrado para
+                            transferir los puntos acumulados por el invitado a la cuenta del usuario.</p>
+                        <div class="mb-3">
+                            <label for="select-merge-league-code" class="form-label">Código de Liga de Invitado</label>
+                            <select class="form-select" id="select-merge-league-code" required>
+                                <option value="">-- Selecciona un código de invitado --</option>
+                            </select>
+                            <div class="form-text">Solo se muestran códigos de invitado de la liga activa.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="select-merge-user" class="form-label">Usuario Registrado</label>
+                            <select class="form-select" id="select-merge-user" required>
+                                <option value="">-- Selecciona un usuario --</option>
+                            </select>
+                            <div class="form-text">Los puntos del invitado se añadirán a este usuario.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Fusionar Puntos</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Modal para Crear/Editar Torneo -->
     <div class="modal fade" id="modal-torneo" tabindex="-1" aria-hidden="true">

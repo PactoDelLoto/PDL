@@ -7,6 +7,7 @@ window.initializeTorneosController = function (isAdmin) {
     const modalTorneo = new bootstrap.Modal(document.getElementById('modal-torneo'));
     const modalLiga = new bootstrap.Modal(document.getElementById('modal-liga'));
     const modalJugadores = new bootstrap.Modal(document.getElementById('modal-jugadores'));
+    const mergePointsModal = new bootstrap.Modal(document.getElementById('merge-points-modal'));
     const modalResultados = new bootstrap.Modal(document.getElementById('modal-resultados'));
 
     // Estado local
@@ -32,6 +33,9 @@ window.initializeTorneosController = function (isAdmin) {
     const ligaBloque = document.getElementById('torneo-liga-bloque');
     const independienteBloque = document.getElementById('torneo-independiente-bloque');
     const selectLigaEvento = document.getElementById('liga-evento'); // El nuevo del modal ligas
+
+    const selectMergeLeagueCode = document.getElementById('select-merge-league-code');
+    const selectMergeUser = document.getElementById('select-merge-user');
 
     // Inicialización del controlador
     async function init() {
@@ -70,6 +74,7 @@ window.initializeTorneosController = function (isAdmin) {
             renderTournamentsList();
             populateLigasDropdowns();
             populateEventosDropdown();
+            populateMergeUserDropdown();
             populateAgregarUsuarioSelect();
 
         } catch (error) {
@@ -361,15 +366,16 @@ window.initializeTorneosController = function (isAdmin) {
         const clasifArray = Object.entries(liga.clasificacion).map(([key, data]) => ({
             id: key,
             nombre: data.nombre,
-            puntos: data.puntos
+            puntos: data.puntos,
+            mergedFromGuest: data.mergedFromGuest || false
         })).sort((a, b) => b.puntos - a.puntos);
 
         tbody.innerHTML = clasifArray.map((row, index) => `
             <tr>
                 <td class="fw-bold">${index + 1}</td>
                 <td>
-                    ${row.nombre}
-                    ${row.id.startsWith('invitado_') ? ` <span class="badge bg-secondary">${row.id.split('_')[1]}</span>` : ''}
+                    ${row.nombre} ${row.id.startsWith('invitado_') ? ` <span class="badge bg-secondary">${row.id.split('_')[1]}</span>` : ''}
+                    ${row.mergedFromGuest ? ` <i class="fas fa-user-check text-success ms-1" title="Puntos fusionados de invitado"></i>` : ''}
                 </td>
                 <td class="text-center fw-bold text-primary">${row.puntos}</td>
             </tr>
@@ -1437,6 +1443,9 @@ window.initializeTorneosController = function (isAdmin) {
         const formLiga = document.getElementById('form-liga');
         if (formLiga) formLiga.addEventListener('submit', handleLigaFormSubmit);
 
+        const formMergePoints = document.getElementById('form-merge-points');
+        if (formMergePoints) formMergePoints.addEventListener('submit', handleMergeInvitedPoints);
+
         const formResultados = document.getElementById('form-resultados');
         if (formResultados) formResultados.addEventListener('submit', handleMesaResultsSubmit);
 
@@ -1477,6 +1486,10 @@ window.initializeTorneosController = function (isAdmin) {
             inputBuscarUsuario.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') { e.preventDefault(); handleAgregarUsuarioALista(); }
             });
+        }
+
+        if (document.getElementById('btn-open-merge-modal')) {
+            document.getElementById('btn-open-merge-modal').addEventListener('click', openMergePointsModal);
         }
 
         const btnAgregarInvitado = document.getElementById('btn-agregar-invitado-lista');
@@ -1582,6 +1595,118 @@ window.initializeTorneosController = function (isAdmin) {
             tempJugadores[index].needsCode = false;
             renderTempJugadoresList(); // Volver a renderizar para que se quite el rojo
         });
+    }
+
+    // --- FUSIONAR PUNTOS DE INVITADO A USUARIO ---
+
+    function populateMergeUserDropdown() {
+        if (!selectMergeUser) return;
+        const sortedUsers = [...usuariosCache].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
+        selectMergeUser.innerHTML = `<option value="">-- Selecciona un usuario --</option>` +
+            sortedUsers.map(u => `<option value="${u.id}">${u.nombre} ${u.apellidos || ''} (${u.correo})</option>`).join('');
+        initSelect2(selectMergeUser, {
+            dropdownParent: $('#merge-points-modal'),
+            placeholder: '-- Escribe para buscar un usuario --',
+            allowClear: false
+        });
+    }
+
+    function populateMergeLeagueCodeDropdown(ligaId) {
+        if (!selectMergeLeagueCode) return;
+        const liga = ligasCache.find(l => l.id === ligaId);
+        if (!liga || !liga.clasificacion) {
+            selectMergeLeagueCode.innerHTML = `<option value="">No hay invitados en esta liga</option>`;
+            selectMergeLeagueCode.disabled = true;
+            return;
+        }
+
+        const invitedPlayers = Object.entries(liga.clasificacion)
+            .filter(([id, data]) => id.startsWith('invitado_') && !data.mergedFromGuest)
+            .map(([id, data]) => ({ id, nombre: data.nombre, code: id.split('_')[1] }))
+            .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
+
+        selectMergeLeagueCode.innerHTML = `<option value="">-- Selecciona un código de invitado --</option>` +
+            invitedPlayers.map(p => `<option value="${p.id}">${p.nombre} (Código: ${p.code})</option>`).join('');
+        selectMergeLeagueCode.disabled = invitedPlayers.length === 0;
+
+        initSelect2(selectMergeLeagueCode, {
+            dropdownParent: $('#merge-points-modal'),
+            placeholder: '-- Escribe para buscar un código --',
+            allowClear: false
+        });
+    }
+
+    function openMergePointsModal() {
+        const ligaId = selectLigaActiva.value;
+        if (!ligaId) {
+            if (window.showAlert) window.showAlert("Por favor, selecciona una liga primero.", "warning");
+            return;
+        }
+        populateMergeLeagueCodeDropdown(ligaId);
+        mergePointsModal.show();
+    }
+
+    async function handleMergeInvitedPoints(e) {
+        e.preventDefault();
+        const ligaId = selectLigaActiva.value;
+        const invitedPlayerId = selectMergeLeagueCode.value;
+        const registeredUserId = selectMergeUser.value;
+
+        if (!ligaId || !invitedPlayerId || !registeredUserId) {
+            if (window.showAlert) window.showAlert("Por favor, selecciona un código de invitado y un usuario.", "warning");
+            return;
+        }
+
+        const liga = ligasCache.find(l => l.id === ligaId);
+        if (!liga) {
+            if (window.showAlert) window.showAlert("Liga no encontrada.", "danger");
+            return;
+        }
+
+        const registeredUser = usuariosCache.find(u => u.id === registeredUserId);
+        if (!registeredUser) {
+            if (window.showAlert) window.showAlert("Usuario registrado no encontrado.", "danger");
+            return;
+        }
+
+        if (!confirm(`¿Estás seguro de fusionar los puntos del invitado "${liga.clasificacion[invitedPlayerId].nombre}" (Código: ${invitedPlayerId.split('_')[1]}) con el usuario "${registeredUser.nombre} ${registeredUser.apellidos}"?`)) {
+            return;
+        }
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const ligaRef = db.collection('ligas').doc(ligaId);
+                const ligaDoc = await transaction.get(ligaRef);
+
+                if (!ligaDoc.exists) throw new Error("La liga no existe.");
+
+                const clasificacion = ligaDoc.data().clasificacion || {};
+                const invitedPlayerEntry = clasificacion[invitedPlayerId];
+                const registeredUserEntry = clasificacion[registeredUserId];
+
+                if (!invitedPlayerEntry) throw new Error("El código de invitado no existe en la clasificación de esta liga.");
+
+                if (registeredUserEntry) {
+                    invitedPlayerEntry.puntos += registeredUserEntry.puntos;
+                    delete clasificacion[registeredUserId];
+                }
+
+                invitedPlayerEntry.nombre = `${registeredUser.nombre} ${registeredUser.apellidos || ''}`.trim();
+                invitedPlayerEntry.userId = registeredUserId;
+                invitedPlayerEntry.email = registeredUser.correo;
+                invitedPlayerEntry.mergedFromGuest = true;
+
+                clasificacion[invitedPlayerId] = invitedPlayerEntry;
+                transaction.update(ligaRef, { clasificacion });
+            });
+
+            if (window.showAlert) window.showAlert("Puntos fusionados con éxito. La clasificación se actualizará.", "success");
+            mergePointsModal.hide();
+            await loadInitialData();
+        } catch (error) {
+            console.error("Error al fusionar puntos:", error);
+            if (window.showAlert) window.showAlert(`Error al fusionar puntos: ${error.message}`, "danger");
+        }
     }
 
     // Arrancar el controlador
