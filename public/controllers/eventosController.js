@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filtros de vista: mostrar eventos / actividades
     const filterShowEventsEl = document.getElementById('filter-show-events');
     const filterShowActivitiesEl = document.getElementById('filter-show-activities');
+    const filterShowPastEl = document.getElementById('filter-show-past');
     // Campos nuevos para eventos continuos
     const eventContinuoCheckbox = document.getElementById('event-continuo');
     const eventFechaInicioEl = document.getElementById('event-fechaInicio');
@@ -162,6 +163,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cargar eventos y todas las actividades (subeventos) antes de renderizar
             Promise.all([loadEvents(), loadAllSubeventos()]).then(() => {
                 renderViews();
+                // Conectar los controles de búsqueda/filtro con la función de filtrado
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) searchInput.addEventListener('input', applyEventFilterAndRender);
+                const typeFilter = document.getElementById('type-filter');
+                if (typeFilter) typeFilter.addEventListener('change', applyEventFilterAndRender);
+                const filterShowEvents = document.getElementById('filter-show-events');
+                if (filterShowEvents) filterShowEvents.addEventListener('change', applyEventFilterAndRender);
+                const filterShowActivities = document.getElementById('filter-show-activities');
+                if (filterShowActivities) filterShowActivities.addEventListener('change', applyEventFilterAndRender);
+                const filterShowPast = document.getElementById('filter-show-past');
+                if (filterShowPast) filterShowPast.addEventListener('change', applyEventFilterAndRender);
             });
         }
         updateUIVisibility(); // Initial call for non-datatable elements
@@ -278,15 +290,31 @@ document.addEventListener('DOMContentLoaded', () => {
         applyEventFilterAndRender();
     }
 
+    const PER_PAGE = 9;
+    let _galleryPage = 1;
+    let _galleryList = [];
+
     function renderGallery(events = null) {
-        const list = events || eventosCache.map(e => ({ kind: 'evento', item: e }));
+        _galleryList = events || eventosCache.map(e => ({ kind: 'evento', item: e }));
+        _galleryPage = 1;
+        _renderGalleryPage();
+    }
+
+    function _renderGalleryPage() {
         if (!eventosGallery) return;
         eventosGallery.innerHTML = '';
-        if (!list || list.length === 0) {
+        if (!_galleryList || _galleryList.length === 0) {
             eventosGallery.innerHTML = '<div class="col-12"><p class="text-center text-muted">No hay eventos para mostrar.</p></div>';
+            const paginationContainer = document.getElementById('gallery-pagination');
+            if (paginationContainer) paginationContainer.innerHTML = '';
             return;
         }
-        list.forEach(wrapper => {
+
+        const totalPages = Math.ceil(_galleryList.length / PER_PAGE);
+        const start = (_galleryPage - 1) * PER_PAGE;
+        const pageItems = _galleryList.slice(start, start + PER_PAGE);
+
+        pageItems.forEach(wrapper => {
             const { kind, item } = wrapper;
             const col = document.createElement('div');
             col.className = 'col-lg-4 col-md-6 mb-4';
@@ -310,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 horaStr = item.horaEvento || '';
             }
             const badge = kind === 'evento' ? `<span class="badge bg-primary">Evento</span>` : `<span class="badge bg-success">Actividad</span>`;
-            // Enlace directo: eventos -> eventoDetalle, actividades -> subeventoDetalle
             const viewHref = kind === 'evento' ? `eventoDetalle.html?id=${item.id}` : `subeventoDetalle.html?id=${item.id}`;
             col.innerHTML = `
                 <div class="card h-100 shadow-sm">
@@ -333,13 +360,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             eventosGallery.appendChild(col);
         });
-        updateUIVisibility(); // Update for gallery view
+
+        // Paginación
+        const paginationContainer = document.getElementById('gallery-pagination');
+        if (!paginationContainer) return;
+        if (_galleryList.length <= PER_PAGE) {
+            paginationContainer.innerHTML = '';
+        } else {
+            let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-2">';
+            html += `<li class="page-item ${_galleryPage === 1 ? 'disabled' : ''}"><button class="page-link" data-page="${_galleryPage - 1}">&laquo;</button></li>`;
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<li class="page-item ${i === _galleryPage ? 'active' : ''}"><button class="page-link" data-page="${i}">${i}</button></li>`;
+            }
+            html += `<li class="page-item ${_galleryPage === totalPages ? 'disabled' : ''}"><button class="page-link" data-page="${_galleryPage + 1}">&raquo;</button></li>`;
+            html += '</ul></nav>';
+            paginationContainer.innerHTML = html;
+        }
+
+        updateUIVisibility();
+    }
+
+    function _goToGalleryPage(page) {
+        _galleryPage = page;
+        _renderGalleryPage();
     }
 
     async function applyEventFilterAndRender() {
         const selectedType = typeFilterSelect ? typeFilterSelect.value : '';
         const showEvents = filterShowEventsEl ? filterShowEventsEl.checked : true;
         const showActivities = filterShowActivitiesEl ? filterShowActivitiesEl.checked : true;
+        const showPast = filterShowPastEl ? filterShowPastEl.checked : false;
         const searchTerm = (document.getElementById('search-input') && document.getElementById('search-input').value) ? document.getElementById('search-input').value.trim().toLowerCase() : '';
         if (!selectedType) {
             // sin filtro: mostrar todos los eventos y actividades futuras
@@ -349,6 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (showEvents) {
                 upcomingEvents = eventosCache.filter(ev => {
+                    if (showPast) return true;
                     try {
                         // Si el evento es continuo, considerarlo si su fechaFin aún no ha pasado
                         if (ev.continuo) {
@@ -372,9 +423,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (showActivities) {
                 upcomingActivities = (subeventosCache || []).filter(s => {
                     if (!s.fechaEvento) return false;
-                    const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
-                    // si viewer, solo mostrar publicadas
                     if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > now) return false;
+                    if (showPast) return true;
+                    const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
                     return dt > now;
                 });
                 if (searchTerm) {
@@ -407,8 +458,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const snapData = snap.docs.map(d => ({ id: d.id, ...d.data(), fechaPublicacion: d.data().fechaPublicacion && d.data().fechaPublicacion.toDate ? d.data().fechaPublicacion.toDate() : null }));
             let activityFiltered = (subeventosCache && subeventosCache.length ? subeventosCache : snapData).filter(s => s.tipoEventoId === selectedType).filter(s => {
                 if (!s.fechaEvento) return false;
-                const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
                 if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > nowDate) return false;
+                if (showPast) return true;
+                const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
                 return dt > nowDate;
             });
             if (searchTerm) {
@@ -418,6 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const eventIds = new Set(activityFiltered.map(s => s.eventoId).filter(Boolean));
             const filteredEvents = eventosCache.filter(ev => {
                 if (!eventIds.has(ev.id)) return false;
+                if (showPast) return true;
                 if (ev.continuo) {
                     if (!ev.fechaFin) return false;
                     return new Date((ev.fechaFin || '') + 'T23:59:59') > nowDate;
@@ -879,6 +932,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.is('.btn-delete-event')) handleDeleteEvent(target.data('id'));
         if (target.is('#view-gallery-btn')) switchView('gallery');
         if (target.is('#view-table-btn')) switchView('table');
+        if (target.is('.page-link[data-page]')) {
+            const page = parseInt(target.data('page'));
+            if (page >= 1) _goToGalleryPage(page);
+        }
         if (target.is('.btn-delete-type')) handleDeleteType(target.data('id'));
         if (target.is('.btn-edit-type')) {
             const id = target.data('id');

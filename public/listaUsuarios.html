@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,15 +21,33 @@
     <!-- Script para cargar componentes comunes -->
     <script src="/jquery-3.7.1.min.js"></script>
 </head>
+
 <body>
     <header>
         <!-- El navbar se cargará aquí -->
     </header>
 
-    <main class="container mt-5 pt-5">
+    <main class="container mt-5 pt-5 mb-5">
+        <div id="alert-container"></div>
         <div class="row">
             <div class="col">
                 <h1 class="mb-4">Listado de Usuarios</h1>
+                <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="filter-solo-socios">
+                        <label class="form-check-label" for="filter-solo-socios">Solo Socios</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="filter-solo-admins">
+                        <label class="form-check-label" for="filter-solo-admins">Solo Admins</label>
+                    </div>
+                    <button class="btn btn-primary btn-sm" id="btn-actualizar-cuentas">
+                        <i class="fa-solid fa-rotate me-1"></i>Actualizar Cuentas
+                    </button>
+                    <button class="btn btn-success btn-sm" id="btn-exportar-csv">
+                        <i class="fa-solid fa-file-csv me-1"></i>Exportar CSV
+                    </button>
+                </div>
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <table id="usuarios-table" class="table table-striped table-hover" style="width:100%">
@@ -36,14 +55,14 @@
                                 <tr>
                                     <th>Nombre</th>
                                     <th>Apellidos</th>
+                                    <th>Teléfono</th>
                                     <th>Correo</th>
                                     <th>Socio</th>
                                     <th>Admin</th>
+                                    <th>Al corriente</th>
+                                    <th>Pagado hasta</th>
                                     <th>Fecha de Registro</th>
-                                    <th></th> <!-- Columna para acciones de Socio -->
-                                    <th></th> <!-- Columna para acciones de Admin -->
-                                    <th></th> <!-- Columna para Editar -->
-                                    <th></th> <!-- Columna para Eliminar -->
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -86,7 +105,8 @@
     </div>
 
     <!-- Modal de Confirmación Genérico -->
-    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -122,4 +142,5 @@
     <script src="/controllers/navigation.js"></script>
     <script src="/controllers/UsuariosController.js"></script>
 </body>
+
 </html>

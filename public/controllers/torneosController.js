@@ -23,6 +23,7 @@ window.initializeTorneosController = function (isAdmin) {
     const listaTorneos = document.getElementById('lista-torneos-container');
     const selectLigaActiva = document.getElementById('select-liga-activa');
     const filterTorneoLiga = document.getElementById('filter-torneo-liga');
+    const filterShowFinalized = document.getElementById('filter-show-finalized');
     const btnEliminarLiga = document.getElementById('btn-eliminar-liga');
     const selectTorneoLiga = document.getElementById('torneo-liga');
     const selectTorneoEvento = document.getElementById('torneo-evento');
@@ -105,6 +106,10 @@ window.initializeTorneosController = function (isAdmin) {
         let filteredTorneos = [...torneosCache];
         if (currentFilter) {
             filteredTorneos = filteredTorneos.filter(t => t.ligaId === currentFilter);
+        }
+        const showFinalized = filterShowFinalized ? filterShowFinalized.checked : false;
+        if (!showFinalized) {
+            filteredTorneos = filteredTorneos.filter(t => t.estado !== 'finalizado');
         }
 
         // Ordenar torneos por fecha descendente
@@ -897,7 +902,24 @@ window.initializeTorneosController = function (isAdmin) {
 
                     // Sumar los puntos obtenidos en este torneo
                     posiciones.forEach(pos => {
-                        if (clasificacion[pos.id]) {
+                        // Si el jugador es un usuario registrado (no invitado), buscar si tiene
+                        // una entrada fusionada (invitado_* con userId === pos.id) para no duplicar
+                        const isRegisteredUser = !pos.id.startsWith('invitado_') && !pos.id.startsWith('temp_');
+                        let fusedEntryKey = null;
+                        if (isRegisteredUser) {
+                            for (const [key, data] of Object.entries(clasificacion)) {
+                                if (data.userId === pos.id) {
+                                    fusedEntryKey = key;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (fusedEntryKey) {
+                            // Sumar al perfil fusionado en lugar de crear uno nuevo
+                            clasificacion[fusedEntryKey].puntos += pos.puntos;
+                            clasificacion[fusedEntryKey].nombre = pos.nombre;
+                        } else if (clasificacion[pos.id]) {
                             clasificacion[pos.id].puntos += pos.puntos;
                         } else {
                             clasificacion[pos.id] = {
@@ -1355,11 +1377,61 @@ window.initializeTorneosController = function (isAdmin) {
         if (!confirm("¿Estás completamente seguro de que deseas eliminar este torneo? Esta acción no se puede deshacer y borrará todas sus rondas e historial.")) return;
 
         try {
-            await db.collection('torneos').doc(torneoId).delete();
-            if (window.showAlert) window.showAlert("Torneo eliminado.", "success");
+            const torneoRef = db.collection('torneos').doc(torneoId);
+            const torneoDoc = await torneoRef.get();
+
+            if (!torneoDoc.exists) {
+                if (window.showAlert) window.showAlert("El torneo no existe.", "danger");
+                return;
+            }
+
+            const torneoData = torneoDoc.data();
+            const posiciones = torneoData.posiciones || [];
+
+            // Si es jornada de liga y tiene posiciones, restar los puntos de la clasificación
+            if (torneoData.esJornadaLiga && torneoData.ligaId && posiciones.length > 0) {
+                await db.runTransaction(async (transaction) => {
+                    const ligaRef = db.collection('ligas').doc(torneoData.ligaId);
+                    const ligaDoc = await transaction.get(ligaRef);
+
+                    if (ligaDoc.exists) {
+                        const ligaData = ligaDoc.data();
+                        const clasificacion = ligaData.clasificacion || {};
+
+                        posiciones.forEach(pos => {
+                            // Misma lógica que al sumar: buscar entrada fusionada por userId
+                            const isRegisteredUser = !pos.id.startsWith('invitado_') && !pos.id.startsWith('temp_');
+                            let fusedEntryKey = null;
+                            if (isRegisteredUser) {
+                                for (const [key, data] of Object.entries(clasificacion)) {
+                                    if (data.userId === pos.id) {
+                                        fusedEntryKey = key;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            const targetKey = fusedEntryKey || pos.id;
+                            if (clasificacion[targetKey]) {
+                                clasificacion[targetKey].puntos -= pos.puntos;
+                                // Si los puntos bajan a 0 o menos, eliminar la entrada
+                                if (clasificacion[targetKey].puntos <= 0) {
+                                    delete clasificacion[targetKey];
+                                }
+                            }
+                        });
+
+                        transaction.update(ligaRef, { clasificacion });
+                    }
+                });
+            }
+
+            await torneoRef.delete();
+            if (window.showAlert) window.showAlert("Torneo eliminado y puntos de liga restados.", "success");
             await loadInitialData();
         } catch (error) {
             console.error("Error al eliminar torneo:", error);
+            if (window.showAlert) window.showAlert("Error al eliminar el torneo.", "danger");
         }
     }
 
@@ -1595,6 +1667,11 @@ window.initializeTorneosController = function (isAdmin) {
             tempJugadores[index].needsCode = false;
             renderTempJugadoresList(); // Volver a renderizar para que se quite el rojo
         });
+
+        // Checkbox de mostrar finalizados
+        if (filterShowFinalized) {
+            filterShowFinalized.addEventListener('change', () => renderTournamentsList());
+        }
     }
 
     // --- FUSIONAR PUNTOS DE INVITADO A USUARIO ---
