@@ -45,6 +45,7 @@ async function populateNavbarLinks(isLoggedIn) {
     if (isLoggedIn) {
         const isAdmin = await window.isUserAdmin();
         const isSocio = await window.isUserSocio();
+        const isColaborador = await window.isUserColaborador();
 
         if (isSocio || isAdmin) {
             links.push({
@@ -57,6 +58,8 @@ async function populateNavbarLinks(isLoggedIn) {
                     { text: 'Riftbound', href: '/riftbound.html', locked: true }
                 ]
             });
+        }
+        if (isAdmin || isColaborador) {
             links.push({ text: 'Inventario', href: '/inventario.html' });
         }
         if (isAdmin) {
@@ -136,46 +139,61 @@ function populateFooterLinks() {
 }
 
 function setupAuthUI() {
-    firebase.auth().onAuthStateChanged(user => {
-        // Poblar los enlaces del navbar basándose en si el usuario está logueado
+    firebase.auth().onAuthStateChanged(async user => {
         populateNavbarLinks(!!user);
 
         const userActionsDesktop = document.getElementById('user-navbar-actions');
         const userActionsMobile = document.getElementById('user-navbar-actions-mobile');
 
         if (user) {
-            // El usuario ha iniciado sesión
-            const userEmail = user.email;
+            const db = firebase.firestore();
+            let displayName = user.email;
+            let isSocio = false;
+            let isAdmin = false;
+            try {
+                const doc = await db.collection('usuarios').doc(user.uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    const nombre = data.nombre || '';
+                    const apellidos = data.apellidos || '';
+                    if (nombre && apellidos) displayName = `${nombre} ${apellidos.split(' ')[0]}`;
+                    isSocio = data.isSocio === true;
+                    isAdmin = data.isAdmin === true;
+                }
+            } catch (e) {}
+
+            const sugerenciasItem = (isSocio || isAdmin)
+                ? `<li><a class="dropdown-item" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a></li><li><hr class="dropdown-divider"></li>`
+                : '';
+
             const desktopUI = `
                 <div class="dropdown">
                     <button class="btn btn-outline-light dropdown-toggle" type="button" id="user-menu-desktop" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-user-circle me-2"></i> ${userEmail}
+                        <i class="fas fa-user-circle me-2"></i> ${displayName}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu-desktop">
-                        <li><a class="dropdown-item" href="/perfil.html">Mi perfil</a></li>
+                        <li><a class="dropdown-item" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" id="logout-button-desktop">Cerrar Sesión</a></li>
+                        ${sugerenciasItem}
+                        <li><a class="dropdown-item text-danger" href="#" id="logout-button-desktop"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</a></li>
                     </ul>
                 </div>
             `;
             const mobileUI = `
-                <p class="text-light mb-2">${userEmail}</p>
-                <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html">Mi perfil</a>
-                <button class="btn btn-danger w-100" id="logout-button-mobile">Cerrar Sesión</button>
+                <p class="text-light mb-2">${displayName}</p>
+                <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a>
+                ${isSocio || isAdmin ? `<a class="btn btn-outline-warning w-100 mb-2" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a>` : ''}
+                <button class="btn btn-danger w-100" id="logout-button-mobile"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</button>
             `;
             userActionsDesktop.innerHTML = desktopUI;
             userActionsMobile.innerHTML = mobileUI;
 
-            document.getElementById('logout-button-desktop').addEventListener('click', () => firebase.auth().signOut());
+            document.getElementById('logout-button-desktop').addEventListener('click', e => { e.preventDefault(); firebase.auth().signOut(); });
             document.getElementById('logout-button-mobile').addEventListener('click', () => firebase.auth().signOut());
 
         } else {
-            // El usuario no ha iniciado sesión
-            const loginButton = `<a href="/login.html" class="btn btn-outline-light me-2">Login</a>`;
-            const registerButton = `<a href="/registro.html" class="btn btn-warning">Registro</a>`;
-
-            userActionsDesktop.innerHTML = loginButton + registerButton;
-            userActionsMobile.innerHTML = `<div class="d-grid gap-2">${loginButton}${registerButton}</div>`;
+            userActionsDesktop.innerHTML = '<a href="/login.html" class="btn btn-outline-light me-2">Login</a><a href="/registro.html" class="btn btn-warning">Registro</a>';
+            userActionsMobile.innerHTML = '<div class="d-grid gap-2"><a href="/login.html" class="btn btn-outline-light">Login</a><a href="/registro.html" class="btn btn-warning">Registro</a></div>';
         }
     });
 }

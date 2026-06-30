@@ -52,6 +52,23 @@ window.isUserSocio = function() {
     });
 };
 
+/**
+ * Checks if the currently logged-in user is a colaborador.
+ * @returns {Promise<boolean>}
+ */
+window.isUserColaborador = function() {
+    return new Promise((resolve) => {
+        const user = auth.currentUser;
+        if (!user) { resolve(false); return; }
+        db.collection('usuarios').doc(user.uid).get().then(doc => {
+            resolve(doc.exists && doc.data().isColaborador === true);
+        }).catch(error => {
+            console.error("Error al verificar el estado de colaborador:", error);
+            resolve(false);
+        });
+    });
+};
+
 
 /**
  * Observador del estado de autenticación de Firebase.

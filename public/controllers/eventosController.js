@@ -266,8 +266,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (row.kind === 'actividad') {
                             return `
                                 <a href="subeventoDetalle.html?id=${row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
-                                <button class="btn btn-sm btn-outline-primary btn-edit-subevent admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-sm btn-outline-danger btn-delete-subevent admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-primary btn-edit-subevent colaborador-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-outline-danger btn-delete-subevent colaborador-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
                             `;
                         }
                         return `
@@ -358,9 +358,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="card-text flex-grow-1">${descripcion.substring(0, 100)}...</p>
                         <div class="mt-auto d-flex justify-content-between align-items-center">
                             <a href="${viewHref}" class="btn btn-outline-info btn-sm"><i class="fas fa-eye"></i> Ver Detalles</a>
-                            <div class="admin-controls">
-                                ${kind === 'evento' ? `<button class="btn btn-sm btn-outline-primary btn-edit-event" data-id="${item.id}" title="Editar"><i class="fas fa-edit"></i></button>` : `<button class="btn btn-sm btn-outline-primary btn-edit-subevent" data-id="${item.id}" title="Editar"><i class="fas fa-edit"></i></button>`}
-                                ${kind === 'evento' ? `<button class="btn btn-sm btn-outline-danger btn-delete-event" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>` : `<button class="btn btn-sm btn-outline-danger btn-delete-subevent" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>`}
+                            <div class="d-flex gap-1">
+                                ${kind === 'evento' 
+                                    ? `<button class="btn btn-sm btn-outline-primary btn-edit-event admin-controls" data-id="${item.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                                       <button class="btn btn-sm btn-outline-danger btn-delete-event admin-controls" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>` 
+                                    : `<button class="btn btn-sm btn-outline-primary btn-edit-subevent colaborador-controls" data-id="${item.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                                       <button class="btn btn-sm btn-outline-danger btn-delete-subevent colaborador-controls" data-id="${item.id}" title="Eliminar"><i class="fas fa-trash"></i></button>`
+                                }
                             </div>
                         </div>
                     </div>
@@ -680,14 +684,21 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTypesList();
 
             // Rellenar detalles del evento en la vista
-            const fecha = evento.fecha || '';
             const dateEl = document.getElementById('event-detail-date');
             const placeEl = document.getElementById('event-detail-place');
             const titleEl = document.getElementById('event-detail-title');
             const descEl = document.getElementById('event-detail-description');
             const imgEl = document.getElementById('event-detail-image');
 
-            if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${fecha} ${evento.hora ? 'a las ' + evento.hora : ''}`;
+            if (dateEl) {
+                if (evento.continuo && evento.fechaInicio && evento.fechaFin) {
+                    const fmt = (d) => { if (!d) return ''; const p = d.split('-'); return `${parseInt(p[2])}/${parseInt(p[1])}/${p[0]}`; };
+                    dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> Desde el ${fmt(evento.fechaInicio)} hasta el ${fmt(evento.fechaFin)}`;
+                } else {
+                    const fecha = evento.fecha || '';
+                    dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${fecha} ${evento.hora ? 'a las ' + evento.hora : ''}`;
+                }
+            }
             if (placeEl) placeEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${escapeHtml(evento.lugar || '')}`;
             if (titleEl) titleEl.textContent = evento.titulo || 'Sin título';
             if (descEl) {
@@ -925,11 +936,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateUIVisibility() {
         const isAdmin = userRole === 'admin';
+        const isColaborador = userRole === 'colaborador';
         const isSocio = userRole === 'socio';
 
         document.querySelectorAll('.admin-controls').forEach(c => c.style.display = isAdmin ? 'revert' : 'none');
         document.querySelectorAll('.socio-controls').forEach(c => c.style.display = (isAdmin || isSocio) ? 'revert' : 'none');
         document.querySelectorAll('.admin-only').forEach(c => c.style.display = isAdmin ? 'block' : 'none');
+        document.querySelectorAll('.colaborador-controls').forEach(c => c.style.display = (isAdmin || isColaborador) ? 'revert' : 'none');
     }
 
     function switchView(view) {
@@ -1135,6 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (userDoc.exists) {
                     const userData = userDoc.data();
                     if (userData.isAdmin) userRole = 'admin';
+                    else if (userData.isColaborador) userRole = 'colaborador';
                     else if (userData.isSocio) userRole = 'socio';
                     else userRole = 'viewer';
                 } else {

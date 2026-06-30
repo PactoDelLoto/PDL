@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    window.initializeModernController = function (isAdmin) {
+    window.initializeModernController = function (canManage) {
         const db = firebase.firestore();
         const auth = firebase.auth();
 
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ligasCache = ligSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 torneosCache = torSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-                if (isAdmin) {
+                if (canManage) {
                     const uSnap = await db.collection('usuarios').get();
                     usuariosCache = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 }
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderLigaSelectors();
                 renderEventSelector();
                 renderLigaClasificacion();
-                if (isAdmin) populateDatalist();
+                if (canManage) populateDatalist();
             } catch (e) {
                 console.error('Error loading initial data:', e);
                 showAlert('Error al cargar datos.', 'danger');
@@ -108,9 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div class="card-footer bg-transparent d-flex justify-content-between">
                                 <button class="btn btn-sm btn-outline-info btn-gestionar-modern" data-id="${t.id}"><i class="fa-solid fa-eye"></i> Gestionar</button>
-                                ${isAdmin && t.estado === 'borrador' ? `<button class="btn btn-sm btn-outline-success btn-iniciar-modern admin-controls" data-id="${t.id}"><i class="fa-solid fa-play"></i></button>` : ''}
-                                ${isAdmin && t.estado === 'borrador' ? `<button class="btn btn-sm btn-outline-primary btn-editar-torneo-modern admin-controls" data-id="${t.id}"><i class="fa-solid fa-edit"></i></button>` : ''}
-                                ${isAdmin ? `<button class="btn btn-sm btn-outline-danger btn-eliminar-torneo-modern admin-controls" data-id="${t.id}"><i class="fa-solid fa-trash"></i></button>` : ''}
+                                ${canManage && t.estado === 'borrador' ? `<button class="btn btn-sm btn-outline-success btn-iniciar-modern torneo-controls" data-id="${t.id}"><i class="fa-solid fa-play"></i></button>` : ''}
+                                ${canManage && t.estado === 'borrador' ? `<button class="btn btn-sm btn-outline-primary btn-editar-torneo-modern torneo-controls" data-id="${t.id}"><i class="fa-solid fa-edit"></i></button>` : ''}
+                                ${canManage ? `<button class="btn btn-sm btn-outline-danger btn-eliminar-torneo-modern torneo-controls" data-id="${t.id}"><i class="fa-solid fa-trash"></i></button>` : ''}
                             </div>
                         </div>
                     </div>
@@ -323,9 +323,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const isFinalized = torneo.estado === 'finalizado';
             const hasRondas = (torneo.rondas || []).length > 0;
-            $id('btn-generar-ronda-modern').style.display = isAdmin && !isFinalized ? 'inline-block' : 'none';
-            $id('btn-deshacer-ronda-modern').style.display = isAdmin && !isFinalized && hasRondas ? 'inline-block' : 'none';
-            $id('btn-finalizar-torneo-modern').style.display = isAdmin && !isFinalized && hasRondas ? 'inline-block' : 'none';
+            $id('btn-generar-ronda-modern').style.display = canManage && !isFinalized ? 'inline-block' : 'none';
+            $id('btn-deshacer-ronda-modern').style.display = canManage && !isFinalized && hasRondas ? 'inline-block' : 'none';
+            $id('btn-finalizar-torneo-modern').style.display = canManage && !isFinalized && hasRondas ? 'inline-block' : 'none';
 
             renderJugadoresList(torneo);
             renderRondas(torneo);
@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ${isComplete ? ` <span class="badge ${win1 > win2 ? 'bg-success' : m.empate ? 'bg-warning text-dark' : 'bg-danger'}">${win1} - ${win2}</span>` : ' <span class="badge bg-warning text-dark">Pendiente</span>'}
                                     vs <strong>${escapeHtml(p2?.nombre || m.jugadores[1])}</strong>
                                 </div>
-                                ${isAdmin && !isComplete && torneo.estado !== 'finalizado' ? `<button class="btn btn-sm btn-outline-primary btn-resultados-modern" data-ronda="${r.numero}" data-mesa="${m.numero}"><i class="fa-solid fa-table-tennis"></i></button>` : ''}
+                                ${canManage && !isComplete && torneo.estado !== 'finalizado' ? `<button class="btn btn-sm btn-outline-primary btn-resultados-modern" data-ronda="${r.numero}" data-mesa="${m.numero}"><i class="fa-solid fa-table-tennis"></i></button>` : ''}
                             </div>`;
                         }).join('')}
                     </div>
@@ -397,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (torneo.estado === 'finalizado' && (torneo.jugadores || []).length >= 4) {
                     container.innerHTML = `<div class="text-center py-3">
                         <p class="text-muted">Top cut no generado.</p>
-                        ${isAdmin ? `<button class="btn btn-sm btn-outline-dark" id="btn-generar-topcut-modern">Generar Top ${torneo.jugadores.length >= 8 ? '8' : '4'}</button>` : ''}
+                        ${canManage ? `<button class="btn btn-sm btn-outline-dark" id="btn-generar-topcut-modern">Generar Top ${torneo.jugadores.length >= 8 ? '8' : '4'}</button>` : ''}
                     </div>`;
                 } else {
                     container.innerHTML = '<p class="text-muted text-center py-3">El top cut estará disponible al finalizar el torneo con 4+ jugadores.</p>';
@@ -421,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 return `<div class="bracket-match ${done ? 'border-success' : ''}">
                                     <div class="d-flex justify-content-between">${escapeHtml(p1?.nombre || '?')} ${done ? (m.ganador === m.jugadores?.[0] ? '✅' : '') : `<small class="text-muted">${g1}</small>`}</div>
                                     <div class="d-flex justify-content-between">${escapeHtml(p2?.nombre || '?')} ${done ? (m.ganador === m.jugadores?.[1] ? '✅' : '') : `<small class="text-muted">${g2}</small>`}</div>
-                                    ${isAdmin && !done && torneo.estado !== 'finalizado' ? `<button class="btn btn-sm btn-outline-primary mt-1 btn-resultados-topcut-modern" data-ronda="${bi}" data-mesa="${m.numero}"><i class="fa-solid fa-table-tennis"></i></button>` : ''}
+                                    ${canManage && !done && torneo.estado !== 'finalizado' ? `<button class="btn btn-sm btn-outline-primary mt-1 btn-resultados-topcut-modern" data-ronda="${bi}" data-mesa="${m.numero}"><i class="fa-solid fa-table-tennis"></i></button>` : ''}
                                 </div>`;
                             }).join('')}
                         </div>

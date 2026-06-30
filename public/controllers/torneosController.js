@@ -1,5 +1,5 @@
 // Controlador de Torneos y Ligas - Pacto del Loto
-window.initializeTorneosController = function (isAdmin) {
+window.initializeTorneosController = function (canManage) {
     const db = firebase.firestore();
     const auth = firebase.auth();
 
@@ -50,7 +50,7 @@ window.initializeTorneosController = function (isAdmin) {
     async function loadInitialData() {
         try {
             // Cargar usuarios (solo administradores)
-            if (isAdmin) {
+            if (canManage) {
                 const usersSnapshot = await db.collection('usuarios').get();
                 usuariosCache = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             }
@@ -146,7 +146,7 @@ window.initializeTorneosController = function (isAdmin) {
 
             // Botones según rol y estado
             let buttons = '';
-            if (isAdmin) {
+            if (canManage) {
                 if (torneo.estado === 'borrador') {
                     buttons += `
                         <button class="btn btn-sm btn-outline-primary btn-add-players-torneo" data-id="${torneo.id}"><i class="fa-solid fa-users-gear"></i> Jugadores</button>
@@ -419,7 +419,7 @@ window.initializeTorneosController = function (isAdmin) {
         const numRondas = selectedTournament.rondas ? selectedTournament.rondas.length : 0;
         const tieneRondas = numRondas > 0;
 
-        if (isAdmin && selectedTournament.estado === 'en_curso') {
+        if (canManage && selectedTournament.estado === 'en_curso') {
             btnFinalizar.style.display = 'inline-block';
             btnNuevaRonda.style.display = 'inline-block';
             // El botón de gestionar desaparece a partir de que se lanza la segunda ronda (numRondas >= 2)
@@ -446,7 +446,7 @@ window.initializeTorneosController = function (isAdmin) {
         selectedTournament = null;
         document.getElementById('gestion-torneo-container').style.display = 'none';
         document.getElementById('lista-torneos-container').style.display = 'flex';
-        if (isAdmin) {
+        if (canManage) {
             document.getElementById('btn-nuevo-torneo').style.display = 'inline-block';
         }
     }
@@ -651,7 +651,7 @@ window.initializeTorneosController = function (isAdmin) {
                     `;
                 }).join('');
 
-                const btnEditarResultados = (isAdmin && selectedTournament.estado === 'en_curso') ? `
+                const btnEditarResultados = (canManage && selectedTournament.estado === 'en_curso') ? `
                     <button class="btn btn-sm btn-outline-primary btn-resultados-mesa" data-ronda="${ronda.numero}" data-mesa="${mesa.numero}">
                         <i class="fa-solid fa-edit"></i> Registrar Puntos
                     </button>

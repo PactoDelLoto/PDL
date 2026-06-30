@@ -115,7 +115,7 @@
                             <input class="form-check-input" type="checkbox" id="filter-show-finalized-modern">
                             <label class="form-check-label" for="filter-show-finalized-modern" style="font-size: 0.9rem;">Mostrar finalizados</label>
                         </div>
-                        <button class="btn btn-premium admin-controls" id="btn-nuevo-torneo-modern" style="display: none;">
+                        <button class="btn btn-premium torneo-controls" id="btn-nuevo-torneo-modern" style="display: none;">
                             <i class="fa-solid fa-plus me-2"></i>Crear Torneo
                         </button>
                     </div>
@@ -135,7 +135,7 @@
                         </div>
                         <div>
                             <button class="btn btn-outline-secondary me-2" id="btn-volver-lista-modern">Volver a Torneos</button>
-                            <button class="btn btn-success admin-controls" id="btn-finalizar-torneo-modern" style="display: none;">Finalizar Torneo</button>
+                            <button class="btn btn-success torneo-controls" id="btn-finalizar-torneo-modern" style="display: none;">Finalizar Torneo</button>
                         </div>
                     </div>
 
@@ -148,7 +148,7 @@
                                         <i class="fa-solid fa-users me-2"></i>Jugadores
                                         <span class="badge bg-primary ms-2 fs-6" id="gt-modern-count" style="font-size:0.75rem !important;">0</span>
                                     </h5>
-                                    <button class="btn btn-sm btn-outline-primary admin-controls" id="btn-gestionar-jugadores-modern" style="display: none;">
+                                    <button class="btn btn-sm btn-outline-primary torneo-controls" id="btn-gestionar-jugadores-modern" style="display: none;">
                                         <i class="fa-solid fa-user-plus"></i> Gestionar
                                     </button>
                                 </div>
@@ -176,10 +176,10 @@
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <h5 class="fw-bold m-0">Rondas Generadas</h5>
                                         <div class="d-flex gap-2">
-                                            <button class="btn btn-sm btn-outline-danger admin-controls" id="btn-deshacer-ronda-modern" style="display: none;" title="Elimina la última ronda generada">
+                                            <button class="btn btn-sm btn-outline-danger torneo-controls" id="btn-deshacer-ronda-modern" style="display: none;" title="Elimina la última ronda generada">
                                                 <i class="fa-solid fa-rotate-left me-1"></i> Deshacer Ronda
                                             </button>
-                                            <button class="btn btn-sm btn-primary admin-controls" id="btn-generar-ronda-modern" style="display: none;">
+                                            <button class="btn btn-sm btn-primary torneo-controls" id="btn-generar-ronda-modern" style="display: none;">
                                                 <i class="fa-solid fa-plus me-1"></i> Nueva Ronda
                                             </button>
                                         </div>
@@ -232,13 +232,13 @@
                             </div>
                         </div>
                         <div class="d-flex gap-2 flex-wrap">
-                            <button class="btn btn-outline-danger admin-controls mt-lg-0" id="btn-eliminar-liga-modern" style="display: none;" disabled>
+                            <button class="btn btn-outline-danger torneo-controls mt-lg-0" id="btn-eliminar-liga-modern" style="display: none;" disabled>
                                 <i class="fa-solid fa-trash me-2"></i>Eliminar Liga
                             </button>
                             <button id="btn-fusionar-puntos-modern" class="btn btn-info btn-sm" title="Fusionar puntos de invitado a usuario">
                                 <i class="fas fa-user-plus"></i> Fusionar Puntos
                             </button>
-                            <button class="btn btn-premium admin-controls mt-lg-0" id="btn-crear-liga-modern" style="display: none;">
+                            <button class="btn btn-premium torneo-controls mt-lg-0" id="btn-crear-liga-modern" style="display: none;">
                                 <i class="fa-solid fa-plus me-2"></i>Crear Liga
                             </button>
                         </div>
@@ -513,15 +513,17 @@
                     if (user) {
                         const isSocio = await window.isUserSocio();
                         const isAdmin = await window.isUserAdmin();
+                        const isColaborador = await window.isUserColaborador();
                         if (isSocio || isAdmin) {
                             restrictedContent.style.display = 'block';
-                            if (isAdmin) {
-                                document.querySelectorAll('.admin-controls').forEach(el => {
+                            const canManageTorneos = isAdmin || isColaborador;
+                            if (canManageTorneos) {
+                                document.querySelectorAll('.torneo-controls').forEach(el => {
                                     el.style.display = 'inline-block';
                                 });
                             }
                             if (window.initializeModernController) {
-                                window.initializeModernController(isAdmin);
+                                window.initializeModernController(canManageTorneos);
                             }
                         } else {
                             restrictedContent.innerHTML = `

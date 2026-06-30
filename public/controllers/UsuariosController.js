@@ -26,10 +26,23 @@ document.addEventListener('DOMContentLoaded', function () {
 let usersTable;
 const editUserModalEl = document.getElementById('edit-user-modal');
 const editUserModal = editUserModalEl ? new bootstrap.Modal(editUserModalEl) : null;
-const filterSoloSocios = document.getElementById('filter-solo-socios');
-const filterSoloAdmins = document.getElementById('filter-solo-admins');
+const filterRol = document.getElementById('filter-rol');
+const filterProximosDeuda = document.getElementById('filter-proximos-deuda');
 const btnActualizarCuentas = document.getElementById('btn-actualizar-cuentas');
 const btnExportarCsv = document.getElementById('btn-exportar-csv');
+
+function isProximoDeuda(pagadoHasta) {
+    if (!pagadoHasta) return false;
+    const fechaPagado = pagadoHasta.toDate
+        ? new Date(pagadoHasta.toDate().getFullYear(), pagadoHasta.toDate().getMonth(), pagadoHasta.toDate().getDate())
+        : null;
+    if (!fechaPagado) return false;
+    const hoy = new Date();
+    const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const dentro30 = new Date(hoyNorm);
+    dentro30.setDate(dentro30.getDate() + 30);
+    return fechaPagado >= hoyNorm && fechaPagado <= dentro30;
+}
 
 function initializeUsersTable() {
     usersTable = $('#usuarios-table').DataTable({
@@ -40,19 +53,32 @@ function initializeUsersTable() {
         pageLength: 25,
         destroy: true,
         columns: [
-            { data: "nombre" },
-            { data: "apellidos" },
-            { data: "telefono" },
-            { data: "correo" },
             {
-                data: "isSocio",
-                render: (data) => data ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>',
-                className: 'text-center'
+                data: null, orderable: true, searchable: true,
+                render: function (data, type, row) {
+                    const nombre = row.nombre || '';
+                    const apellidos = row.apellidos || '';
+                    const telefono = row.telefono || '';
+                    const correo = row.correo || '';
+                    const fechaReg = row.timestamp && row.timestamp.toDate
+                        ? row.timestamp.toDate().toLocaleDateString('es-ES')
+                        : '';
+                    return `<div class="d-flex align-items-center gap-2">
+                        <span class="fw-semibold text-nowrap">${nombre} ${apellidos}</span>
+                        <span class="text-muted small d-none d-sm-inline">${correo}</span>
+                    </div>`;
+                },
+                responsivePriority: 1
             },
             {
-                data: "isAdmin",
-                render: (data) => data ? '<span class="badge bg-primary">Sí</span>' : '<span class="badge bg-secondary">No</span>',
-                className: 'text-center'
+                data: null, orderable: true, searchable: false, className: 'text-center',
+                render: function (data, type, row) {
+                    if (row.isAdmin) return '<span class="badge bg-primary" style="font-size:0.65rem">Admin</span>';
+                    if (row.isColaborador) return '<span class="badge bg-info" style="font-size:0.65rem">Colab</span>';
+                    if (row.isSocio) return '<span class="badge bg-success" style="font-size:0.65rem">Socio</span>';
+                    return '<span class="badge bg-secondary" style="font-size:0.65rem">User</span>';
+                },
+                responsivePriority: 2
             },
             {
                 data: null, orderable: false, searchable: false, className: 'text-center',
@@ -60,7 +86,8 @@ function initializeUsersTable() {
                     return row.alCorriente
                         ? '<span class="badge bg-success"><i class="fa-solid fa-check"></i></span>'
                         : '<span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>';
-                }
+                },
+                responsivePriority: 4
             },
             {
                 data: null, orderable: false, searchable: false, className: 'text-center',
@@ -68,45 +95,61 @@ function initializeUsersTable() {
                     const val = row.pagadoHasta && row.pagadoHasta.toDate
                         ? row.pagadoHasta.toDate().toISOString().split('T')[0]
                         : (row.pagadoHasta || '');
-                    return `<input type="date" class="form-control form-control-sm user-pagado-hasta" style="min-width:130px" data-id="${row.id}" value="${val}">`;
-                }
-            },
-            {
-                data: "timestamp",
-                render: (data) => data && data.toDate ? data.toDate().toLocaleDateString('es-ES') : 'No disponible'
+                    return `<input type="date" class="form-control form-control-sm user-pagado-hasta" style="min-width:90px;font-size:0.7rem" data-id="${row.id}" value="${val}">`;
+                },
+                responsivePriority: 3
             },
             {
                 data: null, orderable: false, searchable: false, className: 'text-center',
                 render: function (data, type, row) {
-                    if (row.id === firebase.auth().currentUser.uid) return '<span class="badge bg-info">Eres tú</span>';
+                    const isMe = row.id === firebase.auth().currentUser.uid;
+                    const meBadge = isMe ? '<span class="badge bg-info me-1" style="font-size:0.6rem">Tú</span>' : '';
 
-                    const socioBtn = row.isSocio
-                        ? `<button class="btn btn-sm btn-warning toggle-socio-btn" data-id="${row.id}" data-name="${row.nombre}" title="Quitar Socio"><i class="fa-solid fa-user-minus"></i></button>`
-                        : `<button class="btn btn-sm btn-success toggle-socio-btn" data-id="${row.id}" data-name="${row.nombre}" title="Hacer Socio"><i class="fa-solid fa-user-plus"></i></button>`;
+                    const socioIcon = row.isSocio ? 'fa-user-minus' : 'fa-user-plus';
+                    const socioText = row.isSocio ? 'Quitar Socio' : 'Hacer Socio';
 
-                    const adminBtn = row.isAdmin
-                        ? `<button class="btn btn-sm btn-danger toggle-admin-btn" data-id="${row.id}" data-name="${row.nombre}" title="Quitar Admin"><i class="fa-solid fa-shield-halved"></i></button>`
-                        : `<button class="btn btn-sm btn-primary toggle-admin-btn" data-id="${row.id}" data-name="${row.nombre}" title="Hacer Admin"><i class="fa-solid fa-shield"></i></button>`;
+                    const colabIcon = row.isColaborador ? 'fa-user-gear' : 'fa-user-gear';
+                    const colabText = row.isColaborador ? 'Quitar Colab' : 'Hacer Colab';
 
-                    const editBtn = `<button class="btn btn-sm btn-info edit-user-btn" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>`;
-                    const deleteBtn = `<button class="btn btn-sm btn-danger delete-user-btn" data-id="${row.id}" data-name="${row.nombre}" title="Eliminar"><i class="fas fa-trash"></i></button>`;
+                    const adminIcon = row.isAdmin ? 'fa-shield-halved' : 'fa-shield';
+                    const adminText = row.isAdmin ? 'Quitar Admin' : 'Hacer Admin';
 
-                    return `<div class="d-flex gap-1 justify-content-center flex-nowrap">${socioBtn}${adminBtn}${editBtn}${deleteBtn}</div>`;
-                }
+                    return `<div class="d-flex align-items-center justify-content-center gap-1">
+                        ${meBadge}
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-secondary dropdown-toggle py-0 px-1" type="button" data-bs-toggle="dropdown" title="Acciones">
+                                <i class="fa-solid fa-gear"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="min-width:160px;font-size:0.85rem">
+                                <li><button class="dropdown-item toggle-socio-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid ${socioIcon} me-2"></i>${socioText}</button></li>
+                                <li><button class="dropdown-item toggle-colaborador-btn" data-id="${row.id}" data-name="${row.nombre}" ${!row.isSocio ? 'disabled' : ''}><i class="fa-solid ${colabIcon} me-2"></i>${colabText}</button></li>
+                                <li><button class="dropdown-item toggle-admin-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid ${adminIcon} me-2"></i>${adminText}</button></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button class="dropdown-item edit-user-btn" data-id="${row.id}"><i class="fa-solid fa-pen me-2"></i>Editar</button></li>
+                                <li><button class="dropdown-item text-danger delete-user-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid fa-trash me-2"></i>Eliminar</button></li>
+                            </ul>
+                        </div>
+                    </div>`;
+                },
+                responsivePriority: 1
             }
         ],
         order: [[0, 'asc']]
     });
 
-    // Registrar filtros combinados una vez (consulta los checkboxes en cada evaluación)
+    // Registrar filtros combinados una vez
     $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
         const rowData = usersTable.row(dataIndex).data();
         if (!rowData) return true;
-        const filterSocio = filterSoloSocios && filterSoloSocios.checked;
-        const filterAdmin = filterSoloAdmins && filterSoloAdmins.checked;
-        if (filterSocio && filterAdmin) return rowData.isSocio === true && rowData.isAdmin === true;
-        if (filterSocio) return rowData.isSocio === true;
-        if (filterAdmin) return rowData.isAdmin === true;
+        const rolVal = filterRol ? filterRol.value : '';
+        const filterDeuda = filterProximosDeuda && filterProximosDeuda.checked;
+        if (rolVal === 'admin' && !rowData.isAdmin) return false;
+        if (rolVal === 'colaborador' && !rowData.isColaborador) return false;
+        if (rolVal === 'socio' && !rowData.isSocio) return false;
+        if (filterDeuda) {
+            if (!rowData.alCorriente) return false;
+            return isProximoDeuda(rowData.pagadoHasta);
+        }
         return true;
     });
 
@@ -132,6 +175,7 @@ function setupUserActionHandlers() {
     tbody.off('click');
 
     tbody.on('click', '.toggle-socio-btn', function () { handleRoleToggle(this, 'isSocio'); });
+    tbody.on('click', '.toggle-colaborador-btn', function () { handleRoleToggle(this, 'isColaborador'); });
     tbody.on('click', '.toggle-admin-btn', function () { handleRoleToggle(this, 'isAdmin'); });
 
     tbody.on('click', '.edit-user-btn', async function () {
@@ -143,6 +187,10 @@ function setupUserActionHandlers() {
                 $('#edit-user-id').val(doc.id);
                 $('#edit-user-name').val(userData.nombre);
                 $('#edit-user-lastname').val(userData.apellidos);
+                $('#edit-user-phone').val(userData.telefono || '');
+                $('#edit-user-socio').prop('checked', userData.isSocio === true);
+                $('#edit-user-colaborador').prop('checked', userData.isColaborador === true);
+                $('#edit-user-admin').prop('checked', userData.isAdmin === true);
                 editUserModal.show();
             }
         } catch (error) {
@@ -186,8 +234,8 @@ function setupUserActionHandlers() {
 
     // Filtros
     const redrawTable = () => usersTable.draw();
-    if (filterSoloSocios) filterSoloSocios.addEventListener('change', redrawTable);
-    if (filterSoloAdmins) filterSoloAdmins.addEventListener('change', redrawTable);
+    if (filterRol) filterRol.addEventListener('change', redrawTable);
+    if (filterProximosDeuda) filterProximosDeuda.addEventListener('change', redrawTable);
 
     // Botón Actualizar Cuentas
     if (btnActualizarCuentas) {
@@ -202,10 +250,27 @@ function setupUserActionHandlers() {
     $('#edit-user-form').on('submit', async function (e) {
         e.preventDefault();
         const userId = $('#edit-user-id').val();
+        const isSocio = $('#edit-user-socio').is(':checked');
+        const isColaborador = $('#edit-user-colaborador').is(':checked');
+        const isAdmin = $('#edit-user-admin').is(':checked');
+
+        if (isColaborador && !isSocio) {
+            showAlert('No se puede dar rol Colaborador sin ser Socio.', 'warning');
+            return;
+        }
+
         const updatedData = {
             nombre: $('#edit-user-name').val(),
             apellidos: $('#edit-user-lastname').val(),
+            telefono: $('#edit-user-phone').val() || null,
+            isSocio,
+            isColaborador,
+            isAdmin,
         };
+
+        if (!isSocio) {
+            updatedData.isColaborador = false;
+        }
 
         try {
             await db.collection('usuarios').doc(userId).update(updatedData);
@@ -247,6 +312,9 @@ async function handleActualizarCuentas() {
                 updateData.isSocio = true;
             } else if (!alCorriente && data.isSocio === true) {
                 updateData.isSocio = false;
+                if (data.isColaborador === true) {
+                    updateData.isColaborador = false;
+                }
             }
             if (Object.keys(updateData).length > 0) {
                 batch.update(db.collection('usuarios').doc(doc.id), updateData);
@@ -337,7 +405,19 @@ async function handleRoleToggle(button, role) {
 
         showConfirmationModal(`Confirmar Rol`, `¿Seguro que quieres ${actionText} ${userName}?`, async () => {
             try {
-                await userDocRef.update({ [role]: !currentRoleState });
+                const updates = {};
+                updates[role] = !currentRoleState;
+
+                if (role === 'isSocio' && currentRoleState === true) {
+                    updates['isColaborador'] = false;
+                }
+
+                if (role === 'isColaborador' && !currentRoleState && !doc.data().isSocio) {
+                    showAlert('No se puede hacer colaborador a un usuario que no es socio.', 'warning');
+                    return;
+                }
+
+                await userDocRef.update(updates);
                 showAlert(`Rol de ${userName} actualizado.`, 'success');
                 loadUsersIntoTable();
             } catch (error) {

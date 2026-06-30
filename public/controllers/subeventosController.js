@@ -57,8 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Esta tabla sólo muestra subeventos (actividades), así que siempre mostramos los botones de actividad
                         return `
                             <a href="subeventoDetalle.html?id=${row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
-                            <button class="btn btn-sm btn-outline-primary btn-edit-subevent admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-sm btn-outline-danger btn-delete-subevent admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-primary btn-edit-subevent colaborador-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger btn-delete-subevent colaborador-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
                         `;
                     }
                 }
@@ -228,8 +228,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return db.collection('subeventos').doc(subId).collection('inscripciones');
     }
 
-    function isAdminUser() {
-        return window.getUserRole ? window.getUserRole() === 'admin' : false;
+    function canManageRegistrations() {
+        if (!window.getUserRole) return false;
+        const role = window.getUserRole();
+        return role === 'admin' || role === 'colaborador';
     }
 
     function normalizeEmail(email) {
@@ -322,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Centrar el formulario si el usuario no es admin
         const regForm = document.getElementById('registration-form');
-        if (regForm && !isAdminUser()) {
+        if (regForm && !canManageRegistrations()) {
             const col = regForm.closest('[class*="col-"]');
             if (col) {
                 col.classList.add('mx-auto', 'float-none');
@@ -365,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reservedList = document.getElementById('reserved-list');
         if (!registeredList || !reservedList) return;
 
-        if (!isAdminUser()) {
+        if (!canManageRegistrations()) {
             registeredList.innerHTML = '';
             reservedList.innerHTML = '';
             return;
@@ -412,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUserRegistration = null;
 
         try {
-            if (isAdminUser()) {
+            if (canManageRegistrations()) {
                 const snapshot = await getRegistrationCollection(subId).orderBy('timestamp', 'asc').get();
                 registrationsCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             } else if (auth.currentUser) {
@@ -553,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handlePaidToggle(registrationId, checked) {
-        if (!isAdminUser() || !currentSubevent) return;
+        if (!canManageRegistrations() || !currentSubevent) return;
 
         const subId = getSubeventIdFromUrl();
         const registration = registrationsCache.find(r => r.id === registrationId);
@@ -593,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleDeleteRegistration(registrationId) {
-        if (!isAdminUser()) return;
+        if (!canManageRegistrations()) return;
 
         const subId = getSubeventIdFromUrl();
         if (!subId) return;
@@ -728,6 +730,13 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const currentUser = auth.currentUser;
         if (!currentUser) return window.showAlert ? window.showAlert('Debes iniciar sesión para esta acción.', 'danger') : null;
+        if (window.getUserRole) {
+            const role = window.getUserRole();
+            if (role !== 'admin' && role !== 'colaborador') {
+                if (window.showAlert) window.showAlert('No tienes permisos para realizar esta acción.', 'danger');
+                return;
+            }
+        }
         // Obtener evento padre ya sea desde campo oculto o desde la URL
         const parentInput = document.getElementById('subevent-parent-id');
         const eventId = (parentInput && parentInput.value) ? parentInput.value : (new URLSearchParams(window.location.search).get('id'));

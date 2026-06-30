@@ -54,6 +54,18 @@ window.isUserSocio = async () => {
 };
 
 /**
+ * Comprueba si el usuario actualmente autenticado es un colaborador.
+ * @returns {Promise<boolean>} - True si es colaborador, false en caso contrario.
+ */
+window.isUserColaborador = async () => {
+    const user = auth.currentUser;
+    if (!user) return false;
+
+    const userData = await getUserData(user.uid);
+    return userData ? userData.isColaborador === true : false;
+};
+
+/**
  * Obtiene el nombre completo de un usuario a partir de su UID.
  * @param {string} uid - El ID del usuario.
  * @returns {Promise<string>} - El nombre completo o 'Desconocido'.
@@ -80,10 +92,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             const isAdmin = await window.isUserAdmin();
             const isSocio = await window.isUserSocio();
+            const isColaborador = await window.isUserColaborador();
 
             if (adminNav) adminNav.style.display = isAdmin ? 'block' : 'none';
-            if (inventarioNav) inventarioNav.style.display = (isSocio || isAdmin) ? 'block' : 'none';
-            if (prestamosNav) prestamosNav.style.display = (isSocio || isAdmin) ? 'block' : 'none';
+            if (inventarioNav) inventarioNav.style.display = (isAdmin || isColaborador) ? 'block' : 'none';
+            if (prestamosNav) prestamosNav.style.display = (isAdmin || isColaborador) ? 'block' : 'none';
             
             if (loginBtn) loginBtn.style.display = 'none';
             if (logoutBtn) logoutBtn.style.display = 'block';

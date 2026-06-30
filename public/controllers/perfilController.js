@@ -12,12 +12,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const nameInput = document.getElementById('profile-name');
     const lastnameInput = document.getElementById('profile-lastname');
     const socioBadge = document.getElementById('profile-socio-badge');
+    const colaboradorBadge = document.getElementById('profile-colaborador-badge');
     const adminBadge = document.getElementById('profile-admin-badge');
     const activitiesLoading = document.getElementById('profile-activities-loading');
     const activitiesEmpty = document.getElementById('profile-activities-empty');
     const activitiesList = document.getElementById('profile-activities-list');
+    const showPastToggle = document.getElementById('show-past-activities');
+    const paginationNav = document.getElementById('profile-activities-pagination');
+    const pageInfo = document.getElementById('page-info');
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
 
     let currentUser = null;
+    let allActivities = [];
+    let currentPage = 1;
+    const PER_PAGE = 5;
 
     auth.onAuthStateChanged(async user => {
         currentUser = user;
@@ -32,6 +41,16 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadProfile(user);
         await loadUserActivities(user);
     });
+
+    if (showPastToggle) {
+        showPastToggle.addEventListener('change', () => {
+            currentPage = 1;
+            renderUserActivities();
+        });
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderUserActivities(); } });
+    if (nextBtn) nextBtn.addEventListener('click', () => { const total = getFilteredActivities().length; const maxPage = Math.ceil(total / PER_PAGE); if (currentPage < maxPage) { currentPage++; renderUserActivities(); } });
 
     profileForm.addEventListener('submit', async event => {
         event.preventDefault();
@@ -74,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lastnameInput.value = userData.apellidos || '';
 
             updateRoleBadge(socioBadge, 'Socio', userData.isSocio === true);
+            updateRoleBadge(colaboradorBadge, 'Colaborador', userData.isColaborador === true);
             updateRoleBadge(adminBadge, 'Admin', userData.isAdmin === true);
 
             profileCard.classList.remove('d-none');
@@ -91,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setActivitiesLoading(true);
         activitiesEmpty.classList.add('d-none');
         activitiesList.innerHTML = '';
+        paginationNav.classList.add('d-none');
 
         try {
             const snapshot = await db.collectionGroup('inscripciones')
@@ -106,18 +127,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!subeventDoc.exists) return null;
 
                 const subevent = subeventDoc.data();
-                return {
-                    id: subeventDoc.id,
-                    registration,
-                    subevent
-                };
+                return { id: subeventDoc.id, registration, subevent };
             }));
 
-            const validActivities = activities
+            allActivities = activities
                 .filter(Boolean)
                 .sort((a, b) => getActivityDate(a.subevent) - getActivityDate(b.subevent));
 
-            renderUserActivities(validActivities);
+            currentPage = 1;
+            renderUserActivities();
         } catch (error) {
             console.error('Error al cargar actividades del perfil:', error);
             activitiesList.innerHTML = `
@@ -130,13 +148,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderUserActivities(activities) {
-        if (!activities.length) {
+    function getFilteredActivities() {
+        const showPast = showPastToggle ? showPastToggle.checked : false;
+        const now = new Date();
+        if (!showPast) {
+            return allActivities.filter(({ subevent }) => {
+                const date = getActivityDate(subevent);
+                return date >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            });
+        }
+        return allActivities;
+    }
+
+    function renderUserActivities() {
+        const filtered = getFilteredActivities();
+
+        if (!filtered.length) {
             activitiesEmpty.classList.remove('d-none');
+            activitiesList.innerHTML = '';
+            paginationNav.classList.add('d-none');
             return;
         }
+        activitiesEmpty.classList.add('d-none');
 
-        activitiesList.innerHTML = activities.map(({ id, registration, subevent }) => {
+        const totalPages = Math.ceil(filtered.length / PER_PAGE);
+        if (currentPage > totalPages) currentPage = totalPages;
+        const start = (currentPage - 1) * PER_PAGE;
+        const pageItems = filtered.slice(start, start + PER_PAGE);
+
+        activitiesList.innerHTML = pageItems.map(({ id, registration, subevent }) => {
             const isPaid = registration.pagado === true;
             const statusClass = isPaid ? 'bg-success' : 'bg-warning text-dark';
             const statusText = isPaid ? 'Inscrito' : 'Reservado';
@@ -154,6 +194,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 </a>
             `;
         }).join('');
+
+        if (totalPages > 1) {
+            paginationNav.classList.remove('d-none');
+            pageInfo.textContent = `${currentPage} / ${totalPages}`;
+            prevBtn.classList.toggle('disabled', currentPage <= 1);
+            nextBtn.classList.toggle('disabled', currentPage >= totalPages);
+        } else {
+            paginationNav.classList.add('d-none');
+        }
     }
 
     function getActivityDate(subevent) {
@@ -167,9 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
 
         const formattedDate = date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
+            day: '2-digit', month: '2-digit', year: 'numeric'
         });
         const formattedTime = subevent.horaEvento ? ` a las ${subevent.horaEvento}` : '';
         return `${formattedDate}${formattedTime}`;
@@ -185,7 +232,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setActivitiesLoading(isLoading) {
-        if (activitiesLoading) activitiesLoading.classList.toggle('d-none', !isLoading);
+        if (activitiesLoading) {
+            activitiesLoading.textContent = isLoading ? 'Cargando actividades...' : '';
+        }
     }
 
     function updateRoleBadge(element, label, isActive) {

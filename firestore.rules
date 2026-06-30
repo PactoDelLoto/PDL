@@ -14,6 +14,12 @@ function isSocio() {
     get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isSocio == true;
 }
 
+// Función auxiliar para verificar si el usuario es colaborador
+function isColaborador() {
+  return request.auth != null &&
+    get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isColaborador == true;
+}
+
 // USUARIOS
 match /usuarios/{userId} {
   allow read: if request.auth != null;
@@ -48,7 +54,7 @@ match /prestamos/{docId} {
 match /subeventos/{docId} {
 
   allow read: if true;
-  allow write: if isAdmin();
+  allow write: if isAdmin() || isColaborador();
 
   // Permitir actualizar únicamente plazasOcupadas
   allow update: if
@@ -64,11 +70,12 @@ match /subeventos/{docId} {
 // INSCRIPCIONES (collection group)
 match /{path=**}/inscripciones/{inscripcionId} {
 
-  // Lectura: propietario o administrador
+  // Lectura: propietario, administrador o colaborador
   allow read: if request.auth != null &&
     (
       resource.data.userId == request.auth.uid ||
-      isAdmin()
+      isAdmin() ||
+      isColaborador()
     );
 
   // Creación:
@@ -88,8 +95,8 @@ match /{path=**}/inscripciones/{inscripcionId} {
       )
     );
 
-  // Solo administradores pueden modificar o borrar
-  allow update, delete: if isAdmin();
+  // Solo administradores o colaboradores pueden modificar o borrar
+  allow update, delete: if isAdmin() || isColaborador();
 }
 
 // TIPOS DE ACTIVIDADES
@@ -101,13 +108,29 @@ match /tipoSubevento/{docId} {
 // TORNEOS
 match /torneos/{docId} {
   allow read: if isSocio() || isAdmin();
-  allow write: if isAdmin();
+  allow write: if isAdmin() || isColaborador();
 }
 
 // LIGAS
 match /ligas/{docId} {
   allow read: if true;
-  allow write: if isAdmin();
+  allow write: if isAdmin() || isColaborador();
+}
+
+// CONTACTOS
+match /contactos/{docId} {
+  allow create: if request.auth != null;
+  allow read: if isAdmin();
+  allow update: if isAdmin();
+  allow delete: if isAdmin();
+}
+
+// SUGERENCIAS
+match /sugerencias/{docId} {
+  allow create: if isSocio() || isAdmin();
+  allow read: if isAdmin();
+  allow update: if isAdmin();
+  allow delete: if isAdmin();
 }
 
 }

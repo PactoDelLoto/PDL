@@ -1,4 +1,3 @@
-
 {
   "indexes": [
     {
@@ -12,6 +11,93 @@
         {
           "fieldPath": "fechaHoraPrestamo",
           "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "prestamos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "IdArticulo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaHoraPrestamo",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "subeventos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "eventoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaPublicacion",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "torneos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "juego",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "inscripciones",
+      "fieldPath": "userId",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
         }
       ]
     }

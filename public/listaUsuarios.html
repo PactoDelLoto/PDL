@@ -18,6 +18,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+    <style>
+        #usuarios-table_wrapper .table-responsive {
+            overflow-x: auto;
+        }
+
+        #usuarios-table .user-pagado-hasta {
+            min-width: 90px;
+        }
+
+        #usuarios-table .dropdown-toggle::after {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            #usuarios-table .user-pagado-hasta {
+                min-width: 75px;
+                font-size: 0.65rem;
+            }
+        }
+    </style>
     <!-- Script para cargar componentes comunes -->
     <script src="/jquery-3.7.1.min.js"></script>
 </head>
@@ -33,13 +53,18 @@
             <div class="col">
                 <h1 class="mb-4">Listado de Usuarios</h1>
                 <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="filter-solo-socios">
-                        <label class="form-check-label" for="filter-solo-socios">Solo Socios</label>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 text-nowrap" for="filter-rol">Ver solo:</label>
+                        <select id="filter-rol" class="form-select form-select-sm" style="width:auto">
+                            <option value="">Todos</option>
+                            <option value="admin">Admins</option>
+                            <option value="colaborador">Colaboradores</option>
+                            <option value="socio">Socios</option>
+                        </select>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="filter-solo-admins">
-                        <label class="form-check-label" for="filter-solo-admins">Solo Admins</label>
+                        <input class="form-check-input" type="checkbox" id="filter-proximos-deuda">
+                        <label class="form-check-label" for="filter-proximos-deuda">Próximos a deuda</label>
                     </div>
                     <button class="btn btn-primary btn-sm" id="btn-actualizar-cuentas">
                         <i class="fa-solid fa-rotate me-1"></i>Actualizar Cuentas
@@ -54,14 +79,9 @@
                             <thead>
                                 <tr>
                                     <th>Nombre</th>
-                                    <th>Apellidos</th>
-                                    <th>Teléfono</th>
-                                    <th>Correo</th>
-                                    <th>Socio</th>
-                                    <th>Admin</th>
+                                    <th>Rol</th>
                                     <th>Al corriente</th>
                                     <th>Pagado hasta</th>
-                                    <th>Fecha de Registro</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -86,13 +106,33 @@
                 <form id="edit-user-form">
                     <div class="modal-body">
                         <input type="hidden" id="edit-user-id">
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label for="edit-user-name" class="form-label">Nombre</label>
-                            <input type="text" class="form-control" id="edit-user-name" required>
+                            <input type="text" class="form-control form-control-sm" id="edit-user-name" required>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label for="edit-user-lastname" class="form-label">Apellidos</label>
-                            <input type="text" class="form-control" id="edit-user-lastname" required>
+                            <input type="text" class="form-control form-control-sm" id="edit-user-lastname" required>
+                        </div>
+                        <div class="mb-2">
+                            <label for="edit-user-phone" class="form-label">Teléfono</label>
+                            <input type="text" class="form-control form-control-sm" id="edit-user-phone">
+                        </div>
+                        <hr class="my-2">
+                        <label class="form-label mb-1">Roles</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="edit-user-socio">
+                                <label class="form-check-label" for="edit-user-socio">Socio</label>
+                            </div>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="edit-user-colaborador">
+                                <label class="form-check-label" for="edit-user-colaborador">Colaborador</label>
+                            </div>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="edit-user-admin">
+                                <label class="form-check-label" for="edit-user-admin">Admin</label>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
