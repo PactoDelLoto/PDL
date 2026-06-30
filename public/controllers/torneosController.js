@@ -212,7 +212,7 @@ window.initializeTorneosController = function (isAdmin) {
         const tbody = document.getElementById('tabla-clasificacion-liga');
         if (!tbody) return;
 
-        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">${message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">${message}</td></tr>`;
     }
 
     function handleLigaActivaChange() {
@@ -363,7 +363,7 @@ window.initializeTorneosController = function (isAdmin) {
 
         const liga = ligasCache.find(l => l.id === ligaId);
         if (!liga || !liga.clasificacion || Object.keys(liga.clasificacion).length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">No hay jugadores registrados en esta liga todavía.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No hay jugadores registrados en esta liga todavía.</td></tr>`;
             return;
         }
 
@@ -379,10 +379,13 @@ window.initializeTorneosController = function (isAdmin) {
             <tr>
                 <td class="fw-bold">${index + 1}</td>
                 <td>
-                    ${row.nombre} ${row.id.startsWith('invitado_') ? ` <span class="badge bg-secondary">${row.id.split('_')[1]}</span>` : ''}
+                    ${row.nombre}
                     ${row.mergedFromGuest ? ` <i class="fas fa-user-check text-success ms-1" title="Puntos fusionados de invitado"></i>` : ''}
                 </td>
-                <td class="text-center fw-bold text-primary">${row.puntos}</td>
+                <td class="text-center">
+                    ${row.id.startsWith('invitado_') ? `<span class="badge bg-${row.mergedFromGuest ? 'primary' : 'secondary'}">${row.id.split('_')[1]}</span>` : `<span class="badge bg-primary">Socio</span>`}
+                </td>
+                <td class="text-center fw-bold">${row.puntos}</td>
             </tr>
         `).join('');
     }

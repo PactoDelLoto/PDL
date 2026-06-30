@@ -200,6 +200,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- EVENT LISTENERS & HANDLERS ---
 
     function setupEventListeners() {
+        $('#play-game-btn').on('click', function () {
+            window.location.href = '/juego.html';
+        });
         $('#category-filter').on('change', function () { inventarioTable.column(1).search($(this).val()).draw(); });
         $('button[data-bs-target="#categorias-section"]').on('shown.bs.tab', () => loadAndInitCategoriasTable());
         $('#inventario-table tbody').on('click', '.info-btn', function () { openInfoModal($(this).data('id'), $(this).data('name')); });

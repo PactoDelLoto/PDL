@@ -106,7 +106,7 @@ match /torneos/{docId} {
 
 // LIGAS
 match /ligas/{docId} {
-  allow read: if isSocio() || isAdmin();
+  allow read: if true;
   allow write: if isAdmin();
 }
 
