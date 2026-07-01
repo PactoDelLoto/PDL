@@ -21,6 +21,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+    <style>
+        @media (max-width: 768px) {
+            #inventario-table_wrapper,
+            #tabla-prestamos-activos_wrapper,
+            #tabla-prestamos-historial_wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #inventario-table td,
+            #inventario-table th,
+            #tabla-prestamos-activos td,
+            #tabla-prestamos-activos th,
+            #tabla-prestamos-historial td,
+            #tabla-prestamos-historial th {
+                white-space: nowrap;
+            }
+        }
+    </style>
+
     <!-- Script para cargar componentes comunes -->
     <script src="/jquery-3.7.1.min.js"></script>
 </head>

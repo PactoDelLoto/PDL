@@ -24,6 +24,19 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => console.error('Error al cargar el navbar:', error));
 
+    // Delegación de eventos para submenús anidados (móvil)
+    document.addEventListener('click', e => {
+        const toggle = e.target.closest('.dropdown-submenu > .dropdown-toggle');
+        if (toggle) {
+            e.preventDefault();
+            e.stopPropagation();
+            const submenu = toggle.nextElementSibling;
+            if (submenu && submenu.classList.contains('dropdown-menu')) {
+                submenu.classList.toggle('show');
+            }
+        }
+    });
+
     // Cargar Footer
     fetch('/resources/layouts/footer.html')
         .then(response => response.text())
@@ -37,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
 async function populateNavbarLinks(isLoggedIn) {
     const links = [
         { text: 'Hazte socio', href: '/hazte-socio.html' },
-        /*{ text: 'Actividades', href: '/actividades.html' },*/
         { text: 'Eventos', href: '/eventos.html' },
         { text: 'Quiénes somos', href: '/quienes-somos.html' }
     ];
@@ -47,10 +59,12 @@ async function populateNavbarLinks(isLoggedIn) {
         const isSocio = await window.isUserSocio();
         const isColaborador = await window.isUserColaborador();
 
-        if (isSocio || isAdmin) {
-            links.push({
+        const adminItems = [];
+
+        if (isAdmin || isColaborador) {
+            adminItems.push({
                 text: 'Torneos',
-                isDropdown: true,
+                isSubDropdown: true,
                 items: [
                     { text: 'MTG Commander', href: '/mtg-commander.html', locked: false },
                     { text: 'MTG Modern', href: '/mtg-modern.html', locked: false },
@@ -58,12 +72,14 @@ async function populateNavbarLinks(isLoggedIn) {
                     { text: 'Riftbound', href: '/riftbound.html', locked: true }
                 ]
             });
-        }
-        if (isAdmin || isColaborador) {
-            links.push({ text: 'Inventario', href: '/inventario.html' });
+            adminItems.push({ text: 'Inventario', href: '/inventario.html' });
         }
         if (isAdmin) {
-            links.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
+            adminItems.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
+        }
+
+        if (adminItems.length > 0) {
+            links.push({ text: 'Administración', isDropdown: true, items: adminItems });
         }
     }
 
@@ -71,48 +87,55 @@ async function populateNavbarLinks(isLoggedIn) {
     if (navbarList) {
         navbarList.innerHTML = links.map(link => {
             if (link.isDropdown) {
-                const isAnySubPageActive = link.items.some(item => window.location.pathname === item.href);
+                const isAnySubPageActive = link.items.some(item => {
+                    if (item.isSubDropdown) {
+                        return item.items.some(sub => window.location.pathname === sub.href);
+                    }
+                    return window.location.pathname === item.href;
+                });
                 const dropdownClass = isAnySubPageActive ? 'active' : '';
-                
+
                 const itemsHtml = link.items.map(item => {
-                    if (item.locked) {
+                    if (item.isSubDropdown) {
+                        const subItemsHtml = item.items.map(sub => {
+                            if (sub.locked) {
+                                return `<li><span class="dropdown-item disabled">${sub.text}<i class="fas fa-lock ms-2"></i></span></li>`;
+                            }
+                            const isSubActive = window.location.pathname === sub.href ? 'active' : '';
+                            return `<li><a class="dropdown-item ${isSubActive}" href="${sub.href}">${sub.text}</a></li>`;
+                        }).join('');
                         return `
-                            <li>
-                                <span class="dropdown-item disabled">
-                                    ${item.text}
-                                    <i class="fas fa-lock ms-2"></i>
-                                </span>
-                            </li>
-                        `;
-                    } else {
-                        const isSubActive = window.location.pathname === item.href ? 'active' : '';
-                        return `
-                            <li>
-                                <a class="dropdown-item ${isSubActive}" href="${item.href}">
-                                    ${item.text}
-                                </a>
+                            <li class="dropdown-submenu">
+                                <a class="dropdown-item dropdown-toggle" href="#">${item.text}</a>
+                                <ul class="dropdown-menu dropdown-menu-dark">
+                                    ${subItemsHtml}
+                                </ul>
                             </li>
                         `;
                     }
+                    const isActive = window.location.pathname === item.href ? 'active' : '';
+                    return `<li><a class="dropdown-item ${isActive}" href="${item.href}">${item.text}</a></li>`;
                 }).join('');
+
+                const idSuffix = link.text === 'Administración' ? 'Admin' : 'Torneos';
 
                 return `
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle ${dropdownClass}" href="#" id="navbarDropdownTorneos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle ${dropdownClass}" href="#" id="navbarDropdown${idSuffix}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             ${link.text}
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDropdownTorneos">
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDropdown${idSuffix}">
                             ${itemsHtml}
                         </ul>
                     </li>
                 `;
-            } else {
-                return `
-                    <li class="nav-item">
-                        <a class="nav-link ${window.location.pathname === link.href ? 'active' : ''}" href="${link.href}">${link.text}</a>
-                    </li>
-                `;
             }
+
+            return `
+                <li class="nav-item">
+                    <a class="nav-link ${window.location.pathname === link.href ? 'active' : ''}" href="${link.href}">${link.text}</a>
+                </li>
+            `;
         }).join('');
     }
 }
@@ -173,6 +196,7 @@ function setupAuthUI() {
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu-desktop">
                         <li><a class="dropdown-item" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a></li>
+                        <li><a class="dropdown-item" href="/perfil.html?tab=actividades"><i class="fa-regular fa-calendar me-2"></i>Mis actividades</a></li>
                         <li><hr class="dropdown-divider"></li>
                         ${sugerenciasItem}
                         <li><a class="dropdown-item text-danger" href="#" id="logout-button-desktop"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</a></li>
@@ -182,6 +206,7 @@ function setupAuthUI() {
             const mobileUI = `
                 <p class="text-light mb-2">${displayName}</p>
                 <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a>
+                <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html?tab=actividades"><i class="fa-regular fa-calendar me-2"></i>Mis actividades</a>
                 ${isSocio || isAdmin ? `<a class="btn btn-outline-warning w-100 mb-2" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a>` : ''}
                 <button class="btn btn-danger w-100" id="logout-button-mobile"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</button>
             `;

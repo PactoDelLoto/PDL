@@ -12,6 +12,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+    <style>
+        .password-container{position:relative;}.toggle-password{position:absolute;top:50%;right:15px;transform:translateY(-50%);cursor:pointer;color:#6c757d;}#change-password-strength{font-size:.9rem;}#change-password-strength .strength-check{transition:color .3s ease;}#change-password-strength .strength-check.valid{color:#198754;}#change-password-strength .strength-check.invalid{color:#dc3545;}#change-password-strength .strength-check .fa-check-circle,#change-password-strength .strength-check .fa-times-circle{margin-right:8px;}
+    </style>
+
     <script src="/jquery-3.7.1.min.js"></script>
 </head>
 
@@ -84,11 +88,16 @@
                                          <span id="profile-admin-badge" class="badge bg-secondary">Admin: No</span>
                                      </div>
 
-                                    <div class="d-flex justify-content-end gap-2">
-                                        <a href="/index.html" class="btn btn-outline-secondary">Cancelar</a>
-                                        <button type="submit" class="btn btn-primary" id="profile-save-btn">
-                                            Guardar cambios
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <button type="button" class="btn btn-outline-primary" id="change-password-btn">
+                                            <i class="fa-solid fa-key me-1"></i>Cambiar contraseña
                                         </button>
+                                        <div class="d-flex gap-2">
+                                            <a href="/index.html" class="btn btn-outline-secondary">Cancelar</a>
+                                            <button type="submit" class="btn btn-primary" id="profile-save-btn">
+                                                Guardar cambios
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>
@@ -122,6 +131,79 @@
             </div>
         </div>
     </main>
+
+    <div class="modal fade" id="change-password-modal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel">Cambiar contraseña</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="change-password-form">
+                        <div class="mb-3">
+                            <label for="current-password" class="form-label">Contraseña actual</label>
+                            <div class="password-container">
+                                <input type="password" class="form-control" id="current-password" required>
+                                <i class="fas fa-eye-slash toggle-password" id="toggle-current-password"></i>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">Nueva contraseña</label>
+                            <div class="password-container">
+                                <input type="password" class="form-control" id="new-password" required>
+                                <i class="fas fa-eye-slash toggle-password" id="toggle-new-password"></i>
+                            </div>
+                            <div id="change-password-strength" class="mt-2">
+                                <div id="change-length-check" class="strength-check invalid">
+                                    <i class="fas fa-times-circle"></i> Mínimo 8 caracteres
+                                </div>
+                                <div id="change-case-check" class="strength-check invalid">
+                                    <i class="fas fa-times-circle"></i> Una mayúscula y una minúscula
+                                </div>
+                                <div id="change-number-check" class="strength-check invalid">
+                                    <i class="fas fa-times-circle"></i> Al menos un número
+                                </div>
+                                <div id="change-symbol-check" class="strength-check invalid">
+                                    <i class="fas fa-times-circle"></i> Al menos un símbolo
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm-new-password" class="form-label">Confirmar nueva contraseña</label>
+                            <div class="password-container">
+                                <input type="password" class="form-control" id="confirm-new-password" required>
+                                <i class="fas fa-eye-slash toggle-password" id="toggle-confirm-new-password"></i>
+                            </div>
+                            <div id="confirm-password-feedback" class="invalid-feedback">Las contraseñas no coinciden.</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="save-password-btn">Cambiar contraseña</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">Confirmar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmation-modal-body-text"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirm-action-btn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <footer class="footer mt-auto py-3 bg-dark">
         <!-- El footer se cargara aqui -->

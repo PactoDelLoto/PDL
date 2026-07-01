@@ -111,7 +111,7 @@ footer, .bg-dark {
 
     /* Mostrar dropdown en hover para pantallas de escritorio (>= 992px) */
     @media (min-width: 992px) {
-      .navbar-nav .nav-item.dropdown:hover .dropdown-menu {
+      .navbar-nav .nav-item.dropdown:hover > .dropdown-menu {
         display: block;
         margin-top: 0;
       }
@@ -126,4 +126,14 @@ footer, .bg-dark {
       align-items: center;
       justify-content: space-between;
       color: #adb5bd !important;
+    }
+
+    /* Submenú anidado dentro de dropdown */
+    .dropdown-submenu {
+      position: relative;
+    }
+    .dropdown-submenu .dropdown-menu {
+      top: 0;
+      left: 100%;
+      margin-top: 0;
     }

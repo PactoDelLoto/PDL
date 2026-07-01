@@ -92,7 +92,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         isSocio: false, // Por defecto, no es socio
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }).then(() => {
-                        user.sendEmailVerification();
                         window.location.href = '/index.html';
                     });
                 })

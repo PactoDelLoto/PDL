@@ -40,6 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         await loadProfile(user);
         await loadUserActivities(user);
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('tab') === 'actividades') {
+            const tabTrigger = document.getElementById('profile-activities-tab');
+            if (tabTrigger) tabTrigger.click();
+        }
     });
 
     if (showPastToggle) {
@@ -127,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!subeventDoc.exists) return null;
 
                 const subevent = subeventDoc.data();
-                return { id: subeventDoc.id, registration, subevent };
+                return { id: subeventDoc.id, registration, subevent, regRef: doc.ref };
             }));
 
             allActivities = activities
@@ -176,22 +182,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const start = (currentPage - 1) * PER_PAGE;
         const pageItems = filtered.slice(start, start + PER_PAGE);
 
-        activitiesList.innerHTML = pageItems.map(({ id, registration, subevent }) => {
+        activitiesList.innerHTML = pageItems.map(({ id, registration, subevent, regRef }) => {
             const isPaid = registration.pagado === true;
             const statusClass = isPaid ? 'bg-success' : 'bg-warning text-dark';
             const statusText = isPaid ? 'Inscrito' : 'Reservado';
             const dateText = formatActivityDate(subevent);
             const placeText = escapeText(subevent.lugar || 'Lugar por confirmar');
+            const regId = regRef.id;
 
             return `
-                <a href="/subeventoDetalle.html?id=${encodeURIComponent(id)}" class="list-group-item list-group-item-action">
-                    <div class="d-flex w-100 justify-content-between gap-3">
-                        <h5 class="mb-1">${escapeText(subevent.titulo || 'Actividad sin titulo')}</h5>
-                        <span class="badge ${statusClass} align-self-start">${statusText}</span>
+                <div class="list-group-item list-group-item-action">
+                    <a href="/subeventoDetalle.html?id=${encodeURIComponent(id)}" class="text-decoration-none text-reset">
+                        <div class="d-flex w-100 justify-content-between gap-3">
+                            <h5 class="mb-1">${escapeText(subevent.titulo || 'Actividad sin titulo')}</h5>
+                            <span class="badge ${statusClass} align-self-start">${statusText}</span>
+                        </div>
+                        <p class="mb-1">${dateText}</p>
+                        <small class="text-muted">${placeText}</small>
+                    </a>
+                    <div class="text-end mt-2">
+                        <button class="btn btn-danger btn-sm cancel-registration-btn" data-reg-id="${escapeText(regId)}" data-subevent-title="${escapeText(subevent.titulo || 'Actividad sin titulo')}">
+                            <i class="fa-solid fa-xmark me-1"></i>Anular inscripción
+                        </button>
                     </div>
-                    <p class="mb-1">${dateText}</p>
-                    <small class="text-muted">${placeText}</small>
-                </a>
+                </div>
             `;
         }).join('');
 
@@ -244,5 +258,178 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showLoading(isLoading) {
         loadingBox.classList.toggle('d-none', !isLoading);
+    }
+
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.cancel-registration-btn');
+        if (!btn) return;
+
+        const regId = btn.dataset.regId;
+        const subeventTitle = btn.dataset.subeventTitle;
+
+        showConfirmationModal(
+            'Anular inscripción',
+            `¿Seguro que quieres anular tu inscripción en "${subeventTitle}"?`,
+            async () => {
+                try {
+                    const activity = allActivities.find(a => a.regRef && a.regRef.id === regId);
+                    if (!activity) {
+                        showAlert('No se encontró la inscripción.', 'danger');
+                        return;
+                    }
+                    await activity.regRef.delete();
+                    showAlert('Inscripción anulada correctamente.', 'success');
+                    await loadUserActivities(currentUser);
+                } catch (error) {
+                    console.error('Error al anular inscripción:', error);
+                    showAlert('No se pudo anular la inscripción.', 'danger');
+                }
+            }
+        );
+    });
+
+    // --- CAMBIAR CONTRASEÑA ---
+    const changePasswordBtn = document.getElementById('change-password-btn');
+    const changePasswordModalEl = document.getElementById('change-password-modal');
+    const changePasswordForm = document.getElementById('change-password-form');
+    const savePasswordBtn = document.getElementById('save-password-btn');
+
+    const currentPasswordInput = document.getElementById('current-password');
+    const newPasswordInput = document.getElementById('new-password');
+    const confirmNewPasswordInput = document.getElementById('confirm-new-password');
+
+    const changeStrengthChecks = {
+        length: document.getElementById('change-length-check'),
+        case: document.getElementById('change-case-check'),
+        number: document.getElementById('change-number-check'),
+        symbol: document.getElementById('change-symbol-check')
+    };
+    const changeValidations = {
+        length: v => v.length >= 8,
+        case: v => /[a-z]/.test(v) && /[A-Z]/.test(v),
+        number: v => /[0-9]/.test(v),
+        symbol: v => /[^A-Za-z0-9]/.test(v)
+    };
+
+    if (changePasswordModalEl) {
+        const changePasswordModal = new bootstrap.Modal(changePasswordModalEl);
+
+        const toggleEls = {
+            'toggle-current-password': currentPasswordInput,
+            'toggle-new-password': newPasswordInput,
+            'toggle-confirm-new-password': confirmNewPasswordInput
+        };
+
+        for (const [id, input] of Object.entries(toggleEls)) {
+            const icon = document.getElementById(id);
+            if (icon && input) {
+                icon.addEventListener('click', () => {
+                    const isHidden = input.type === 'password';
+                    input.type = isHidden ? 'text' : 'password';
+                    icon.classList.toggle('fa-eye-slash', !isHidden);
+                    icon.classList.toggle('fa-eye', isHidden);
+                });
+            }
+        }
+
+        if (newPasswordInput) {
+            newPasswordInput.addEventListener('input', () => {
+                const password = newPasswordInput.value;
+                for (const key in changeValidations) {
+                    const checkElement = changeStrengthChecks[key];
+                    const isValid = changeValidations[key](password);
+                    checkElement.classList.toggle('valid', isValid);
+                    checkElement.classList.toggle('invalid', !isValid);
+                    const icon = checkElement.querySelector('i');
+                    if (icon) {
+                        icon.className = isValid ? 'fas fa-check-circle' : 'fas fa-times-circle';
+                    }
+                }
+            });
+        }
+
+        if (confirmNewPasswordInput) {
+            confirmNewPasswordInput.addEventListener('input', () => {
+                if (confirmNewPasswordInput.value === newPasswordInput.value) {
+                    confirmNewPasswordInput.setCustomValidity('');
+                } else {
+                    confirmNewPasswordInput.setCustomValidity('Las contraseñas no coinciden.');
+                }
+            });
+        }
+
+        function resetPasswordModal() {
+            changePasswordForm.reset();
+            changePasswordForm.classList.remove('was-validated');
+            confirmNewPasswordInput.setCustomValidity('');
+            for (const key in changeStrengthChecks) {
+                const checkElement = changeStrengthChecks[key];
+                checkElement.classList.remove('valid');
+                checkElement.classList.add('invalid');
+                const icon = checkElement.querySelector('i');
+                if (icon) icon.className = 'fas fa-times-circle';
+            }
+        }
+
+        if (changePasswordBtn) {
+            changePasswordBtn.addEventListener('click', () => {
+                resetPasswordModal();
+                changePasswordModal.show();
+            });
+        }
+
+        changePasswordModalEl.addEventListener('hidden.bs.modal', resetPasswordModal);
+
+        if (savePasswordBtn) {
+            savePasswordBtn.addEventListener('click', () => {
+                if (!changePasswordForm.checkValidity()) {
+                    changePasswordForm.classList.add('was-validated');
+                    return;
+                }
+
+                const newPassword = newPasswordInput.value;
+                const allValid = Object.values(changeValidations).every(fn => fn(newPassword));
+                if (!allValid) {
+                    showAlert('La nueva contraseña no cumple con los requisitos de seguridad.', 'warning');
+                    return;
+                }
+
+                if (newPassword !== confirmNewPasswordInput.value) {
+                    confirmNewPasswordInput.setCustomValidity('Las contraseñas no coinciden.');
+                    changePasswordForm.classList.add('was-validated');
+                    return;
+                }
+
+                const currentPassword = currentPasswordInput.value;
+                if (!currentPassword) {
+                    showAlert('Debes introducir tu contraseña actual.', 'warning');
+                    return;
+                }
+
+                showConfirmationModal(
+                    'Cambiar contraseña',
+                    '¿Seguro que quieres cambiar tu contraseña?',
+                    async () => {
+                        try {
+                            const user = auth.currentUser;
+                            const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+                            await user.reauthenticateWithCredential(credential);
+                            await user.updatePassword(newPassword);
+                            showAlert('Contraseña cambiada con éxito.', 'success');
+                            changePasswordModal.hide();
+                        } catch (error) {
+                            console.error('Error al cambiar la contraseña:', error);
+                            if (error.code === 'auth/wrong-password') {
+                                showAlert('La contraseña actual no es correcta.', 'danger');
+                            } else if (error.code === 'auth/requires-recent-login') {
+                                showAlert('Por motivos de seguridad, cierra sesión y vuelve a iniciarla antes de cambiar la contraseña.', 'warning');
+                            } else {
+                                showAlert('No se pudo cambiar la contraseña. Inténtalo de nuevo.', 'danger');
+                            }
+                        }
+                    }
+                );
+            });
+        }
     }
 });

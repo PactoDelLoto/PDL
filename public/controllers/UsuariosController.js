@@ -28,20 +28,43 @@ const editUserModalEl = document.getElementById('edit-user-modal');
 const editUserModal = editUserModalEl ? new bootstrap.Modal(editUserModalEl) : null;
 const filterRol = document.getElementById('filter-rol');
 const filterProximosDeuda = document.getElementById('filter-proximos-deuda');
+let filterEstadoPagoVal = '';
+const filterEstadoPagoContainer = document.getElementById('filter-estado-pago-container');
+const filterEstadoPagoBtn = document.getElementById('filter-estado-pago-btn');
+const filterEstadoPagoMenu = document.getElementById('filter-estado-pago-menu');
 const btnActualizarCuentas = document.getElementById('btn-actualizar-cuentas');
 const btnExportarCsv = document.getElementById('btn-exportar-csv');
 
-function isProximoDeuda(pagadoHasta) {
-    if (!pagadoHasta) return false;
-    const fechaPagado = pagadoHasta.toDate
-        ? new Date(pagadoHasta.toDate().getFullYear(), pagadoHasta.toDate().getMonth(), pagadoHasta.toDate().getDate())
-        : null;
-    if (!fechaPagado) return false;
+function isProximoDeuda(pagadoHasta, isSocio) {
+    if (!pagadoHasta || !isSocio) return false;
+    const pagado = normalizarFecha(pagadoHasta);
+    if (!pagado) return false;
     const hoy = new Date();
     const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    const dentro30 = new Date(hoyNorm);
-    dentro30.setDate(dentro30.getDate() + 30);
-    return fechaPagado >= hoyNorm && fechaPagado <= dentro30;
+    const fechaLimite = new Date(pagado);
+    fechaLimite.setMonth(fechaLimite.getMonth() + 3);
+    if (hoyNorm >= fechaLimite) return false;
+    const diasRestantes = Math.ceil((fechaLimite - hoyNorm) / (1000 * 60 * 60 * 24));
+    return diasRestantes <= 30;
+}
+
+function getEstadoDeuda(pagadoHasta) {
+    const pagado = normalizarFecha(pagadoHasta);
+    if (!pagado) return null;
+    const hoy = new Date();
+    const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    if (pagado >= hoyNorm) return null;
+    const fechaLimite = new Date(pagado);
+    fechaLimite.setMonth(fechaLimite.getMonth() + 1);
+    fechaLimite.setDate(fechaLimite.getDate() + 1);
+    if (hoyNorm < fechaLimite) return 'debe1';
+    return 'debe2';
+}
+
+function normalizarFecha(timestamp) {
+    if (!timestamp || !timestamp.toDate) return null;
+    const d = timestamp.toDate();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 function initializeUsersTable() {
@@ -83,9 +106,20 @@ function initializeUsersTable() {
             {
                 data: null, orderable: false, searchable: false, className: 'text-center',
                 render: function (data, type, row) {
-                    return row.alCorriente
-                        ? '<span class="badge bg-success"><i class="fa-solid fa-check"></i></span>'
-                        : '<span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>';
+                    if (row.alCorriente) {
+                        return '<span class="badge bg-success"><i class="fa-solid fa-check"></i></span>';
+                    }
+                    if (!row.isSocio) {
+                        return '<span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>';
+                    }
+                    const estado = getEstadoDeuda(row.pagadoHasta);
+                    if (estado === 'debe2') {
+                        return '<span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation"></i></span>';
+                    }
+                    if (estado === 'debe1') {
+                        return '<span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation"></i></span>';
+                    }
+                    return '<span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>';
                 },
                 responsivePriority: 4
             },
@@ -146,9 +180,23 @@ function initializeUsersTable() {
         if (rolVal === 'admin' && !rowData.isAdmin) return false;
         if (rolVal === 'colaborador' && !rowData.isColaborador) return false;
         if (rolVal === 'socio' && !rowData.isSocio) return false;
+        if (rolVal === 'noSocio' && rowData.isSocio) return false;
         if (filterDeuda) {
-            if (!rowData.alCorriente) return false;
-            return isProximoDeuda(rowData.pagadoHasta);
+            return isProximoDeuda(rowData.pagadoHasta, rowData.isSocio);
+        }
+        const estadoPagoVal = filterEstadoPagoVal;
+        if (estadoPagoVal) {
+            const pagado = normalizarFecha(rowData.pagadoHasta);
+            if (!pagado) return false;
+            const hoyFiltro = new Date();
+            const hoyNorm = new Date(hoyFiltro.getFullYear(), hoyFiltro.getMonth(), hoyFiltro.getDate());
+            if (estadoPagoVal === 'debe1' && pagado >= hoyNorm) return false;
+            if (estadoPagoVal === 'debe2') {
+                const fechaLimite = new Date(pagado);
+                fechaLimite.setMonth(fechaLimite.getMonth() + 1);
+                fechaLimite.setDate(fechaLimite.getDate() + 1);
+                if (pagado >= hoyNorm || hoyNorm < fechaLimite) return false;
+            }
         }
         return true;
     });
@@ -234,8 +282,33 @@ function setupUserActionHandlers() {
 
     // Filtros
     const redrawTable = () => usersTable.draw();
-    if (filterRol) filterRol.addEventListener('change', redrawTable);
+    if (filterRol) {
+        filterRol.addEventListener('change', () => {
+            if (filterEstadoPagoContainer) {
+                filterEstadoPagoContainer.classList.toggle('d-none', filterRol.value !== 'socio');
+            }
+            filterEstadoPagoVal = '';
+            if (filterEstadoPagoBtn) filterEstadoPagoBtn.textContent = 'Todos';
+            redrawTable();
+        });
+    }
+
+    if (filterEstadoPagoMenu) {
+        filterEstadoPagoMenu.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                filterEstadoPagoVal = item.dataset.value || '';
+                if (filterEstadoPagoBtn) filterEstadoPagoBtn.textContent = item.textContent.trim();
+                redrawTable();
+            });
+        });
+    }
+
     if (filterProximosDeuda) filterProximosDeuda.addEventListener('change', redrawTable);
+
+    // Estado inicial del filtro estado de pago
+    if (filterEstadoPagoContainer && filterRol) {
+        filterEstadoPagoContainer.classList.toggle('d-none', filterRol.value !== 'socio');
+    }
 
     // Botón Actualizar Cuentas
     if (btnActualizarCuentas) {
@@ -296,23 +369,31 @@ async function handleActualizarCuentas() {
         snapshot.forEach(doc => {
             const data = doc.data();
             let alCorriente = false;
-            if (data.pagadoHasta) {
-                const pagadoHasta = data.pagadoHasta.toDate
-                    ? new Date(data.pagadoHasta.toDate().getFullYear(), data.pagadoHasta.toDate().getMonth(), data.pagadoHasta.toDate().getDate())
-                    : null;
-                if (pagadoHasta && pagadoHasta >= hoy) {
-                    alCorriente = true;
+            let socioStatus = data.isSocio;
+            const pagadoHasta = normalizarFecha(data.pagadoHasta);
+
+            if (pagadoHasta && pagadoHasta >= hoy) {
+                alCorriente = true;
+                socioStatus = true;
+            } else if (pagadoHasta) {
+                const fechaLimite = new Date(pagadoHasta);
+                fechaLimite.setMonth(fechaLimite.getMonth() + 3);
+                if (hoy >= fechaLimite) {
+                    socioStatus = false;
+                } else {
+                    socioStatus = true;
                 }
+            } else {
+                socioStatus = false;
             }
+
             const updateData = {};
             if (data.alCorriente !== alCorriente) {
                 updateData.alCorriente = alCorriente;
             }
-            if (alCorriente && data.isSocio !== true) {
-                updateData.isSocio = true;
-            } else if (!alCorriente && data.isSocio === true) {
-                updateData.isSocio = false;
-                if (data.isColaborador === true) {
+            if (data.isSocio !== socioStatus) {
+                updateData.isSocio = socioStatus;
+                if (!socioStatus && data.isColaborador === true) {
                     updateData.isColaborador = false;
                 }
             }

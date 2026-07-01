@@ -125,10 +125,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadEventos() {
         try {
-            const snapshot = await db.collection("eventos").orderBy('titulo').get();
+            const snapshot = await db.collection("eventos").get();
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
             eventoSelect.innerHTML = '<option value="">Desconocido/Ninguno</option>';
             snapshot.forEach(doc => {
-                eventoSelect.add(new Option(doc.data().titulo, doc.data().titulo));
+                const ev = doc.data();
+                let fechaEvento = null;
+                if (ev.fecha) {
+                    fechaEvento = new Date(ev.fecha + 'T00:00:00');
+                } else if (ev.fechaFin) {
+                    fechaEvento = new Date(ev.fechaFin + 'T00:00:00');
+                } else if (ev.fechaInicio) {
+                    fechaEvento = new Date(ev.fechaInicio + 'T00:00:00');
+                }
+                if (fechaEvento && fechaEvento < hoy) return;
+                eventoSelect.add(new Option(ev.titulo, ev.titulo));
             });
         } catch (error) {
             console.error("Error cargando eventos: ", error);

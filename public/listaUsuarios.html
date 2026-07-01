@@ -19,12 +19,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
-        #usuarios-table_wrapper .table-responsive {
-            overflow-x: auto;
-        }
-
         #usuarios-table .user-pagado-hasta {
-            min-width: 90px;
+            min-width: 75px;
         }
 
         #usuarios-table .dropdown-toggle::after {
@@ -32,9 +28,12 @@
         }
 
         @media (max-width: 768px) {
-            #usuarios-table .user-pagado-hasta {
-                min-width: 75px;
-                font-size: 0.65rem;
+            #usuarios-table_wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #usuarios-table td, #usuarios-table th {
+                white-space: nowrap;
             }
         }
     </style>
@@ -55,12 +54,26 @@
                 <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 text-nowrap" for="filter-rol">Ver solo:</label>
-                        <select id="filter-rol" class="form-select form-select-sm" style="width:auto">
-                            <option value="">Todos</option>
-                            <option value="admin">Admins</option>
-                            <option value="colaborador">Colaboradores</option>
-                            <option value="socio">Socios</option>
-                        </select>
+                            <select id="filter-rol" class="form-select form-select-sm" style="width:auto">
+                                <option value="">Todos</option>
+                                <option value="admin">Admins</option>
+                                <option value="colaborador">Colaboradores</option>
+                                <option value="socio">Socios</option>
+                                <option value="noSocio">No socios</option>
+                            </select>
+                    </div>
+                    <div id="filter-estado-pago-container" class="d-flex align-items-center gap-2 d-none">
+                        <label class="form-label mb-0 text-nowrap">Estado de pago:</label>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" id="filter-estado-pago-btn" style="min-width:145px;text-align:left;">
+                                Todos
+                            </button>
+                            <ul class="dropdown-menu" id="filter-estado-pago-menu" style="min-width:145px;">
+                                <li><button class="dropdown-item" data-value="">Todos</button></li>
+                                <li><button class="dropdown-item" data-value="debe1"><i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>Debe 1 mes</button></li>
+                                <li><button class="dropdown-item" data-value="debe2"><i class="fa-solid fa-triangle-exclamation text-danger me-1"></i>Debe 2 meses</button></li>
+                            </ul>
+                        </div>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="filter-proximos-deuda">
