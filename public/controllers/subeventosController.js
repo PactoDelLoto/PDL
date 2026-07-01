@@ -137,9 +137,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (basesInput && !document.getElementById('bases-inheritance-hint')) {
             const hint = document.createElement('small');
             hint.id = 'bases-inheritance-hint';
-            hint.className = 'text-muted d-block mt-1';
+            hint.className = 'text-muted-bases d-block mt-1';
             hint.textContent = 'Si se deja en blanco, se usarán las bases del evento principal.';
             basesInput.parentNode.appendChild(hint);
+        }
+
+        // Reiniciar toggle de inscripción
+        const incluirCheck = document.getElementById('subevent-incluir-inscripcion');
+        if (incluirCheck) {
+            incluirCheck.checked = false;
+            togglePagoPrevioInscripcion();
         }
 
         if (subeventModal) subeventModal.show();
@@ -210,14 +217,34 @@ document.addEventListener('DOMContentLoaded', () => {
             if (basesInput && !document.getElementById('bases-inheritance-hint')) {
                 const hint = document.createElement('small');
                 hint.id = 'bases-inheritance-hint';
-                hint.className = 'text-muted d-block mt-1';
+                hint.className = 'text-muted-bases d-block mt-1';
                 hint.textContent = 'Si se deja en blanco, se usarán las bases del evento principal.';
                 basesInput.parentNode.appendChild(hint);
             }
 
+            // Cargar estado del checkbox de inscripción y toggle pago-previo
+            try { document.getElementById('subevent-incluir-inscripcion').checked = subevento.incluirInscripcion === true; } catch (e) { }
+            togglePagoPrevioInscripcion();
+
             if (subeventModal) subeventModal.show();
         }
     }
+
+    // Toggle visibilidad de pago previo según checkbox de inscripción
+    function togglePagoPrevioInscripcion() {
+        const incluirCheck = document.getElementById('subevent-incluir-inscripcion');
+        const container = document.getElementById('subevent-pago-previo-container');
+        const pagoCheck = document.getElementById('subevent-pago-previo');
+        if (incluirCheck && container) {
+            container.style.display = incluirCheck.checked ? 'block' : 'none';
+            if (pagoCheck && !incluirCheck.checked) {
+                pagoCheck.checked = false;
+            }
+        }
+    }
+
+    // Vincular evento change del checkbox de inscripción
+    document.getElementById('subevent-incluir-inscripcion')?.addEventListener('change', togglePagoPrevioInscripcion);
 
     // Cargar detalle de subevento (página independiente)
     function getSubeventIdFromUrl() {
@@ -709,6 +736,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             await loadRegistrations(subId);
+
+            // Mostrar/ocultar sección de inscripción según config de la actividad
+            const regSection = document.getElementById('subevent-registration-section');
+            if (regSection) {
+                regSection.style.display = sub.incluirInscripcion ? '' : 'none';
+            }
         } catch (error) {
             console.error('Error loading subevent detail:', error);
             const msg = error && error.message ? error.message : String(error);
@@ -752,7 +785,8 @@ document.addEventListener('DOMContentLoaded', () => {
             eventoId: eventId,
             imagen: document.getElementById('subevent-imagen') ? document.getElementById('subevent-imagen').value : '',
             basesUrl: document.getElementById('subevent-bases-url') ? document.getElementById('subevent-bases-url').value.trim() : '',
-            pagoPrevioEvento: document.getElementById('subevent-pago-previo') ? document.getElementById('subevent-pago-previo').checked : false,
+            incluirInscripcion: document.getElementById('subevent-incluir-inscripcion') ? document.getElementById('subevent-incluir-inscripcion').checked : false,
+            pagoPrevioEvento: (document.getElementById('subevent-incluir-inscripcion')?.checked && document.getElementById('subevent-pago-previo')?.checked) ? true : false,
             fechaEvento: document.getElementById('subevent-fechaEvento') ? document.getElementById('subevent-fechaEvento').value : '',
             horaEvento: document.getElementById('subevent-horaEvento') ? document.getElementById('subevent-horaEvento').value : '',
             fechaPublicacion: fechaPublicacion,

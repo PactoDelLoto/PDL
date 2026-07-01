@@ -944,6 +944,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.admin-only').forEach(c => c.style.display = isAdmin ? 'block' : 'none');
         document.querySelectorAll('.colaborador-controls').forEach(c => c.style.display = (isAdmin || isColaborador) ? 'revert' : 'none');
     }
+    window.updateUIVisibility = updateUIVisibility;
 
     function switchView(view) {
         $('#eventos-gallery-container, #eventos-table-container').hide();

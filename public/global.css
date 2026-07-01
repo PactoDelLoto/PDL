@@ -153,7 +153,7 @@ footer, .bg-dark {
       --navbar-bg: #0d0d18;
       --footer-bg: #0d0d18;
       --shadow-color: rgba(0, 0, 0, 0.4);
-      --table-stripe: #1f1f38;
+      --table-stripe: #2a2a50;
       --table-hover: #2a2a48;
       --table-border: #333350;
       --dt-row-stripe: 255, 255, 255;
@@ -215,6 +215,13 @@ footer, .bg-dark {
       color: var(--text-muted) !important;
     }
 
+    .text-muted-bases {
+      color: #6c757d;
+    }
+    [data-theme="dark"] .text-muted-bases {
+      color: #b0b0c0;
+    }
+
     [data-theme="dark"] .text-dark {
       color: var(--text-primary) !important;
     }
@@ -241,16 +248,17 @@ footer, .bg-dark {
     }
 
     [data-theme="dark"] .table {
+      --bs-table-striped-bg: var(--table-stripe);
+      --bs-table-striped-color: var(--text-primary);
+      --bs-table-hover-bg: var(--table-hover);
+      --bs-table-hover-color: var(--text-primary);
       color: var(--text-primary);
       border-color: var(--table-border);
     }
 
-    [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) {
-      background-color: var(--table-stripe);
-    }
-
-    [data-theme="dark"] .table-hover > tbody > tr:hover {
-      background-color: var(--table-hover);
+    [data-theme="dark"] .table thead th {
+      background-color: var(--navbar-bg);
+      color: var(--text-primary);
     }
 
     [data-theme="dark"] .table td,
@@ -423,6 +431,10 @@ footer, .bg-dark {
 
     [data-theme="dark"] .badge.bg-warning {
       color: #1a1a2e;
+    }
+
+    [data-theme="dark"] .toggle-password {
+      color: var(--text-secondary) !important;
     }
 
     [data-theme="dark"] .modal-header .btn-close {
