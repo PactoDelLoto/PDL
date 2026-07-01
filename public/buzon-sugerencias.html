@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buzón de Sugerencias - Pacto del Loto</title>
 
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
     <link rel="icon" type="image/png" href="/media/img/logo.ico" />
     <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
     <link href="/DataTables/datatables.min.css" rel="stylesheet" />

@@ -288,6 +288,21 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     });
 
+    // --- MODO OSCURO ---
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    if (darkModeToggle) {
+        darkModeToggle.checked = localStorage.getItem('darkMode') === 'true';
+        darkModeToggle.addEventListener('change', () => {
+            const isDark = darkModeToggle.checked;
+            localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+            if (isDark) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        });
+    }
+
     // --- CAMBIAR CONTRASEÑA ---
     const changePasswordBtn = document.getElementById('change-password-btn');
     const changePasswordModalEl = document.getElementById('change-password-modal');
