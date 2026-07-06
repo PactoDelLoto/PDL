@@ -174,6 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (filterShowActivities) filterShowActivities.addEventListener('change', applyEventFilterAndRender);
                 const filterShowPast = document.getElementById('filter-show-past');
                 if (filterShowPast) filterShowPast.addEventListener('change', applyEventFilterAndRender);
+                const filterShowUnpublished = document.getElementById('filter-show-unpublished');
+                if (filterShowUnpublished) filterShowUnpublished.addEventListener('change', applyEventFilterAndRender);
             });
         }
         updateUIVisibility(); // Initial call for non-datatable elements
@@ -327,7 +329,14 @@ document.addEventListener('DOMContentLoaded', () => {
             col.className = 'col-lg-4 col-md-6 mb-4';
             const titulo = item.titulo || '';
             const descripcion = item.descripcion || '';
-            const imagen = item.imagen || 'https://via.placeholder.com/400x250';
+            let imagen = item.imagen;
+            if (!imagen && kind === 'actividad' && item.eventoId) {
+                const parentEvent = eventosCache.find(ev => ev.id === item.eventoId);
+                if (parentEvent && parentEvent.imagen) {
+                    imagen = parentEvent.imagen;
+                }
+            }
+            if (!imagen) imagen = 'https://via.placeholder.com/400x250';
             let fechaStr = '';
             let horaStr = '';
             if (kind === 'evento') {
@@ -401,6 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const showEvents = filterShowEventsEl ? filterShowEventsEl.checked : true;
         const showActivities = filterShowActivitiesEl ? filterShowActivitiesEl.checked : true;
         const showPast = filterShowPastEl ? filterShowPastEl.checked : false;
+        const showUnpublished = document.getElementById('filter-show-unpublished')?.checked || false;
         const searchTerm = (document.getElementById('search-input') && document.getElementById('search-input').value) ? document.getElementById('search-input').value.trim().toLowerCase() : '';
         if (!selectedType) {
             // sin filtro: mostrar todos los eventos y actividades futuras
@@ -434,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (showActivities) {
                 upcomingActivities = (subeventosCache || []).filter(s => {
                     if (!s.fechaEvento) return false;
-                    if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > now) return false;
+                    if (!showUnpublished && s.fechaPublicacion && s.fechaPublicacion > now) return false;
                     if (showPast) return true;
                     const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
                     return dt > now;
@@ -469,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const snapData = snap.docs.map(d => ({ id: d.id, ...d.data(), fechaPublicacion: d.data().fechaPublicacion && d.data().fechaPublicacion.toDate ? d.data().fechaPublicacion.toDate() : null }));
             let activityFiltered = (subeventosCache && subeventosCache.length ? subeventosCache : snapData).filter(s => s.tipoEventoId === selectedType).filter(s => {
                 if (!s.fechaEvento) return false;
-                if (userRole === 'viewer' && s.fechaPublicacion && s.fechaPublicacion > nowDate) return false;
+                if (!showUnpublished && s.fechaPublicacion && s.fechaPublicacion > nowDate) return false;
                 if (showPast) return true;
                 const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
                 return dt > nowDate;

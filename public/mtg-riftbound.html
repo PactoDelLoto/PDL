@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTG Modern - Pacto del Loto</title>
+    <title>Riftbound - Pacto del Loto</title>
     <script>
         if (localStorage.getItem('darkMode') === 'true') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -105,7 +105,7 @@
     <header></header>
 
     <main class="container my-5 pt-5 flex-grow-1" id="restricted-content" style="display: none;">
-        <ul class="nav nav-tabs mb-4 justify-content-center" id="modernTabs" role="tablist">
+        <ul class="nav nav-tabs mb-4 justify-content-center" id="riftboundTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="torneos-tab" data-bs-toggle="tab" data-bs-target="#torneos-section" type="button" role="tab">
                     <i class="fa-solid fa-trophy me-2"></i>Torneos
@@ -118,43 +118,43 @@
             </li>
         </ul>
 
-        <div class="tab-content" id="modernTabsContent">
+        <div class="tab-content" id="riftboundTabsContent">
             <!-- SECCIÓN TORNEOS -->
             <div class="tab-pane fade show active" id="torneos-section" role="tabpanel">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-                    <h2 class="fw-bold text-dark m-0">Gestión de Torneos MTG Modern</h2>
+                    <h2 class="fw-bold text-dark m-0">Gestión de Torneos Riftbound</h2>
                     <div class="d-flex gap-2 align-items-center flex-wrap">
                         <div style="min-width: 250px;">
-                            <select id="filter-liga-modern" class="form-select">
+                            <select id="filter-liga-riftbound" class="form-select">
                                 <option value="">-- Todas las Ligas --</option>
                             </select>
                         </div>
                         <div class="form-check form-check-inline mt-2 mt-md-0">
-                            <input class="form-check-input" type="checkbox" id="filter-show-finalized-modern">
-                            <label class="form-check-label" for="filter-show-finalized-modern" style="font-size: 0.9rem;">Mostrar finalizados</label>
+                            <input class="form-check-input" type="checkbox" id="filter-show-finalized-riftbound">
+                            <label class="form-check-label" for="filter-show-finalized-riftbound" style="font-size: 0.9rem;">Mostrar finalizados</label>
                         </div>
-                        <button class="btn btn-premium torneo-controls" id="btn-nuevo-torneo-modern" style="display: none;">
+                        <button class="btn btn-premium torneo-controls" id="btn-nuevo-torneo-riftbound" style="display: none;">
                             <i class="fa-solid fa-plus me-2"></i>Crear Torneo
                         </button>
                     </div>
                 </div>
 
-                <div id="lista-torneos-modern-container">
-                    <div class="row g-4" id="lista-torneos-modern"></div>
+                <div id="lista-torneos-riftbound-container">
+                    <div class="row g-4" id="lista-torneos-riftbound"></div>
                 </div>
 
                 <!-- Gestión de Torneo -->
-                <div class="card card-custom p-4 mt-4" id="gestion-torneo-modern-container" style="display: none;">
+                <div class="card card-custom p-4 mt-4" id="gestion-torneo-riftbound-container" style="display: none;">
                     <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
                         <div>
-                            <span class="badge badge-progress mb-2" id="gt-modern-status">En Curso</span>
-                            <h3 class="fw-bold m-0" id="gt-modern-nombre">Nombre del Torneo</h3>
-                            <small class="text-muted" id="gt-modern-detalles">Fecha - Evento asociado</small>
+                            <span class="badge badge-progress mb-2" id="gt-riftbound-status">En Curso</span>
+                            <h3 class="fw-bold m-0" id="gt-riftbound-nombre">Nombre del Torneo</h3>
+                            <small class="text-muted" id="gt-riftbound-detalles">Fecha - Evento asociado</small>
                         </div>
                         <div>
-                            <button class="btn btn-outline-secondary me-2" id="btn-volver-lista-modern">Volver a Torneos</button>
-                            <button class="btn btn-primary torneo-controls" id="btn-iniciar-torneo-modern-gestion" style="display: none;"><i class="fa-solid fa-play me-1"></i> Iniciar Torneo</button>
-                            <button class="btn btn-success torneo-controls" id="btn-finalizar-torneo-modern" style="display: none;">Finalizar Torneo</button>
+                            <button class="btn btn-outline-secondary me-2" id="btn-volver-lista-riftbound">Volver a Torneos</button>
+                            <button class="btn btn-primary torneo-controls" id="btn-iniciar-torneo-riftbound-gestion" style="display: none;"><i class="fa-solid fa-play me-1"></i> Iniciar Torneo</button>
+                            <button class="btn btn-success torneo-controls" id="btn-finalizar-torneo-riftbound" style="display: none;">Finalizar Torneo</button>
                         </div>
                     </div>
 
@@ -165,40 +165,40 @@
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h5 class="fw-bold m-0">
                                         <i class="fa-solid fa-users me-2"></i>Jugadores
-                                        <span class="badge bg-primary ms-2 fs-6" id="gt-modern-count" style="font-size:0.75rem !important;">0</span>
+                                        <span class="badge bg-primary ms-2 fs-6" id="gt-riftbound-count" style="font-size:0.75rem !important;">0</span>
                                     </h5>
-                                    <button class="btn btn-sm btn-outline-primary torneo-controls" id="btn-gestionar-jugadores-modern" style="display: none;">
+                                    <button class="btn btn-sm btn-outline-primary torneo-controls" id="btn-gestionar-jugadores-riftbound" style="display: none;">
                                         <i class="fa-solid fa-user-plus"></i> Gestionar
                                     </button>
                                 </div>
-                                <ol class="list-group list-group-numbered" id="gt-modern-jugadores"></ol>
+                                <ol class="list-group list-group-numbered" id="gt-riftbound-jugadores"></ol>
                             </div>
                         </div>
 
                         <!-- Rondas / Clasificación / Top Cut -->
                         <div class="col-lg-8">
-                            <ul class="nav nav-pills mb-3" id="gestionSubTabsModern" role="tablist">
+                            <ul class="nav nav-pills mb-3" id="gestionSubTabsRiftbound" role="tablist">
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="rondas-tab-modern" data-bs-toggle="pill" data-bs-target="#rondas-section-modern" type="button" role="tab">Rondas</button>
+                                    <button class="nav-link active" id="rondas-tab-riftbound" data-bs-toggle="pill" data-bs-target="#rondas-section-riftbound" type="button" role="tab">Rondas</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="clasificacion-tab-modern" data-bs-toggle="pill" data-bs-target="#clasificacion-section-modern" type="button" role="tab">Clasificación Parcial</button>
+                                    <button class="nav-link" id="clasificacion-tab-riftbound" data-bs-toggle="pill" data-bs-target="#clasificacion-section-riftbound" type="button" role="tab">Clasificación Parcial</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="topcut-tab-modern" data-bs-toggle="pill" data-bs-target="#topcut-section-modern" type="button" role="tab">Top Cut</button>
+                                    <button class="nav-link" id="topcut-tab-riftbound" data-bs-toggle="pill" data-bs-target="#topcut-section-riftbound" type="button" role="tab">Top Cut</button>
                                 </li>
                             </ul>
 
                             <div class="tab-content">
                                 <!-- Rondas -->
-                                <div class="tab-pane fade show active" id="rondas-section-modern" role="tabpanel">
+                                <div class="tab-pane fade show active" id="rondas-section-riftbound" role="tabpanel">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <h5 class="fw-bold m-0">Rondas Generadas</h5>
                                         <div class="d-flex gap-2">
-                                            <button class="btn btn-sm btn-outline-danger torneo-controls" id="btn-deshacer-ronda-modern" style="display: none;" title="Elimina la última ronda generada">
+                                            <button class="btn btn-sm btn-outline-danger torneo-controls" id="btn-deshacer-ronda-riftbound" style="display: none;" title="Elimina la última ronda generada">
                                                 <i class="fa-solid fa-rotate-left me-1"></i> Deshacer Ronda
                                             </button>
-                                            <button class="btn btn-sm btn-primary torneo-controls" id="btn-generar-ronda-modern" style="display: none;">
+                                            <button class="btn btn-sm btn-primary torneo-controls" id="btn-generar-ronda-riftbound" style="display: none;">
                                                 <i class="fa-solid fa-plus me-1"></i> Nueva Ronda
                                             </button>
                                         </div>
@@ -209,7 +209,7 @@
                                 </div>
 
                                 <!-- Clasificación Parcial -->
-                                <div class="tab-pane fade" id="clasificacion-section-modern" role="tabpanel">
+                                <div class="tab-pane fade" id="clasificacion-section-riftbound" role="tabpanel">
                                     <h5 class="fw-bold mb-3">Posiciones del Torneo</h5>
                                     <div class="table-responsive">
                                         <table class="table table-hover">
@@ -222,15 +222,15 @@
                                                     <th class="text-center">BH</th>
                                                 </tr>
                                             </thead>
-                                            <tbody id="tabla-clasificacion-modern"></tbody>
+                                            <tbody id="tabla-clasificacion-riftbound"></tbody>
                                         </table>
                                     </div>
                                 </div>
 
                                 <!-- Top Cut -->
-                                <div class="tab-pane fade" id="topcut-section-modern" role="tabpanel">
+                                <div class="tab-pane fade" id="topcut-section-riftbound" role="tabpanel">
                                     <div class="d-flex justify-content-end gap-2 mb-3">
-                                        <button class="btn btn-sm btn-outline-danger torneo-controls" id="btn-deshacer-topcut-modern" style="display: none;" title="Deshace la última ronda del top cut, o el top cut completo si no hay resultados">
+                                        <button class="btn btn-sm btn-outline-danger torneo-controls" id="btn-deshacer-topcut-riftbound" style="display: none;" title="Deshace la última ronda del top cut, o el top cut completo si no hay resultados">
                                             <i class="fa-solid fa-rotate-left me-1"></i> Deshacer Top Cut
                                         </button>
                                     </div>
@@ -250,20 +250,20 @@
                     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
                         <div class="flex-grow-1">
                             <div class="w-100">
-                                <label for="select-liga-modern" class="form-label fw-bold">Seleccionar Liga</label>
-                                <select id="select-liga-modern" class="form-select">
+                                <label for="select-liga-riftbound" class="form-label fw-bold">Seleccionar Liga</label>
+                                <select id="select-liga-riftbound" class="form-select">
                                     <option value="" disabled selected>Cargando ligas...</option>
                                 </select>
                             </div>
                         </div>
                         <div class="d-flex gap-2 flex-wrap">
-                            <button class="btn btn-outline-danger torneo-controls mt-lg-0" id="btn-eliminar-liga-modern" style="display: none;" disabled>
+                            <button class="btn btn-outline-danger torneo-controls mt-lg-0" id="btn-eliminar-liga-riftbound" style="display: none;" disabled>
                                 <i class="fa-solid fa-trash me-2"></i>Eliminar Liga
                             </button>
-                            <button id="btn-fusionar-puntos-modern" class="btn btn-info btn-sm" title="Fusionar puntos de invitado a usuario">
+                            <button id="btn-fusionar-puntos-riftbound" class="btn btn-info btn-sm" title="Fusionar puntos de invitado a usuario">
                                 <i class="fas fa-user-plus"></i> Fusionar Puntos
                             </button>
-                            <button class="btn btn-premium torneo-controls mt-lg-0" id="btn-crear-liga-modern" style="display: none;">
+                            <button class="btn btn-premium torneo-controls mt-lg-0" id="btn-crear-liga-riftbound" style="display: none;">
                                 <i class="fa-solid fa-plus me-2"></i>Crear Liga
                             </button>
                         </div>
@@ -280,7 +280,7 @@
                                     <th scope="col" style="width: 20%;" class="text-center">Puntos Totales</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabla-clasificacion-liga-modern">
+                            <tbody id="tabla-clasificacion-liga-riftbound">
                                 <tr>
                                     <td colspan="4" class="text-center text-muted py-4">Selecciona una liga para ver su clasificación</td>
                                 </tr>
@@ -293,53 +293,53 @@
     </main>
 
     <!-- MODAL: Torneo -->
-    <div class="modal fade" id="modal-torneo-modern" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modal-torneo-riftbound" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modal-torneo-modern-title">Crear Nuevo Torneo</h5>
+                    <h5 class="modal-title" id="modal-torneo-riftbound-title">Crear Nuevo Torneo</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form id="form-torneo-modern">
+                <form id="form-torneo-riftbound">
                     <div class="modal-body">
-                        <input type="hidden" id="torneo-modern-id">
+                        <input type="hidden" id="torneo-riftbound-id">
                         <div class="mb-3">
-                            <label for="torneo-modern-nombre" class="form-label">Nombre del Torneo</label>
-                            <input type="text" class="form-control" id="torneo-modern-nombre" required placeholder="Ej: Jornada 1: Modern Semanal">
+                            <label for="torneo-riftbound-nombre" class="form-label">Nombre del Torneo</label>
+                            <input type="text" class="form-control" id="torneo-riftbound-nombre" required placeholder="Ej: Jornada 1: Modern Semanal">
                         </div>
                         <div class="mb-3">
-                            <label for="torneo-modern-fecha" class="form-label">Fecha y Hora</label>
-                            <input type="datetime-local" class="form-control" id="torneo-modern-fecha" required>
+                            <label for="torneo-riftbound-fecha" class="form-label">Fecha y Hora</label>
+                            <input type="datetime-local" class="form-control" id="torneo-riftbound-fecha" required>
                         </div>
                         <hr>
                         <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="torneo-modern-es-liga">
-                            <label class="form-check-label fw-bold" for="torneo-modern-es-liga">¿Este torneo pertenece a una liga?</label>
+                            <input class="form-check-input" type="checkbox" id="torneo-riftbound-es-liga">
+                            <label class="form-check-label fw-bold" for="torneo-riftbound-es-liga">¿Este torneo pertenece a una liga?</label>
                         </div>
-                        <div id="liga-bloque-modern" style="display: none;">
+                        <div id="liga-bloque-riftbound" style="display: none;">
                             <div class="mb-3">
-                                <label for="select-torneo-liga-modern" class="form-label">Seleccionar Liga *</label>
-                                <select id="select-torneo-liga-modern" class="form-select"></select>
+                                <label for="select-torneo-liga-riftbound" class="form-label">Seleccionar Liga *</label>
+                                <select id="select-torneo-liga-riftbound" class="form-select"></select>
                             </div>
                         </div>
-                        <div id="independiente-bloque-modern">
+                        <div id="independiente-bloque-riftbound">
                             <div class="mb-3">
-                                <label for="select-torneo-evento-modern" class="form-label">Asociar a Evento General (Opcional)</label>
-                                <select id="select-torneo-evento-modern" class="form-select">
+                                <label for="select-torneo-evento-riftbound" class="form-label">Asociar a Evento General (Opcional)</label>
+                                <select id="select-torneo-evento-riftbound" class="form-select">
                                     <option value="">Ninguno</option>
                                 </select>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="select-torneo-subevento-modern" class="form-label">Asociar a Actividad / Subevento (Opcional)</label>
-                            <select id="select-torneo-subevento-modern" class="form-select" disabled>
+                            <label for="select-torneo-subevento-riftbound" class="form-label">Asociar a Actividad / Subevento (Opcional)</label>
+                            <select id="select-torneo-subevento-riftbound" class="form-select" disabled>
                                 <option value="">Selecciona un evento o liga primero</option>
                             </select>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="btn-guardar-torneo-modern">Guardar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-guardar-torneo-riftbound">Guardar</button>
                     </div>
                 </form>
             </div>
@@ -347,22 +347,22 @@
     </div>
 
     <!-- MODAL: Liga -->
-    <div class="modal fade" id="modal-liga-modern" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modal-liga-riftbound" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Crear Nueva Liga</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form id="form-liga-modern">
+                <form id="form-liga-riftbound">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="liga-modern-nombre" class="form-label">Nombre de la Liga</label>
-                            <input type="text" class="form-control" id="liga-modern-nombre" required placeholder="Ej: Liga de Modern Invierno 2026">
+                            <label for="liga-riftbound-nombre" class="form-label">Nombre de la Liga</label>
+                            <input type="text" class="form-control" id="liga-riftbound-nombre" required placeholder="Ej: Liga de Modern Invierno 2026">
                         </div>
                         <div class="mb-3">
-                            <label for="liga-modern-evento" class="form-label">Asociar a Evento Obligatorio *</label>
-                            <select id="liga-modern-evento" class="form-select" required></select>
+                            <label for="liga-riftbound-evento" class="form-label">Asociar a Evento Obligatorio *</label>
+                            <select id="liga-riftbound-evento" class="form-select" required></select>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -375,7 +375,7 @@
     </div>
 
     <!-- MODAL: Gestionar Jugadores -->
-    <div class="modal fade" id="modal-jugadores-modern" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modal-jugadores-riftbound" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
@@ -386,40 +386,40 @@
                     <div class="row">
                         <div class="col-md-6 border-end">
                             <h6 class="fw-bold mb-3">Agregar Jugador Registrado</h6>
-                            <button class="btn btn-outline-primary w-100 mb-3" id="btn-importar-inscritos-modern" type="button">
+                            <button class="btn btn-outline-primary w-100 mb-3" id="btn-importar-inscritos-riftbound" type="button">
                                 <i class="fa-solid fa-download me-2"></i>Traer inscritos de la actividad
                             </button>
                             <div class="mb-3">
                                 <div class="input-group">
-                                    <input type="text" id="input-buscar-usuario-modern" class="form-control" placeholder="Buscar socio..." autocomplete="off" list="datalist-usuarios-modern">
-                                    <datalist id="datalist-usuarios-modern"></datalist>
-                                    <button class="btn btn-primary" id="btn-agregar-usuario-modern">Añadir</button>
+                                    <input type="text" id="input-buscar-usuario-riftbound" class="form-control" placeholder="Buscar socio..." autocomplete="off" list="datalist-usuarios-riftbound">
+                                    <datalist id="datalist-usuarios-riftbound"></datalist>
+                                    <button class="btn btn-primary" id="btn-agregar-usuario-riftbound">Añadir</button>
                                 </div>
                                 <small class="text-muted">Escribe el nombre del socio y selecciónalo de la lista.</small>
                             </div>
                             <hr>
                             <h6 class="fw-bold mb-3">Agregar Jugador Invitado</h6>
                             <div class="mb-3">
-                                <input type="text" class="form-control mb-2" id="input-nombre-invitado-modern" placeholder="Nombre completo">
+                                <input type="text" class="form-control mb-2" id="input-nombre-invitado-riftbound" placeholder="Nombre completo">
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="input-codigo-invitado-modern" placeholder="Código Liga (opcional)" maxlength="6" style="text-transform: uppercase;">
-                                    <button class="btn btn-outline-secondary" type="button" id="btn-generar-codigo-modern" title="Generar código nuevo"><i class="fa-solid fa-dice"></i></button>
-                                    <button class="btn btn-success" id="btn-agregar-invitado-modern">Añadir</button>
+                                    <input type="text" class="form-control" id="input-codigo-invitado-riftbound" placeholder="Código Liga (opcional)" maxlength="6" style="text-transform: uppercase;">
+                                    <button class="btn btn-outline-secondary" type="button" id="btn-generar-codigo-riftbound" title="Generar código nuevo"><i class="fa-solid fa-dice"></i></button>
+                                    <button class="btn btn-success" id="btn-agregar-invitado-riftbound">Añadir</button>
                                 </div>
                                 <small class="text-muted">Si el invitado ya ha jugado, usa su código para recuperar sus puntos.</small>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <h6 class="fw-bold mb-3">Jugadores en el Torneo (<span id="count-jugadores-modern">0</span>)</h6>
-                            <input type="text" id="filter-jugadores-actuales-modern" class="form-control form-control-sm mb-2" placeholder="Buscar en lista actual...">
-                            <ul class="list-group" id="lista-jugadores-modern" style="max-height: 300px; overflow-y: auto;"></ul>
+                            <h6 class="fw-bold mb-3">Jugadores en el Torneo (<span id="count-jugadores-riftbound">0</span>)</h6>
+                            <input type="text" id="filter-jugadores-actuales-riftbound" class="form-control form-control-sm mb-2" placeholder="Buscar en lista actual...">
+                            <ul class="list-group" id="lista-jugadores-riftbound" style="max-height: 300px; overflow-y: auto;"></ul>
                         </div>
                     </div>
                     <hr class="mt-3">
                     <div class="row">
                         <div class="col-12">
                             <h6 class="fw-bold mb-2">Jugadores de Jornadas Anteriores</h6>
-                            <input type="text" id="filter-jugadores-previos-modern" class="form-control form-control-sm mb-2" placeholder="Buscar jugador...">
+                            <input type="text" id="filter-jugadores-previos-riftbound" class="form-control form-control-sm mb-2" placeholder="Buscar jugador...">
                             <div style="max-height: 250px; overflow-y: auto;">
                                 <table class="table table-sm table-hover mb-0">
                                     <thead>
@@ -430,30 +430,30 @@
                                             <th></th>
                                         </tr>
                                     </thead>
-                                    <tbody id="lista-jugadores-previos-modern"></tbody>
+                                    <tbody id="lista-jugadores-previos-riftbound"></tbody>
                                 </table>
                             </div>
-                            <nav id="pagination-jugadores-previos-modern" class="mt-2"></nav>
+                            <nav id="pagination-jugadores-previos-riftbound" class="mt-2"></nav>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="btn-confirmar-jugadores-modern">Confirmar y Cerrar</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="btn-confirmar-jugadores-riftbound">Confirmar y Cerrar</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- MODAL: Resultados de Mesa (Bo3) -->
-    <div class="modal fade" id="modal-resultados-modern" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modal-resultados-riftbound" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Resultados - Mesa <span id="modal-res-modern-mesa">1</span></h5>
+                    <h5 class="modal-title">Resultados - Mesa <span id="modal-res-riftbound-mesa">1</span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form id="form-resultados-modern">
-                    <div class="modal-body" id="modal-resultados-modern-body"></div>
+                <form id="form-resultados-riftbound">
+                    <div class="modal-body" id="modal-resultados-riftbound-body"></div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="submit" class="btn btn-primary">Guardar</button>
@@ -464,7 +464,7 @@
     </div>
 
     <!-- MODAL: Fusionar Puntos -->
-    <div class="modal fade" id="modal-fusion-modern" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modal-fusion-riftbound" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
@@ -474,15 +474,15 @@
                 <div class="modal-body">
                     <p class="text-muted">Selecciona un código de liga de invitado y un usuario registrado para transferir los puntos acumulados por el invitado a la cuenta del usuario.</p>
                     <div class="mb-3">
-                        <label for="select-invitado-fusion-modern" class="form-label">Código de Liga de Invitado</label>
-                        <select class="form-select" id="select-invitado-fusion-modern" required>
+                        <label for="select-invitado-fusion-riftbound" class="form-label">Código de Liga de Invitado</label>
+                        <select class="form-select" id="select-invitado-fusion-riftbound" required>
                             <option value="">-- Selecciona un código de invitado --</option>
                         </select>
                         <div class="form-text">Solo se muestran códigos de invitado de la liga activa.</div>
                     </div>
                     <div class="mb-3">
-                        <label for="select-usuario-fusion-modern" class="form-label">Usuario Registrado</label>
-                        <select class="form-select" id="select-usuario-fusion-modern" required>
+                        <label for="select-usuario-fusion-riftbound" class="form-label">Usuario Registrado</label>
+                        <select class="form-select" id="select-usuario-fusion-riftbound" required>
                             <option value="">-- Selecciona un usuario --</option>
                         </select>
                         <div class="form-text">Los puntos del invitado se añadirán a este usuario.</div>
@@ -490,24 +490,24 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-primary" id="btn-confirmar-fusion-modern">Fusionar Puntos</button>
+                    <button class="btn btn-primary" id="btn-confirmar-fusion-riftbound">Fusionar Puntos</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- MODAL: Confirmación -->
-    <div class="modal fade" id="modal-confirmacion-modern" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="modal-confirmacion-riftbound" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="modal-title">Confirmar Acción</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" id="confirmacion-modern-texto"></div>
+                <div class="modal-body" id="confirmacion-riftbound-texto"></div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-danger btn-sm" id="btn-confirmar-accion-modern">Aceptar</button>
+                    <button class="btn btn-danger btn-sm" id="btn-confirmar-accion-riftbound">Aceptar</button>
                 </div>
             </div>
         </div>
@@ -527,7 +527,7 @@
     <script src="/js/utils.js"></script>
     <script src="/controllers/authController.js"></script>
     <script src="/controllers/navigation.js"></script>
-    <script src="/controllers/modernController.js"></script>
+    <script src="/controllers/riftboundController.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
@@ -547,8 +547,8 @@
                                     el.style.display = 'inline-block';
                                 });
                             }
-                            if (window.initializeModernController) {
-                                window.initializeModernController(canManageTorneos);
+                            if (window.initializeRiftboundController) {
+                                window.initializeRiftboundController(canManageTorneos);
                             }
                         } else {
                             restrictedContent.innerHTML = `

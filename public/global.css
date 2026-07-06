@@ -488,7 +488,8 @@ footer, .bg-dark {
 
     [data-theme="dark"] .match-card,
     [data-theme="dark"] .bracket-match {
-      background: var(--bg-card-alt) !important;
+        background: var(--bg-card-alt) !important;
+        border-left-color: var(--accent-color);
     }
 
     [data-theme="dark"] .btn-premium {

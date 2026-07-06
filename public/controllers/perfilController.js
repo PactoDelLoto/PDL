@@ -120,11 +120,24 @@ document.addEventListener('DOMContentLoaded', () => {
         paginationNav.classList.add('d-none');
 
         try {
-            const snapshot = await db.collectionGroup('inscripciones')
+            const snapshotByUser = await db.collectionGroup('inscripciones')
                 .where('userId', '==', user.uid)
                 .get();
 
-            const activities = await Promise.all(snapshot.docs.map(async doc => {
+            // También buscar por correo para incluir inscripciones hechas
+            // antes de fusionar un perfil de invitado con el usuario registrado
+            const snapshotByEmail = await db.collectionGroup('inscripciones')
+                .where('correo', '==', user.email)
+                .get();
+
+            // Fusionar y deduplicar por referencia del documento
+            const seenRefs = new Set();
+            const allDocs = [...snapshotByUser.docs, ...snapshotByEmail.docs];
+
+            const activities = await Promise.all(allDocs.map(async doc => {
+                if (seenRefs.has(doc.ref.path)) return null;
+                seenRefs.add(doc.ref.path);
+
                 const registration = doc.data();
                 const subeventRef = doc.ref.parent.parent;
                 if (!subeventRef) return null;

@@ -63,18 +63,54 @@
                             <span class="badge bg-secondary" id="registration-user-status">Sin reserva</span>
                         </div>
 
-                        <div class="alert alert-info py-2" id="registration-login-box" style="display:none;">
-                            Si ya tienes cuenta, puedes reservar en un click.
-                            <div class="mt-2 d-flex gap-2 flex-wrap">
-                                <a href="/login.html" class="btn btn-sm btn-outline-primary">Iniciar sesión</a>
-                                <a href="/registro.html" class="btn btn-sm btn-outline-secondary">Registrarse</a>
-                            </div>
+                        <!-- Selector de modo de registro -->
+                        <div class="btn-group w-100 mb-3" role="group">
+                            <input type="radio" class="btn-check" name="reg-mode" id="reg-mode-guest" autocomplete="off" checked>
+                            <label class="btn btn-outline-primary" for="reg-mode-guest">
+                                <i class="fas fa-user me-1"></i>Como invitado
+                            </label>
+                            <input type="radio" class="btn-check" name="reg-mode" id="reg-mode-user" autocomplete="off">
+                            <label class="btn btn-outline-primary" for="reg-mode-user">
+                                <i class="fas fa-id-card me-1"></i>Con mi cuenta
+                            </label>
                         </div>
 
-                        <button class="btn btn-success w-100 mb-3" id="quick-register-btn" style="display:none;"
-                            disabled>
-                            <i class="fas fa-bolt me-2"></i>Reservar con mis datos
-                        </button>
+                        <!-- Contenido modo usuario -->
+                        <div id="reg-user-content">
+                            <div class="alert alert-info py-2" id="registration-login-box" style="display:none;">
+                                Si ya tienes cuenta, puedes reservar en un click.
+                                <div class="mt-2 d-flex gap-2 flex-wrap">
+                                    <a href="/login.html" class="btn btn-sm btn-outline-primary">Iniciar sesión</a>
+                                    <a href="/registro.html" class="btn btn-sm btn-outline-secondary">Registrarse</a>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-success w-100 mb-3" id="quick-register-btn" style="display:none;"
+                                disabled>
+                                <i class="fas fa-bolt me-2"></i>Reservar con mis datos
+                            </button>
+                        </div>
+
+                        <!-- Contenido modo invitado -->
+                        <div id="reg-guest-content">
+                            <form id="registration-form">
+                                <div class="mb-3">
+                                    <label for="registration-fullname" class="form-label">Nombre completo</label>
+                                    <input type="text" class="form-control" id="registration-fullname" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="registration-email" class="form-label">Correo</label>
+                                    <input type="email" class="form-control" id="registration-email" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="registration-phone" class="form-label">Teléfono</label>
+                                    <input type="tel" class="form-control" id="registration-phone" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100" id="manual-register-btn" disabled>
+                                    Reservar plaza
+                                </button>
+                            </form>
+                        </div>
 
                         <div class="form-check mb-3" id="terms-container">
                             <input class="form-check-input" type="checkbox" id="registration-terms" required>
@@ -82,24 +118,6 @@
                                 He leído las bases anexas al formulario y estoy conforme
                             </label>
                         </div>
-
-                        <form id="registration-form">
-                            <div class="mb-3">
-                                <label for="registration-fullname" class="form-label">Nombre completo</label>
-                                <input type="text" class="form-control" id="registration-fullname" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="registration-email" class="form-label">Correo</label>
-                                <input type="email" class="form-control" id="registration-email" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="registration-phone" class="form-label">Teléfono</label>
-                                <input type="tel" class="form-control" id="registration-phone" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100" id="manual-register-btn" disabled>
-                                Reservar plaza
-                            </button>
-                        </form>
                     </div>
                 </div>
             </div>

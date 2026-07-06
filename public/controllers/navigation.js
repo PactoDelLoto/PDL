@@ -69,7 +69,7 @@ async function populateNavbarLinks(isLoggedIn) {
                     { text: 'MTG Commander', href: '/mtg-commander.html', locked: false },
                     { text: 'MTG Modern', href: '/mtg-modern.html', locked: false },
                     { text: 'Star Wars Unlimited', href: '/starwars-unlimited.html', locked: true },
-                    { text: 'Riftbound', href: '/riftbound.html', locked: true }
+                    { text: 'Riftbound', href: '/mtg-riftbound.html', locked: false }
                 ]
             });
             adminItems.push({ text: 'Inventario', href: '/inventario.html' });

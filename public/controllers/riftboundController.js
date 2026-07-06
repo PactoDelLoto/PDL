@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    window.initializeModernController = function (canManage) {
+    window.initializeRiftboundController = function (canManage) {
         const db = firebase.firestore();
         const auth = firebase.auth();
 
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const PREVIOS_PER_PAGE = 10;
         let selectedTournament = null;
 
-        const JUEGO = 'mtg-modern';
+        const JUEGO = 'riftbound';
         const PT_WIN = 3;
         const PT_DRAW = 1;
         const PT_LOSS = 0;
@@ -75,9 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- TOURNAMENT LIST ---
         function renderTournamentsList(filterLigaId) {
-            const container = $id('lista-torneos-modern');
+            const container = $id('lista-torneos-riftbound');
             if (!container) return;
-            const showFinalized = $id('filter-show-finalized-modern')?.checked || false;
+            const showFinalized = $id('filter-show-finalized-riftbound')?.checked || false;
 
             let filtered = [...torneosCache];
             if (filterLigaId) filtered = filtered.filter(t => t.ligaId === filterLigaId);
@@ -109,21 +109,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (canManage) {
                     if (t.estado === 'borrador') {
                         buttons += `
-                            <button class="btn btn-sm btn-outline-primary btn-add-players-torneo-modern" data-id="${t.id}"><i class="fa-solid fa-users-gear"></i> Jugadores</button>
-                            <button class="btn btn-sm btn-success btn-iniciar-modern" data-id="${t.id}"><i class="fa-solid fa-play"></i> Iniciar</button>
-                            <button class="btn btn-sm btn-outline-secondary btn-editar-torneo-modern" data-id="${t.id}"><i class="fa-solid fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-primary btn-add-players-torneo-riftbound" data-id="${t.id}"><i class="fa-solid fa-users-gear"></i> Jugadores</button>
+                            <button class="btn btn-sm btn-success btn-iniciar-riftbound" data-id="${t.id}"><i class="fa-solid fa-play"></i> Iniciar</button>
+                            <button class="btn btn-sm btn-outline-secondary btn-editar-torneo-riftbound" data-id="${t.id}"><i class="fa-solid fa-edit"></i></button>
                         `;
                     } else if (t.estado === 'en_curso') {
-                        buttons += `<button class="btn btn-sm btn-primary btn-gestionar-modern" data-id="${t.id}"><i class="fa-solid fa-gears"></i> Gestionar</button>`;
+                        buttons += `<button class="btn btn-sm btn-primary btn-gestionar-riftbound" data-id="${t.id}"><i class="fa-solid fa-gears"></i> Gestionar</button>`;
                     } else {
-                        buttons += `<button class="btn btn-sm btn-outline-info btn-ver-detalles-torneo-modern" data-id="${t.id}"><i class="fa-solid fa-eye"></i> Resultados</button>`;
+                        buttons += `<button class="btn btn-sm btn-outline-info btn-ver-detalles-torneo-riftbound" data-id="${t.id}"><i class="fa-solid fa-eye"></i> Resultados</button>`;
                     }
-                    buttons += `<button class="btn btn-sm btn-outline-danger btn-eliminar-torneo-modern" data-id="${t.id}"><i class="fa-solid fa-trash"></i></button>`;
+                    buttons += `<button class="btn btn-sm btn-outline-danger btn-eliminar-torneo-riftbound" data-id="${t.id}"><i class="fa-solid fa-trash"></i></button>`;
                 } else {
                     if (t.estado === 'en_curso') {
-                        buttons += `<button class="btn btn-sm btn-primary btn-gestionar-modern" data-id="${t.id}"><i class="fa-solid fa-eye"></i> Ver Rondas</button>`;
+                        buttons += `<button class="btn btn-sm btn-primary btn-gestionar-riftbound" data-id="${t.id}"><i class="fa-solid fa-eye"></i> Ver Rondas</button>`;
                     } else if (t.estado === 'finalizado') {
-                        buttons += `<button class="btn btn-sm btn-outline-info btn-ver-detalles-torneo-modern" data-id="${t.id}"><i class="fa-solid fa-eye"></i> Clasificación</button>`;
+                        buttons += `<button class="btn btn-sm btn-outline-info btn-ver-detalles-torneo-riftbound" data-id="${t.id}"><i class="fa-solid fa-eye"></i> Clasificación</button>`;
                     } else {
                         buttons += `<span class="text-muted small">No disponible</span>`;
                     }
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function renderStandings(torneo) {
-            const tbody = $id('tabla-clasificacion-modern');
+            const tbody = $id('tabla-clasificacion-riftbound');
             if (!tbody) return;
             const list = calculateStandings(torneo);
             if (list.length === 0) {
@@ -436,15 +436,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!torneo) return;
             selectedTournament = torneo;
 
-            $id('lista-torneos-modern-container').style.display = 'none';
-            $id('gestion-torneo-modern-container').style.display = 'block';
-            $id('gt-modern-nombre').textContent = torneo.nombre || '';
+            $id('lista-torneos-riftbound-container').style.display = 'none';
+            $id('gestion-torneo-riftbound-container').style.display = 'block';
+            $id('gt-riftbound-nombre').textContent = torneo.nombre || '';
             const fechaStr = torneo.fecha ? new Date(torneo.fecha + 'T' + (torneo.hora || '00:00')).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
             const eventoTxt = torneo.eventoId ? (eventosCache.find(e => e.id === torneo.eventoId)?.titulo || '') : '';
             const ligaTxt = torneo.ligaId ? (ligasCache.find(l => l.id === torneo.ligaId)?.nombre || '') : '';
             const asociacionTxt = [eventoTxt, ligaTxt].filter(Boolean).join(' — ');
-            $id('gt-modern-detalles').textContent = `${fechaStr}${asociacionTxt ? ' | ' + asociacionTxt : ''} | Formato: Modern`;
-            const badge = $id('gt-modern-status');
+            $id('gt-riftbound-detalles').textContent = `${fechaStr}${asociacionTxt ? ' | ' + asociacionTxt : ''} | Formato: Riftbound`;
+            const badge = $id('gt-riftbound-status');
             if (torneo.estado === 'borrador') { badge.className = 'badge badge-draft'; badge.textContent = 'Borrador'; }
             else if (torneo.estado === 'en_curso') { badge.className = 'badge badge-progress'; badge.textContent = 'En curso'; }
             else { badge.className = 'badge badge-finished'; badge.textContent = 'Finalizado'; }
@@ -453,13 +453,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const isBorrador = torneo.estado === 'borrador';
             const hasRondas = (torneo.rondas || []).length > 0;
             const hasTopCut = !!torneo.topCut && !torneo.ligaId;
-            const btnIniciar = $id('btn-iniciar-torneo-modern-gestion');
+            const btnIniciar = $id('btn-iniciar-torneo-riftbound-gestion');
             if (btnIniciar) btnIniciar.style.display = canManage && isBorrador ? 'inline-block' : 'none';
             // Bloquear rondas suizas si el top cut está activo
-            $id('btn-generar-ronda-modern').style.display = canManage && !isFinalized && !isBorrador && !hasTopCut ? 'inline-block' : 'none';
-            $id('btn-deshacer-ronda-modern').style.display = canManage && !isFinalized && hasRondas && !hasTopCut ? 'inline-block' : 'none';
-            $id('btn-finalizar-torneo-modern').style.display = canManage && !isFinalized && hasRondas ? 'inline-block' : 'none';
-            $id('btn-deshacer-topcut-modern').style.display = canManage && !isFinalized && hasTopCut ? 'inline-block' : 'none';
+            $id('btn-generar-ronda-riftbound').style.display = canManage && !isFinalized && !isBorrador && !hasTopCut ? 'inline-block' : 'none';
+            $id('btn-deshacer-ronda-riftbound').style.display = canManage && !isFinalized && hasRondas && !hasTopCut ? 'inline-block' : 'none';
+            $id('btn-finalizar-torneo-riftbound').style.display = canManage && !isFinalized && hasRondas ? 'inline-block' : 'none';
+            $id('btn-deshacer-topcut-riftbound').style.display = canManage && !isFinalized && hasTopCut ? 'inline-block' : 'none';
 
             renderJugadoresList(torneo);
             renderRondas(torneo);
@@ -468,10 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function renderJugadoresList(torneo) {
-            const ul = $id('gt-modern-jugadores');
+            const ul = $id('gt-riftbound-jugadores');
             if (!ul) return;
             const jugs = torneo.jugadores || [];
-            $id('gt-modern-count').textContent = jugs.length;
+            $id('gt-riftbound-count').textContent = jugs.length;
             if (jugs.length === 0) { ul.innerHTML = '<li class="list-group-item text-muted">Sin jugadores</li>'; return; }
             ul.innerHTML = jugs.map(j => `
                 <li class="list-group-item d-flex justify-content-between">
@@ -516,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <strong>${escapeHtml(p1?.nombre || m.jugadores[0])}</strong>
                                 vs <strong>${escapeHtml(p2?.nombre || m.jugadores[1])}</strong>${tieneResultado ? ` <span class="badge bg-primary">${win1} - ${win2}</span>` : ''}
                             </div>
-                            ${canManage && !resultadosBloqueados ? `<button class="btn btn-sm btn-outline-primary btn-resultados-modern" data-ronda="${r.numero}" data-mesa="${m.numero}"><i class="fa-solid fa-table-tennis"></i></button>` : ''}
+                            ${canManage && !resultadosBloqueados ? `<button class="btn btn-sm btn-outline-primary btn-resultados-riftbound" data-ronda="${r.numero}" data-mesa="${m.numero}"><i class="fa-solid fa-table-tennis"></i></button>` : ''}
                         </div>`;
                     }).join('')}
                 </div>
@@ -555,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${canManage ? `
                             <div class="d-flex justify-content-center gap-2 align-items-center flex-wrap">
                                 <select id="select-topcut-size" class="form-select form-select-sm" style="width:auto;">${optsHtml}</select>
-                                <button class="btn btn-sm btn-outline-primary" id="btn-generar-topcut-modern">Generar Top Cut</button>
+                                <button class="btn btn-sm btn-outline-primary" id="btn-generar-topcut-riftbound">Generar Top Cut</button>
                             </div>` : ''}
                     </div>`;
                 } else {
@@ -594,13 +594,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 return `<div class="bracket-match ${done ? 'border-success' : ''}">
                                     <div class="d-flex justify-content-between">${escapeHtml(p1?.nombre || '?')} ${done ? (m.ganador === m.jugadores?.[0] ? '✅' : '') : `<small class="text-muted">${g1}</small>`}</div>
                                     <div class="d-flex justify-content-between">${escapeHtml(p2?.nombre || '?')} ${done ? (m.ganador === m.jugadores?.[1] ? '✅' : '') : `<small class="text-muted">${g2}</small>`}</div>
-                                    ${canManage && !done && torneo.estado !== 'finalizado' ? `<button class="btn btn-sm btn-outline-primary mt-1 btn-resultados-topcut-modern" data-ronda="${bi}" data-mesa="${m.numero}"><i class="fa-solid fa-table-tennis"></i></button>` : ''}
+                                    ${canManage && !done && torneo.estado !== 'finalizado' ? `<button class="btn btn-sm btn-outline-primary mt-1 btn-resultados-topcut-riftbound" data-ronda="${bi}" data-mesa="${m.numero}"><i class="fa-solid fa-table-tennis"></i></button>` : ''}
                                 </div>`;
                             }).join('')}
                         </div>
                     `).join('')}
                 </div>
-                ${canShowAvanzar ? `<div class="text-center mt-3"><button class="btn btn-primary" id="btn-avanzar-topcut-modern"><i class="fa-solid fa-forward"></i> Avanzar a siguiente ronda</button></div>` : ''}`;
+                ${canShowAvanzar ? `<div class="text-center mt-3"><button class="btn btn-primary" id="btn-avanzar-topcut-riftbound"><i class="fa-solid fa-forward"></i> Avanzar a siguiente ronda</button></div>` : ''}`;
         }
 
         // --- MESA RESULTS MODAL (Bo3) ---
@@ -619,8 +619,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!mesa || mesa.bye) return;
 
-            $id('modal-res-modern-mesa').textContent = `${rondaNum}.${mesaNum}`;
-            const body = $id('modal-resultados-modern-body');
+            $id('modal-res-riftbound-mesa').textContent = `${rondaNum}.${mesaNum}`;
+            const body = $id('modal-resultados-riftbound-body');
             const [id1, id2] = mesa.jugadores;
             const p1 = torneo.jugadores?.find(j => j.id === id1);
             const p2 = torneo.jugadores?.find(j => j.id === id2);
@@ -645,25 +645,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const n2 = escapeHtml(p2?.nombre || id2);
 
             body.innerHTML = `
-                <input type="hidden" id="res-modern-ronda" value="${rondaNum}">
-                <input type="hidden" id="res-modern-mesa" value="${mesaNum}">
-                <input type="hidden" id="res-modern-topcut" value="${isTopCut ? '1' : '0'}">
+                <input type="hidden" id="res-riftbound-ronda" value="${rondaNum}">
+                <input type="hidden" id="res-riftbound-mesa" value="${mesaNum}">
+                <input type="hidden" id="res-riftbound-topcut" value="${isTopCut ? '1' : '0'}">
 
                 <div class="text-center mb-3">
                     <label class="fw-bold d-block mb-2">${n1}</label>
                     <div class="btn-group" role="group">
-                        <input type="radio" class="btn-check" name="res-modern-result" id="res-p1_2-0" value="p1_w2" autocomplete="off" ${prevResult === 'p1_w2' ? 'checked' : ''}>
+                        <input type="radio" class="btn-check" name="res-riftbound-result" id="res-p1_2-0" value="p1_w2" autocomplete="off" ${prevResult === 'p1_w2' ? 'checked' : ''}>
                         <label class="btn btn-outline-success btn-sm" for="res-p1_2-0" title="Gana 2-0">2-0</label>
-                        <input type="radio" class="btn-check" name="res-modern-result" id="res-p1_2-1" value="p1_w21" autocomplete="off" ${prevResult === 'p1_w21' ? 'checked' : ''}>
+                        <input type="radio" class="btn-check" name="res-riftbound-result" id="res-p1_2-1" value="p1_w21" autocomplete="off" ${prevResult === 'p1_w21' ? 'checked' : ''}>
                         <label class="btn btn-outline-success btn-sm" for="res-p1_2-1" title="Gana 2-1">2-1</label>
-                        <input type="radio" class="btn-check" name="res-modern-result" id="res-p1_1-0" value="p1_w1" autocomplete="off" ${prevResult === 'p1_w1' ? 'checked' : ''}>
+                        <input type="radio" class="btn-check" name="res-riftbound-result" id="res-p1_1-0" value="p1_w1" autocomplete="off" ${prevResult === 'p1_w1' ? 'checked' : ''}>
                         <label class="btn btn-outline-success btn-sm" for="res-p1_1-0" title="Gana 1-0 (tiempo)">1-0</label>
                     </div>
                 </div>
 
                 <div class="text-center mb-3">
                     <div class="btn-group" role="group">
-                        <input type="radio" class="btn-check" name="res-modern-result" id="res-draw" value="draw" autocomplete="off" ${prevResult === 'draw' ? 'checked' : ''}>
+                        <input type="radio" class="btn-check" name="res-riftbound-result" id="res-draw" value="draw" autocomplete="off" ${prevResult === 'draw' ? 'checked' : ''}>
                         <label class="btn btn-outline-warning btn-sm" for="res-draw" title="Empate 1-1">Empate 1-1</label>
                     </div>
                 </div>
@@ -671,18 +671,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="text-center mb-3">
                     <label class="fw-bold d-block mb-2">${n2}</label>
                     <div class="btn-group" role="group">
-                        <input type="radio" class="btn-check" name="res-modern-result" id="res-p2_1-0" value="p2_w1" autocomplete="off" ${prevResult === 'p2_w1' ? 'checked' : ''}>
+                        <input type="radio" class="btn-check" name="res-riftbound-result" id="res-p2_1-0" value="p2_w1" autocomplete="off" ${prevResult === 'p2_w1' ? 'checked' : ''}>
                         <label class="btn btn-outline-success btn-sm" for="res-p2_1-0" title="Gana 1-0 (tiempo)">1-0</label>
-                        <input type="radio" class="btn-check" name="res-modern-result" id="res-p2_2-1" value="p2_w21" autocomplete="off" ${prevResult === 'p2_w21' ? 'checked' : ''}>
+                        <input type="radio" class="btn-check" name="res-riftbound-result" id="res-p2_2-1" value="p2_w21" autocomplete="off" ${prevResult === 'p2_w21' ? 'checked' : ''}>
                         <label class="btn btn-outline-success btn-sm" for="res-p2_2-1" title="Gana 2-1">2-1</label>
-                        <input type="radio" class="btn-check" name="res-modern-result" id="res-p2_2-0" value="p2_w2" autocomplete="off" ${prevResult === 'p2_w2' ? 'checked' : ''}>
+                        <input type="radio" class="btn-check" name="res-riftbound-result" id="res-p2_2-0" value="p2_w2" autocomplete="off" ${prevResult === 'p2_w2' ? 'checked' : ''}>
                         <label class="btn btn-outline-success btn-sm" for="res-p2_2-0" title="Gana 2-0">2-0</label>
                     </div>
                 </div>
 
                 <small class="text-muted d-block text-center">Ganar da 3 pts, empatar da 1 pt. Perder 2-1 es mejor desempate que 2-0.</small>
             `;
-            const modal = new bootstrap.Modal($id('modal-resultados-modern'));
+            const modal = new bootstrap.Modal($id('modal-resultados-riftbound'));
             modal.show();
         }
 
@@ -705,11 +705,11 @@ document.addEventListener('DOMContentLoaded', () => {
         async function handleResultadosSubmit(e) {
             e.preventDefault();
             if (!selectedTournament) return;
-            const rondaNum = parseInt($id('res-modern-ronda').value);
-            const mesaNum = parseInt($id('res-modern-mesa').value);
-            const isTopCut = $id('res-modern-topcut').value === '1';
+            const rondaNum = parseInt($id('res-riftbound-ronda').value);
+            const mesaNum = parseInt($id('res-riftbound-mesa').value);
+            const isTopCut = $id('res-riftbound-topcut').value === '1';
 
-            const selectedResult = document.querySelector('input[name="res-modern-result"]:checked')?.value;
+            const selectedResult = document.querySelector('input[name="res-riftbound-result"]:checked')?.value;
             if (!selectedResult) { showAlert('Selecciona un resultado.', 'warning'); return; }
 
             const parsed = parseResultadoModern(selectedResult);
@@ -752,7 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                bootstrap.Modal.getInstance($id('modal-resultados-modern'))?.hide();
+                bootstrap.Modal.getInstance($id('modal-resultados-riftbound'))?.hide();
                 await loadInitialData();
                 const updated = torneosCache.find(t => t.id === torneo.id);
                 if (updated) { selectedTournament = updated; openTournamentManagement(updated.id); }
@@ -771,34 +771,34 @@ document.addEventListener('DOMContentLoaded', () => {
             updateImportarInscritosButton();
             renderTempJugadoresList();
             loadJugadoresPrevios().catch(e => console.error(e));
-            const fActuales = document.getElementById('filter-jugadores-actuales-modern');
+            const fActuales = document.getElementById('filter-jugadores-actuales-riftbound');
             if (fActuales) fActuales.value = '';
-            const fPrevios = document.getElementById('filter-jugadores-previos-modern');
+            const fPrevios = document.getElementById('filter-jugadores-previos-riftbound');
             if (fPrevios) fPrevios.value = '';
-            const modal = new bootstrap.Modal($id('modal-jugadores-modern'));
+            const modal = new bootstrap.Modal($id('modal-jugadores-riftbound'));
             modal.show();
         }
 
         function renderTempJugadoresList() {
-            const ul = $id('lista-jugadores-modern');
+            const ul = $id('lista-jugadores-riftbound');
             if (!ul) return;
-            const filterInput = document.getElementById('filter-jugadores-actuales-modern');
+            const filterInput = document.getElementById('filter-jugadores-actuales-riftbound');
             const term = filterInput ? filterInput.value.trim().toLowerCase() : '';
             const filtered = term ? tempJugadores.filter(j => j.nombre.toLowerCase().includes(term)) : tempJugadores;
-            $id('count-jugadores-modern').textContent = tempJugadores.length;
+            $id('count-jugadores-riftbound').textContent = tempJugadores.length;
             ul.innerHTML = filtered.map((j, i) => {
                 const isGuest = j.id.startsWith('invitado_') || j.id.startsWith('temp_');
                 const codigoHtml = isGuest && j.leagueCode ? `<span class="badge bg-dark ms-2">Cod: ${j.leagueCode}</span>` : '';
                 return `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <span>${escapeHtml(j.nombre)} ${isGuest ? '<span class="badge bg-secondary">Invitado</span>' : '<span class="badge bg-primary">Registrado</span>'} ${codigoHtml}</span>
-                    <button class="btn btn-sm btn-outline-danger btn-quitar-jugador-modern" data-id="${j.id}"><i class="fa-solid fa-times"></i></button>
+                    <button class="btn btn-sm btn-outline-danger btn-quitar-jugador-riftbound" data-id="${j.id}"><i class="fa-solid fa-times"></i></button>
                 </li>`;
             }).join('');
         }
 
         function handleAgregarUsuario() {
-            const input = $id('input-buscar-usuario-modern');
+            const input = $id('input-buscar-usuario-riftbound');
             const val = input?.value.trim();
             if (!val) return;
             const user = usuariosCache.find(u => u.id === val || u.correo === val || `${u.nombre} ${u.apellidos || ''}`.trim().toLowerCase() === val.toLowerCase());
@@ -810,25 +810,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function handleAgregarInvitado() {
-            const nombre = $id('input-nombre-invitado-modern')?.value.trim();
+            const nombre = $id('input-nombre-invitado-riftbound')?.value.trim();
             if (!nombre) { showAlert('Introduce un nombre.', 'warning'); return; }
             const esLiga = selectedTournament && selectedTournament.ligaId;
             if (!esLiga) {
-                // Standalone tournament: no league code needed
                 const idTemp = `temp_${genId()}`;
                 if (tempJugadores.some(j => j.id === idTemp)) { showAlert('Ya existe.', 'warning'); return; }
                 tempJugadores.push({ id: idTemp, nombre });
-                $id('input-nombre-invitado-modern').value = '';
+                $id('input-nombre-invitado-riftbound').value = '';
                 renderTempJugadoresList();
                 return;
             }
-            let codigo = $id('input-codigo-invitado-modern')?.value.trim().toUpperCase();
+            let codigo = $id('input-codigo-invitado-riftbound')?.value.trim().toUpperCase();
             if (!codigo) codigo = generateLeagueCode();
             const id = `invitado_${codigo}`;
             if (tempJugadores.some(j => j.id === id)) { showAlert('Ya existe.', 'warning'); return; }
             tempJugadores.push({ id, nombre, leagueCode: codigo });
-            $id('input-nombre-invitado-modern').value = '';
-            $id('input-codigo-invitado-modern').value = '';
+            $id('input-nombre-invitado-riftbound').value = '';
+            $id('input-codigo-invitado-riftbound').value = '';
             renderTempJugadoresList();
         }
 
@@ -838,7 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function updateImportarInscritosButton() {
-            const btn = document.getElementById('btn-importar-inscritos-modern');
+            const btn = document.getElementById('btn-importar-inscritos-riftbound');
             if (btn) {
                 btn.style.display = selectedTournament && selectedTournament.subeventoId ? 'block' : 'none';
             }
@@ -903,9 +902,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function renderJugadoresPrevios() {
-            const tbody = document.getElementById('lista-jugadores-previos-modern');
-            const paginationNav = document.getElementById('pagination-jugadores-previos-modern');
-            const filterInput = document.getElementById('filter-jugadores-previos-modern');
+            const tbody = document.getElementById('lista-jugadores-previos-riftbound');
+            const paginationNav = document.getElementById('pagination-jugadores-previos-riftbound');
+            const filterInput = document.getElementById('filter-jugadores-previos-riftbound');
             if (!tbody) return;
             const term = filterInput ? filterInput.value.trim().toLowerCase() : '';
             const filtered = term
@@ -1030,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadInitialData();
                 const updated = torneosCache.find(t => t.id === selectedTournament.id);
                 if (updated) { selectedTournament = updated; openTournamentManagement(updated.id); }
-                bootstrap.Modal.getInstance($id('modal-jugadores-modern'))?.hide();
+                bootstrap.Modal.getInstance($id('modal-jugadores-riftbound'))?.hide();
                 showAlert('Jugadores actualizados.', 'success');
             } catch (e) {
                 showAlert('Error: ' + e.message, 'danger');
@@ -1039,60 +1038,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- TOURNAMENT CRUD ---
         function openTournamentModal(torneoId = null) {
-            $id('form-torneo-modern').reset();
-            $id('torneo-modern-id').value = '';
-            $id('modal-torneo-modern-title').textContent = 'Crear Torneo Modern';
-            $id('liga-bloque-modern').style.display = 'none';
-            $id('independiente-bloque-modern').style.display = 'block';
-            $id('torneo-modern-es-liga').checked = false;
+            $id('form-torneo-riftbound').reset();
+            $id('torneo-riftbound-id').value = '';
+            $id('modal-torneo-riftbound-title').textContent = 'Crear Torneo Riftbound';
+            $id('liga-bloque-riftbound').style.display = 'none';
+            $id('independiente-bloque-riftbound').style.display = 'block';
+            $id('torneo-riftbound-es-liga').checked = false;
 
             if (torneoId) {
                 const t = torneosCache.find(x => x.id === torneoId);
                 if (t) {
-                    $id('modal-torneo-modern-title').textContent = 'Editar Torneo Modern';
-                    $id('torneo-modern-id').value = t.id;
-                    $id('torneo-modern-nombre').value = t.nombre || '';
-                    $id('torneo-modern-fecha').value = (t.fecha && t.hora) ? `${t.fecha}T${t.hora}` : (t.fecha || '');
-                    $id('torneo-modern-es-liga').checked = t.esJornadaLiga || false;
-                    $id('liga-bloque-modern').style.display = t.esJornadaLiga ? 'block' : 'none';
-                    $id('independiente-bloque-modern').style.display = t.esJornadaLiga ? 'none' : 'block';
+                    $id('modal-torneo-riftbound-title').textContent = 'Editar Torneo Riftbound';
+                    $id('torneo-riftbound-id').value = t.id;
+                    $id('torneo-riftbound-nombre').value = t.nombre || '';
+                    $id('torneo-riftbound-fecha').value = (t.fecha && t.hora) ? `${t.fecha}T${t.hora}` : (t.fecha || '');
+                    $id('torneo-riftbound-es-liga').checked = t.esJornadaLiga || false;
+                    $id('liga-bloque-riftbound').style.display = t.esJornadaLiga ? 'block' : 'none';
+                    $id('independiente-bloque-riftbound').style.display = t.esJornadaLiga ? 'none' : 'block';
                     if (t.esJornadaLiga) {
-                        $id('select-torneo-liga-modern').value = t.ligaId || '';
+                        $id('select-torneo-liga-riftbound').value = t.ligaId || '';
                         handleTorneoLigaChange(t.ligaId);
                     } else {
-                        $id('select-torneo-evento-modern').value = t.eventoId || '';
+                        $id('select-torneo-evento-riftbound').value = t.eventoId || '';
                         handleEventoChange(t.eventoId);
                     }
-                    setTimeout(() => { $id('select-torneo-subevento-modern').value = t.subeventoId || ''; }, 300);
+                    setTimeout(() => { $id('select-torneo-subevento-riftbound').value = t.subeventoId || ''; }, 300);
                 }
             }
-            new bootstrap.Modal($id('modal-torneo-modern')).show();
+            new bootstrap.Modal($id('modal-torneo-riftbound')).show();
         }
 
         async function handleTorneoFormSubmit(e) {
             e.preventDefault();
-            const id = $id('torneo-modern-id').value;
-            const dt = $id('torneo-modern-fecha').value;
+            const id = $id('torneo-riftbound-id').value;
+            const dt = $id('torneo-riftbound-fecha').value;
             const [fecha, hora] = dt ? dt.split('T') : ['', ''];
-            const esLiga = $id('torneo-modern-es-liga').checked;
+            const esLiga = $id('torneo-riftbound-es-liga').checked;
             let finalEventoId = null;
             let finalLigaId = null;
             if (esLiga) {
-                finalLigaId = $id('select-torneo-liga-modern').value || null;
+                finalLigaId = $id('select-torneo-liga-riftbound').value || null;
                 const ligaObj = ligasCache.find(l => l.id === finalLigaId);
                 finalEventoId = ligaObj ? ligaObj.eventoId : null;
             } else {
-                finalEventoId = $id('select-torneo-evento-modern').value || null;
+                finalEventoId = $id('select-torneo-evento-riftbound').value || null;
             }
             const baseData = {
-                nombre: $id('torneo-modern-nombre').value.trim(),
+                nombre: $id('torneo-riftbound-nombre').value.trim(),
                 fecha: fecha,
                 hora: hora || '',
                 juego: JUEGO,
                 esJornadaLiga: esLiga,
                 ligaId: finalLigaId,
                 eventoId: finalEventoId,
-                subeventoId: $id('select-torneo-subevento-modern').value || null,
+                subeventoId: $id('select-torneo-subevento-riftbound').value || null,
             };
             if (!baseData.nombre || !baseData.fecha) { showAlert('Nombre y fecha obligatorios.', 'warning'); return; }
 
@@ -1105,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await db.collection('torneos').add(data);
                     showAlert('Torneo creado.', 'success');
                 }
-                bootstrap.Modal.getInstance($id('modal-torneo-modern'))?.hide();
+                bootstrap.Modal.getInstance($id('modal-torneo-riftbound'))?.hide();
                 await loadInitialData();
             } catch (e) {
                 showAlert('Error: ' + e.message, 'danger');
@@ -1210,7 +1209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- LIGA ---
         function renderLigaSelectors() {
-            const selects = ['filter-liga-modern', 'select-liga-modern', 'select-torneo-liga-modern'];
+            const selects = ['filter-liga-riftbound', 'select-liga-riftbound', 'select-torneo-liga-riftbound'];
             selects.forEach(sid => {
                 const sel = $id(sid);
                 if (!sel) return;
@@ -1223,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function renderEventSelector() {
-            ['select-torneo-evento-modern', 'liga-modern-evento'].forEach(sid => {
+            ['select-torneo-evento-riftbound', 'liga-riftbound-evento'].forEach(sid => {
                 const sel = $id(sid);
                 if (sel) sel.innerHTML = '<option value="">-- Selecciona un evento --</option>'
                     + eventosCache.map(e => `<option value="${e.id}">${escapeHtml(e.titulo)}</option>`).join('');
@@ -1231,9 +1230,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function renderLigaClasificacion(ligaId) {
-            const tbody = $id('tabla-clasificacion-liga-modern');
+            const tbody = $id('tabla-clasificacion-liga-riftbound');
             if (!tbody) return;
-            if (!ligaId) ligaId = $id('select-liga-modern')?.value || '';
+            if (!ligaId) ligaId = $id('select-liga-riftbound')?.value || '';
             if (!ligaId) {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Selecciona una liga</td></tr>';
                 return;
@@ -1256,8 +1255,8 @@ document.addEventListener('DOMContentLoaded', () => {
         async function handleLigaFormSubmit(e) {
             e.preventDefault();
             const data = {
-                nombre: $id('liga-modern-nombre').value.trim(),
-                eventoId: $id('liga-modern-evento').value,
+                nombre: $id('liga-riftbound-nombre').value.trim(),
+                eventoId: $id('liga-riftbound-evento').value,
                 juego: JUEGO,
                 activa: true,
                 creado: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1266,20 +1265,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!data.nombre || !data.eventoId) { showAlert('Nombre y evento obligatorios.', 'warning'); return; }
             try {
                 await db.collection('ligas').add(data);
-                bootstrap.Modal.getInstance($id('modal-liga-modern'))?.hide();
+                bootstrap.Modal.getInstance($id('modal-liga-riftbound'))?.hide();
                 await loadInitialData();
                 showAlert('Liga creada.', 'success');
             } catch (e) { showAlert('Error: ' + e.message, 'danger'); }
         }
 
         function updateEliminarLigaButton() {
-            const btn = $id('btn-eliminar-liga-modern');
-            const sel = $id('select-liga-modern');
+            const btn = $id('btn-eliminar-liga-riftbound');
+            const sel = $id('select-liga-riftbound');
             if (btn && sel) btn.disabled = !sel.value;
         }
 
         async function handleEliminarLiga() {
-            const id = $id('select-liga-modern')?.value;
+            const id = $id('select-liga-riftbound')?.value;
             const liga = ligasCache.find(l => l.id === id);
             if (!id || !liga) return;
             const torneosAsociados = torneosCache.filter(t => t.ligaId === id);
@@ -1298,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function populateDatalist() {
-            const dl = $id('datalist-usuarios-modern');
+            const dl = $id('datalist-usuarios-riftbound');
             if (!dl) return;
             dl.innerHTML = usuariosCache.map(u => `<option value="${escapeHtml(u.nombre)} ${escapeHtml(u.apellidos || '')}">`).join('');
         }
@@ -1360,7 +1359,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const bracket = torneo.topCut.bracket;
             if (!bracket || bracket.length < 2) { showAlert('No hay siguiente ronda.', 'warning'); return; }
 
-            // Find first round with all matches done and next round not yet populated
             let fromRound = -1;
             for (let bi = 0; bi < bracket.length - 1; bi++) {
                 const allDone = bracket[bi].mesas.every(m => m.ganador || m.empate);
@@ -1394,87 +1392,87 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- EVENT LISTENERS ---
         function setupEventListeners() {
             // Filter changes
-            $id('filter-liga-modern')?.addEventListener('change', (e) => renderTournamentsList(e.target.value));
-            $id('filter-show-finalized-modern')?.addEventListener('change', () => renderTournamentsList($id('filter-liga-modern')?.value));
+            $id('filter-liga-riftbound')?.addEventListener('change', (e) => renderTournamentsList(e.target.value));
+            $id('filter-show-finalized-riftbound')?.addEventListener('change', () => renderTournamentsList($id('filter-liga-riftbound')?.value));
 
             // Liga selector
-            $id('select-liga-modern')?.addEventListener('change', (e) => {
+            $id('select-liga-riftbound')?.addEventListener('change', (e) => {
                 renderLigaClasificacion(e.target.value);
                 updateEliminarLigaButton();
             });
 
             // Es liga toggle
-            $id('torneo-modern-es-liga')?.addEventListener('change', (e) => {
+            $id('torneo-riftbound-es-liga')?.addEventListener('change', (e) => {
                 const isLiga = e.target.checked;
-                $id('liga-bloque-modern').style.display = isLiga ? 'block' : 'none';
-                $id('independiente-bloque-modern').style.display = isLiga ? 'none' : 'block';
+                $id('liga-bloque-riftbound').style.display = isLiga ? 'block' : 'none';
+                $id('independiente-bloque-riftbound').style.display = isLiga ? 'none' : 'block';
                 if (isLiga) {
-                    $id('select-torneo-evento-modern').value = '';
-                    handleTorneoLigaChange($id('select-torneo-liga-modern').value);
+                    $id('select-torneo-evento-riftbound').value = '';
+                    handleTorneoLigaChange($id('select-torneo-liga-riftbound').value);
                 } else {
-                    $id('select-torneo-liga-modern').value = '';
-                    handleEventoChange($id('select-torneo-evento-modern').value);
+                    $id('select-torneo-liga-riftbound').value = '';
+                    handleEventoChange($id('select-torneo-evento-riftbound').value);
                 }
             });
 
             // Liga change populates subeventos via the liga's linked evento
-            $id('select-torneo-liga-modern')?.addEventListener('change', (e) => {
+            $id('select-torneo-liga-riftbound')?.addEventListener('change', (e) => {
                 handleTorneoLigaChange(e.target.value);
             });
 
             // Evento change for subevento cascade
-            $id('select-torneo-evento-modern')?.addEventListener('change', (e) => handleEventoChange(e.target.value));
+            $id('select-torneo-evento-riftbound')?.addEventListener('change', (e) => handleEventoChange(e.target.value));
 
             // Buttons
-            $id('btn-nuevo-torneo-modern')?.addEventListener('click', () => openTournamentModal());
-            $id('btn-volver-lista-modern')?.addEventListener('click', () => {
+            $id('btn-nuevo-torneo-riftbound')?.addEventListener('click', () => openTournamentModal());
+            $id('btn-volver-lista-riftbound')?.addEventListener('click', () => {
                 selectedTournament = null;
-                $id('gestion-torneo-modern-container').style.display = 'none';
-                $id('lista-torneos-modern-container').style.display = 'block';
-                renderTournamentsList($id('filter-liga-modern')?.value);
+                $id('gestion-torneo-riftbound-container').style.display = 'none';
+                $id('lista-torneos-riftbound-container').style.display = 'block';
+                renderTournamentsList($id('filter-liga-riftbound')?.value);
             });
-            $id('btn-generar-ronda-modern')?.addEventListener('click', handleGenerateRound);
-            $id('btn-deshacer-ronda-modern')?.addEventListener('click', handleUndoRound);
-            $id('btn-deshacer-topcut-modern')?.addEventListener('click', handleUndoTopCut);
-            $id('btn-finalizar-torneo-modern')?.addEventListener('click', handleFinalizarTorneo);
-            $id('btn-iniciar-torneo-modern-gestion')?.addEventListener('click', () => {
+            $id('btn-generar-ronda-riftbound')?.addEventListener('click', handleGenerateRound);
+            $id('btn-deshacer-ronda-riftbound')?.addEventListener('click', handleUndoRound);
+            $id('btn-deshacer-topcut-riftbound')?.addEventListener('click', handleUndoTopCut);
+            $id('btn-finalizar-torneo-riftbound')?.addEventListener('click', handleFinalizarTorneo);
+            $id('btn-iniciar-torneo-riftbound-gestion')?.addEventListener('click', () => {
                 if (selectedTournament) handleIniciarTorneo(selectedTournament.id);
             });
-            $id('btn-gestionar-jugadores-modern')?.addEventListener('click', () => {
+            $id('btn-gestionar-jugadores-riftbound')?.addEventListener('click', () => {
                 if (selectedTournament) openJugadoresModal(selectedTournament.id);
             });
-            $id('btn-crear-liga-modern')?.addEventListener('click', () => {
-                $id('form-liga-modern').reset();
-                new bootstrap.Modal($id('modal-liga-modern')).show();
+            $id('btn-crear-liga-riftbound')?.addEventListener('click', () => {
+                $id('form-liga-riftbound').reset();
+                new bootstrap.Modal($id('modal-liga-riftbound')).show();
             });
-            $id('btn-eliminar-liga-modern')?.addEventListener('click', handleEliminarLiga);
-            $id('btn-confirmar-fusion-modern')?.addEventListener('click', handleFusionarPuntos);
-            $id('btn-generar-codigo-modern')?.addEventListener('click', () => {
-                $id('input-codigo-invitado-modern').value = generateLeagueCode();
+            $id('btn-eliminar-liga-riftbound')?.addEventListener('click', handleEliminarLiga);
+            $id('btn-confirmar-fusion-riftbound')?.addEventListener('click', handleFusionarPuntos);
+            $id('btn-generar-codigo-riftbound')?.addEventListener('click', () => {
+                $id('input-codigo-invitado-riftbound').value = generateLeagueCode();
             });
 
             // Forms
-            $id('form-torneo-modern')?.addEventListener('submit', handleTorneoFormSubmit);
-            $id('form-liga-modern')?.addEventListener('submit', handleLigaFormSubmit);
-            $id('form-resultados-modern')?.addEventListener('submit', handleResultadosSubmit);
+            $id('form-torneo-riftbound')?.addEventListener('submit', handleTorneoFormSubmit);
+            $id('form-liga-riftbound')?.addEventListener('submit', handleLigaFormSubmit);
+            $id('form-resultados-riftbound')?.addEventListener('submit', handleResultadosSubmit);
 
             // Player management
-            $id('btn-agregar-usuario-modern')?.addEventListener('click', handleAgregarUsuario);
-            $id('input-buscar-usuario-modern')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAgregarUsuario(); } });
-            $id('btn-agregar-invitado-modern')?.addEventListener('click', handleAgregarInvitado);
-            $id('btn-confirmar-jugadores-modern')?.addEventListener('click', handleConfirmJugadores);
+            $id('btn-agregar-usuario-riftbound')?.addEventListener('click', handleAgregarUsuario);
+            $id('input-buscar-usuario-riftbound')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAgregarUsuario(); } });
+            $id('btn-agregar-invitado-riftbound')?.addEventListener('click', handleAgregarInvitado);
+            $id('btn-confirmar-jugadores-riftbound')?.addEventListener('click', handleConfirmJugadores);
 
             // Import inscritos
-            $id('btn-importar-inscritos-modern')?.addEventListener('click', handleImportarInscritosJornada);
+            $id('btn-importar-inscritos-riftbound')?.addEventListener('click', handleImportarInscritosJornada);
 
             // Filter current players
-            const filterActuales = document.getElementById('filter-jugadores-actuales-modern');
+            const filterActuales = document.getElementById('filter-jugadores-actuales-riftbound');
             if (filterActuales) {
                 filterActuales.addEventListener('input', () => renderTempJugadoresList());
             }
 
             // Filter previous players
-            const filterPrevios = document.getElementById('filter-jugadores-previos-modern');
+            const filterPrevios = document.getElementById('filter-jugadores-previos-riftbound');
             if (filterPrevios) {
                 filterPrevios.addEventListener('input', () => {
                     _previosPage = 1;
@@ -1490,39 +1488,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 const id = target.data('id');
 
                 // Tournament list actions
-                if (target.is('.btn-gestionar-modern')) openTournamentManagement(id);
-                if (target.is('.btn-iniciar-modern')) handleIniciarTorneo(id);
-                if (target.is('.btn-editar-torneo-modern')) openTournamentModal(id);
-                if (target.is('.btn-eliminar-torneo-modern')) handleEliminarTorneo(id);
-                if (target.is('.btn-add-players-torneo-modern')) openJugadoresModal(id);
-                if (target.is('.btn-ver-detalles-torneo-modern')) openTournamentManagement(id);
-                if (target.is('.btn-quitar-jugador-modern')) handleRemoveJugadorTemp(id);
-                if (target.is('.btn-resultados-modern')) {
+                if (target.is('.btn-gestionar-riftbound')) openTournamentManagement(id);
+                if (target.is('.btn-iniciar-riftbound')) handleIniciarTorneo(id);
+                if (target.is('.btn-editar-torneo-riftbound')) openTournamentModal(id);
+                if (target.is('.btn-eliminar-torneo-riftbound')) handleEliminarTorneo(id);
+                if (target.is('.btn-add-players-torneo-riftbound')) openJugadoresModal(id);
+                if (target.is('.btn-ver-detalles-torneo-riftbound')) openTournamentManagement(id);
+                if (target.is('.btn-quitar-jugador-riftbound')) handleRemoveJugadorTemp(id);
+                if (target.is('.btn-resultados-riftbound')) {
                     openMesaResultsModal(parseInt(target.data('ronda')), parseInt(target.data('mesa')), false);
                 }
-                if (target.is('#btn-generar-topcut-modern')) handleGenerateTopCut();
-                if (target.is('#btn-avanzar-topcut-modern')) handleAvanzarTopCut();
+                if (target.is('#btn-generar-topcut-riftbound')) handleGenerateTopCut();
+                if (target.is('#btn-avanzar-topcut-riftbound')) handleAvanzarTopCut();
             });
 
             // Fusion modal - populate dropdowns
-            $id('btn-fusionar-puntos-modern')?.addEventListener('click', () => {
-                const ligaId = $id('select-liga-modern')?.value;
+            $id('btn-fusionar-puntos-riftbound')?.addEventListener('click', () => {
+                const ligaId = $id('select-liga-riftbound')?.value;
                 if (!ligaId) { showAlert('Selecciona una liga primero.', 'warning'); return; }
                 const liga = ligasCache.find(l => l.id === ligaId);
                 if (!liga || !liga.clasificacion) { showAlert('La liga no tiene clasificación.', 'warning'); return; }
 
                 const invitados = Object.entries(liga.clasificacion).filter(([k]) => k.startsWith('invitado_'));
-                const selInv = $id('select-invitado-fusion-modern');
+                const selInv = $id('select-invitado-fusion-riftbound');
                 selInv.innerHTML = invitados.map(([k, v]) => `<option value="${k}">${escapeHtml(v.nombre)} (${k.split('_')[1]})</option>`).join('') || '<option value="">No hay invitados</option>';
 
-                const selUsr = $id('select-usuario-fusion-modern');
+                const selUsr = $id('select-usuario-fusion-riftbound');
                 selUsr.innerHTML = usuariosCache.map(u => `<option value="${u.id}">${escapeHtml(u.nombre)} ${escapeHtml(u.apellidos || '')} (${u.correo})</option>`).join('');
 
-                new bootstrap.Modal($id('modal-fusion-modern')).show();
+                new bootstrap.Modal($id('modal-fusion-riftbound')).show();
             });
 
             // Top cut bracket delegate
-            $(document).on('click', '.btn-resultados-topcut-modern', function () {
+            $(document).on('click', '.btn-resultados-topcut-riftbound', function () {
                 const ronda = parseInt($(this).data('ronda'));
                 const mesa = parseInt($(this).data('mesa'));
                 openMesaResultsModal(ronda, mesa, true);
@@ -1544,9 +1542,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         async function handleFusionarPuntos() {
-            const ligaId = $id('select-liga-modern')?.value;
-            const invitedId = $id('select-invitado-fusion-modern')?.value;
-            const userId = $id('select-usuario-fusion-modern')?.value;
+            const ligaId = $id('select-liga-riftbound')?.value;
+            const invitedId = $id('select-invitado-fusion-riftbound')?.value;
+            const userId = $id('select-usuario-fusion-riftbound')?.value;
             if (!ligaId || !invitedId || !userId) { showAlert('Completa todos los campos.', 'warning'); return; }
 
             const user = usuariosCache.find(u => u.id === userId);
@@ -1572,7 +1570,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     clasif[invitedId] = entry;
                     t.update(ligaRef, { clasificacion: clasif });
                 });
-                bootstrap.Modal.getInstance($id('modal-fusion-modern'))?.hide();
+                bootstrap.Modal.getInstance($id('modal-fusion-riftbound'))?.hide();
                 await loadInitialData();
                 showAlert('Puntos fusionados.', 'success');
             } catch (e) {
@@ -1582,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // When a liga is selected, find its linked evento and populate subeventos
         function handleTorneoLigaChange(ligaId) {
-            const sel = $id('select-torneo-subevento-modern');
+            const sel = $id('select-torneo-subevento-riftbound');
             if (!sel) return;
             if (!ligaId) {
                 sel.innerHTML = '<option value="">Selecciona una liga primero</option>';
@@ -1599,7 +1597,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function handleEventoChange(eventoId) {
-            const sel = $id('select-torneo-subevento-modern');
+            const sel = $id('select-torneo-subevento-riftbound');
             if (!sel) return;
             if (!eventoId) {
                 sel.innerHTML = '<option value="">Selecciona un evento o liga primero</option>';

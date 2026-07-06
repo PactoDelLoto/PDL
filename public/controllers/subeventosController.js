@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUserProfile = null;
     let registrationsCache = [];
     let currentUserRegistration = null;
+    let registrationModeInitialized = false;
 
     // Elementos DOM (pueden no existir en todas las páginas)
     const subeventModalElement = document.getElementById('subevent-modal');
@@ -41,6 +42,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const today = new Date().toISOString().split('T')[0];
                 return rowData.fechaEvento >= today;
+            });
+        }
+
+        // Registrar filtro de actividades no publicadas
+        if (!window._subeventUnpubFilterRegistered) {
+            window._subeventUnpubFilterRegistered = true;
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (settings.nTable.id !== 'subeventos-table') return true;
+
+                const showUnpublished = document.getElementById('show-unpublished-subevents')?.checked || false;
+                if (showUnpublished) return true;
+
+                const rowData = subeventosDataTable ? subeventosDataTable.row(dataIndex).data() : null;
+                if (!rowData || !rowData.fechaPublicacion) return true;
+
+                const now = new Date();
+                return rowData.fechaPublicacion <= now;
             });
         }
 
@@ -97,10 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Vincular checkbox de actividades pasadas
-            const checkbox = document.getElementById('show-past-subevents');
-            if (checkbox && !checkbox.dataset.bound) {
-                checkbox.dataset.bound = 'true';
-                checkbox.addEventListener('change', () => {
+            const pastCheckbox = document.getElementById('show-past-subevents');
+            if (pastCheckbox && !pastCheckbox.dataset.boundPast) {
+                pastCheckbox.dataset.boundPast = 'true';
+                pastCheckbox.addEventListener('change', () => {
+                    if (subeventosDataTable) subeventosDataTable.draw();
+                });
+            }
+
+            const unpubCheckbox = document.getElementById('show-unpublished-subevents');
+            if (unpubCheckbox && !unpubCheckbox.dataset.boundUnpub) {
+                unpubCheckbox.dataset.boundUnpub = 'true';
+                unpubCheckbox.addEventListener('change', () => {
                     if (subeventosDataTable) subeventosDataTable.draw();
                 });
             }
@@ -140,6 +166,16 @@ document.addEventListener('DOMContentLoaded', () => {
             hint.className = 'text-muted-bases d-block mt-1';
             hint.textContent = 'Si se deja en blanco, se usarán las bases del evento principal.';
             basesInput.parentNode.appendChild(hint);
+        }
+
+        // Añadir aviso de herencia de imagen
+        const imgInput = document.getElementById('subevent-imagen');
+        if (imgInput && !document.getElementById('img-inheritance-hint')) {
+            const hint = document.createElement('small');
+            hint.id = 'img-inheritance-hint';
+            hint.className = 'text-muted-bases d-block mt-1';
+            hint.textContent = 'Si se deja en blanco, se usará la imagen del evento principal.';
+            imgInput.parentNode.appendChild(hint);
         }
 
         // Reiniciar toggle de inscripción
@@ -220,6 +256,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 hint.className = 'text-muted-bases d-block mt-1';
                 hint.textContent = 'Si se deja en blanco, se usarán las bases del evento principal.';
                 basesInput.parentNode.appendChild(hint);
+            }
+
+            // Añadir aviso de herencia de imagen en edición
+            const imgInput = document.getElementById('subevent-imagen');
+            if (imgInput && !document.getElementById('img-inheritance-hint')) {
+                const hint = document.createElement('small');
+                hint.id = 'img-inheritance-hint';
+                hint.className = 'text-muted-bases d-block mt-1';
+                hint.textContent = 'Si se deja en blanco, se usará la imagen del evento principal.';
+                imgInput.parentNode.appendChild(hint);
             }
 
             // Cargar estado del checkbox de inscripción y toggle pago-previo
@@ -337,12 +383,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return currentUserProfile;
     }
 
+    function updateRegistrationMode() {
+        const guestContent = document.getElementById('reg-guest-content');
+        const userContent = document.getElementById('reg-user-content');
+        const isUserMode = document.getElementById('reg-mode-user')?.checked || false;
+        if (guestContent) guestContent.style.display = isUserMode ? 'none' : 'block';
+        if (userContent) userContent.style.display = isUserMode ? 'block' : 'none';
+    }
+
     function renderRegistrationSummary() {
         const capacityText = document.getElementById('registration-capacity-text');
         const statusBadge = document.getElementById('registration-user-status');
         const quickBtn = document.getElementById('quick-register-btn');
         const loginBox = document.getElementById('registration-login-box');
         const manualBtn = document.getElementById('manual-register-btn');
+        const regModeGuest = document.getElementById('reg-mode-guest');
+        const regModeUser = document.getElementById('reg-mode-user');
 
         if (!currentSubevent) return;
 
@@ -379,6 +435,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Seleccionar modo por defecto según estado de autenticación (solo la primera vez)
+        if (!registrationModeInitialized && regModeGuest && regModeUser) {
+            registrationModeInitialized = true;
+            if (auth.currentUser) {
+                regModeUser.checked = true;
+            } else {
+                regModeGuest.checked = true;
+            }
+        }
+
         const alreadyReserved = !!currentUserRegistration;
         const canReserve = hasAvailablePaidSlot() && !alreadyReserved;
         if (quickBtn) quickBtn.style.display = auth.currentUser && canReserve ? 'block' : 'none';
@@ -387,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
             manualBtn.textContent = canReserve ? 'Reservar plaza' : (alreadyReserved ? 'Ya tienes una reserva' : 'Sin plazas disponibles');
         }
         updateRegistrationButtons(canReserve);
+        updateRegistrationMode();
     }
 
     function renderRegistrationLists() {
@@ -709,8 +776,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${(sub.fechaEvento || '')} ${sub.horaEvento ? 'a las ' + sub.horaEvento : ''}`;
             if (placeEl) placeEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${window.escapeHtml ? window.escapeHtml(sub.lugar || '') : (sub.lugar || '')}`;
             if (tipoEl) tipoEl.textContent = (window.getTiposCache ? (window.getTiposCache().find(t => t.id === sub.tipoEventoId)?.nombre) : '') || 'Desconocido';
+            // Herencia de imagen: si la actividad no tiene imagen, buscar la del evento padre
+            let imgUrl = String(sub.imagen || '').trim();
+            let usingParentImage = false;
+            if (!imgUrl && sub.eventoId) {
+                try {
+                    const evDoc = await db.collection('eventos').doc(sub.eventoId).get();
+                    if (evDoc.exists && evDoc.data().imagen) {
+                        imgUrl = String(evDoc.data().imagen).trim();
+                        usingParentImage = true;
+                    }
+                } catch (e) {
+                    console.warn('Error al intentar heredar imagen del evento padre:', e);
+                }
+            }
+
             if (imgEl) {
-                const src = sub.imagen && sub.imagen.trim() ? sub.imagen.trim() : 'https://via.placeholder.com/1200x400?text=Sin+imagen';
+                const src = imgUrl || 'https://via.placeholder.com/1200x400?text=Sin+imagen';
                 imgEl.src = src; imgEl.alt = sub.titulo || 'Imagen de la actividad';
                 imgEl.onerror = function () { this.onerror = null; this.src = 'https://via.placeholder.com/1200x400?text=Sin+imagen'; };
             }
@@ -720,7 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.updateOGTags(
                     sub.titulo || 'Actividad - Pacto del Loto',
                     sub.descripcion || '',
-                    sub.imagen || ''
+                    imgUrl || ''
                 );
             }
 
@@ -866,10 +948,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listener para controlar el bloqueo/desbloqueo de los botones de reserva según las bases
     $(document).on('change', '#registration-terms', function (e) {
-        // The updateRegistrationButtons function already checks areRegistrationTermsAccepted()
-        // and hasAvailablePaidSlot() and currentUserRegistration.
-        // So, we just need to trigger it.
         updateRegistrationButtons(hasAvailablePaidSlot() && !currentUserRegistration);
+    });
+
+    // Listener para cambiar entre modo invitado / con mi cuenta
+    $(document).on('change', 'input[name="reg-mode"]', function () {
+        updateRegistrationMode();
     });
 
     $(document).on('click', (e) => {

@@ -63,12 +63,12 @@ window.initializeTorneosController = function (canManage) {
             const subeventsSnapshot = await db.collection('subeventos').get();
             subeventosCache = subeventsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // Cargar ligas
-            const ligasSnapshot = await db.collection('ligas').get();
+            // Cargar ligas (solo Commander)
+            const ligasSnapshot = await db.collection('ligas').where('juego', '==', 'mtg-commander').get();
             ligasCache = ligasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // Cargar torneos
-            const torneosSnapshot = await db.collection('torneos').get();
+            // Cargar torneos (solo Commander)
+            const torneosSnapshot = await db.collection('torneos').where('juego', '==', 'mtg-commander').get();
             torneosCache = torneosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             // Renderizar vistas
@@ -408,25 +408,36 @@ window.initializeTorneosController = function (canManage) {
         document.getElementById('gt-detalles').textContent = `${fechaFormat} | Formato: Commander`;
 
         const badge = document.getElementById('gt-estado');
-        badge.textContent = selectedTournament.estado === 'en_curso' ? 'En Curso' : 'Finalizado';
-        badge.className = `badge ${selectedTournament.estado === 'en_curso' ? 'badge-progress' : 'badge-finished'} mb-2`;
+        if (selectedTournament.estado === 'borrador') {
+            badge.textContent = 'Borrador';
+            badge.className = 'badge badge-draft mb-2';
+        } else if (selectedTournament.estado === 'en_curso') {
+            badge.textContent = 'En Curso';
+            badge.className = 'badge badge-progress mb-2';
+        } else {
+            badge.textContent = 'Finalizado';
+            badge.className = 'badge badge-finished mb-2';
+        }
 
         // Mostrar u ocultar botones administrativos
         const btnFinalizar = document.getElementById('btn-finalizar-torneo');
         const btnNuevaRonda = document.getElementById('btn-nueva-ronda');
         const btnDeshacerRonda = document.getElementById('btn-deshacer-ronda');
         const btnGestionarJugadores = document.getElementById('btn-modal-jugadores');
+        const btnIniciar = document.getElementById('btn-iniciar-torneo-gestion');
         const numRondas = selectedTournament.rondas ? selectedTournament.rondas.length : 0;
         const tieneRondas = numRondas > 0;
 
+        const isBorrador = selectedTournament.estado === 'borrador';
+        const isFinalized = selectedTournament.estado === 'finalizado';
+
+        if (btnIniciar) btnIniciar.style.display = canManage && isBorrador ? 'inline-block' : 'none';
         if (canManage && selectedTournament.estado === 'en_curso') {
             btnFinalizar.style.display = 'inline-block';
             btnNuevaRonda.style.display = 'inline-block';
-            // El botón de gestionar desaparece a partir de que se lanza la segunda ronda (numRondas >= 2)
             if (btnGestionarJugadores) {
                 btnGestionarJugadores.style.display = (numRondas >= 2) ? 'none' : 'inline-block';
             }
-            // Mostrar deshacer ronda solo si hay al menos una ronda
             if (btnDeshacerRonda) {
                 btnDeshacerRonda.style.display = tieneRondas ? 'inline-block' : 'none';
             }
@@ -840,11 +851,9 @@ window.initializeTorneosController = function (canManage) {
             const extraInput = form.querySelector(`.input-extra-points[data-id="${jId}"]`);
             puntosAdicionales[jId] = parseFloat(extraInput.value) || 0;
 
-            // Fórmula: points = 4 - (placement - 1) * (3 / (size - 1))
-            let score = 4;
-            if (size > 1) {
-                score = 4 - (placement - 1) * (3 / (size - 1));
-            }
+            // Puntos: 1º=4, 2º=3, 3º=2, 4º=1 (o 3º=2 en mesa de 3)
+            let score = 5 - placement;
+            if (score < 1) score = 1;
             mesa.resultados[jId] = score;
         });
 
@@ -1038,8 +1047,8 @@ window.initializeTorneosController = function (canManage) {
                     tempJugadores.push({
                         id: existingCode ? `invitado_${existingCode}` : `temp_${Date.now()}_${addedCount}`,
                         nombre: inscripcion.nombreCompleto || 'Invitado',
-                        leagueCode: existingCode,
-                        needsCode: !existingCode
+                        leagueCode: existingCode || null,
+                        needsCode: !existingCode && !!ligaAsociada
                     });
                     addedCount++;
                 }
@@ -1104,6 +1113,8 @@ window.initializeTorneosController = function (canManage) {
     // Genera un código aleatorio de 6 caracteres alfanuméricos
     // (Esta función ya estaba definida arriba, la dejo aquí para referencia si se movió)
 
+    function genId() { return Math.random().toString(36).substr(2, 9); }
+
     function generateLeagueCode() {
         const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         let result = '';
@@ -1125,8 +1136,24 @@ window.initializeTorneosController = function (canManage) {
             return;
         }
 
+        const esLiga = selectedTournament && selectedTournament.ligaId;
+
         if (!codigo) {
-            codigo = generateLeagueCode();
+            if (esLiga) {
+                codigo = generateLeagueCode();
+            } else {
+                // Torneo aislado → sin código de liga
+                const idTemp = `temp_${genId()}`;
+                if (tempJugadores.some(j => j.id === idTemp)) {
+                    if (window.showAlert) window.showAlert("Ya existe un jugador con ese nombre.", "warning");
+                    return;
+                }
+                tempJugadores.push({ id: idTemp, nombre });
+                renderTempJugadoresList();
+                inputNombre.value = '';
+                inputCodigo.value = '';
+                return;
+            }
         }
 
         const idInvitado = 'invitado_' + codigo;
@@ -1177,6 +1204,7 @@ window.initializeTorneosController = function (canManage) {
             const itemClass = j.needsCode ? 'list-group-item-danger' : '';
 
             let guestInfoHtml = '';
+            let codigoHtml = '';
             if (isGuest) {
                 if (j.needsCode) {
                     guestInfoHtml = `
@@ -1185,17 +1213,21 @@ window.initializeTorneosController = function (canManage) {
                             <button class="btn btn-sm btn-success btn-gen-code-row" data-playerid="${j.id}"><i class="fa-solid fa-dice"></i></button>
                         </div>
                     `;
-                } else {
-                    guestInfoHtml = `<span class="badge bg-dark ms-2">Cod: ${j.leagueCode}</span>`;
+                } else if (j.leagueCode) {
+                    codigoHtml = `<span class="badge bg-dark ms-2">Cod: ${j.leagueCode}</span>`;
                 }
             }
+
+            const statusBadge = isGuest
+                ? '<span class="badge bg-secondary">Invitado</span>'
+                : '<span class="badge bg-primary">Registrado</span>';
 
             return `
                 <li class="list-group-item ${itemClass} d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-center w-100">
                         <span>
                             <span class="badge bg-secondary me-2" style="min-width:1.8rem;">${i + 1}</span>
-                            ${j.nombre} ${guestInfoHtml && !j.needsCode ? guestInfoHtml : ''}
+                            ${j.nombre} ${statusBadge} ${codigoHtml}
                         </span>
                         <button class="btn btn-sm btn-outline-danger btn-quitar-jugador-temp" data-id="${j.id}"
                             title="Quitar jugador"><i class="fa-solid fa-times"></i></button>
@@ -1381,7 +1413,7 @@ window.initializeTorneosController = function (canManage) {
         tempJugadores.push({
             id: id,
             nombre: nombre,
-            leagueCode: leagueCode || undefined
+            leagueCode: leagueCode || null
         });
         renderTempJugadoresList();
         // Quitarlo de la lista de previos y re-renderizar
@@ -1698,6 +1730,13 @@ window.initializeTorneosController = function (canManage) {
 
         const btnFinalizarTorneo = document.getElementById('btn-finalizar-torneo');
         if (btnFinalizarTorneo) btnFinalizarTorneo.addEventListener('click', handleFinalizeTournament);
+
+        const btnIniciarTorneo = document.getElementById('btn-iniciar-torneo-gestion');
+        if (btnIniciarTorneo) {
+            btnIniciarTorneo.addEventListener('click', () => {
+                if (selectedTournament) handleIniciarTorneo(selectedTournament.id);
+            });
+        }
 
         // Botón nueva liga
         const btnNuevaLiga = document.getElementById('btn-nueva-liga');
