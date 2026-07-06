@@ -4,75 +4,552 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Star Wars Unlimited - Pacto del Loto</title>
-
     <script>
         if (localStorage.getItem('darkMode') === 'true') {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
     </script>
-
-    <!-- Metadatos y Favicon -->
     <link rel="icon" type="image/png" href="/media/img/logo.ico" />
-
-    <!-- Estilos CSS -->
     <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
     <link href="/global.css" rel="stylesheet" />
-
-    <!-- Fuentes Externas -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
     <script src="/jquery-3.7.1.min.js"></script>
+    <style>
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: 500;
+            padding: 1rem 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .nav-tabs .nav-link.active {
+            color: #2c2c54;
+            border-bottom: 3px solid #f8c291;
+            background: transparent;
+        }
+        .card-custom {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05);
+            background: #ffffff;
+            transition: transform 0.2s ease;
+        }
+        .btn-premium {
+            background-color: #2c2c54;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .btn-premium:hover {
+            background-color: #f8c291;
+            color: #2c2c54;
+        }
+        .badge-draft {
+            background-color: #ffeaa7;
+            color: #d63031;
+        }
+        .badge-progress {
+            background-color: #81ecec;
+            color: #0984e3;
+        }
+        .badge-finished {
+            background-color: #55efc4;
+            color: #00b894;
+        }
+        .pod-card {
+            border-left: 5px solid #2c2c54;
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .pod-header {
+            font-weight: bold;
+            color: #2c2c54;
+            border-bottom: 1px solid #e9ecef;
+            padding: 0.5rem 1rem;
+        }
+        .match-card {
+            border-left: 5px solid #2c2c54;
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .match-card.bye {
+            border-left-color: #6c757d;
+            opacity: 0.7;
+        }
+        .bracket-col {
+            min-width: 180px;
+        }
+        .bracket-match {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid #2c2c54;
+        }
+        .top-cut-header {
+            background: #2c2c54;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+        }
+    </style>
 </head>
-<body class="d-flex flex-column min-vh-100">
-
-    <header>
-        <!-- El navbar se cargará aquí -->
-    </header>
+<body class="d-flex flex-column min-vh-100 bg-light">
+    <header></header>
 
     <main class="container my-5 pt-5 flex-grow-1" id="restricted-content" style="display: none;">
-        <div class="row justify-content-center">
-            <div class="col-md-8 text-center">
-                <div class="card shadow-lg p-5 rounded-4 border-0 bg-white">
-                    <div class="display-1 text-primary mb-4">
-                        <i class="fa-solid fa-jedi"></i>
+        <ul class="nav nav-tabs mb-4 justify-content-center" id="swuTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="torneos-tab" data-bs-toggle="tab" data-bs-target="#torneos-section" type="button" role="tab">
+                    <i class="fa-solid fa-trophy me-2"></i>Torneos
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="ligas-tab" data-bs-toggle="tab" data-bs-target="#ligas-section" type="button" role="tab">
+                    <i class="fa-solid fa-ranking-star me-2"></i>Clasificación de Liga
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="swuTabsContent">
+            <!-- SECCIÓN TORNEOS -->
+            <div class="tab-pane fade show active" id="torneos-section" role="tabpanel">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                    <h2 class="fw-bold text-dark m-0">Gestión de Torneos Star Wars Unlimited</h2>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <div style="min-width: 250px;">
+                            <select id="filter-liga-swu" class="form-select">
+                                <option value="">-- Todas las Ligas --</option>
+                            </select>
+                        </div>
+                        <div class="form-check form-check-inline mt-2 mt-md-0">
+                            <input class="form-check-input" type="checkbox" id="filter-show-finalized-swu">
+                            <label class="form-check-label" for="filter-show-finalized-swu" style="font-size: 0.9rem;">Mostrar finalizados</label>
+                        </div>
+                        <button class="btn btn-premium torneo-controls" id="btn-nuevo-torneo-swu" style="display: none;">
+                            <i class="fa-solid fa-plus me-2"></i>Crear Torneo
+                        </button>
                     </div>
-                    <h1 class="fw-bold mb-3">Star Wars Unlimited</h1>
-                    <p class="lead text-muted">Bienvenido a la sección exclusiva de Star Wars Unlimited. El contenido de los próximos torneos estará disponible aquí pronto.</p>
+                </div>
+
+                <div id="lista-torneos-swu-container">
+                    <div class="row g-4" id="lista-torneos-swu"></div>
+                </div>
+
+                <!-- Gestión de Torneo -->
+                <div class="card card-custom p-4 mt-4" id="gestion-torneo-swu-container" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+                        <div>
+                            <span class="badge badge-progress mb-2" id="gt-swu-status">En Curso</span>
+                            <h3 class="fw-bold m-0" id="gt-swu-nombre">Nombre del Torneo</h3>
+                            <small class="text-muted" id="gt-swu-detalles">Fecha - Evento asociado</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-secondary me-2" id="btn-volver-lista-swu">Volver a Torneos</button>
+                            <button class="btn btn-primary torneo-controls" id="btn-iniciar-torneo-swu-gestion" style="display: none;"><i class="fa-solid fa-play me-1"></i> Iniciar Torneo</button>
+                            <button class="btn btn-success torneo-controls" id="btn-finalizar-torneo-swu" style="display: none;">Finalizar Torneo</button>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Jugadores -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card bg-light border-0 p-3 h-100 rounded-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="fw-bold m-0">
+                                        <i class="fa-solid fa-users me-2"></i>Jugadores
+                                        <span class="badge bg-primary ms-2 fs-6" id="gt-swu-count" style="font-size:0.75rem !important;">0</span>
+                                    </h5>
+                                    <button class="btn btn-sm btn-outline-primary torneo-controls" id="btn-gestionar-jugadores-swu" style="display: none;">
+                                        <i class="fa-solid fa-user-plus"></i> Gestionar
+                                    </button>
+                                </div>
+                                <ol class="list-group list-group-numbered" id="gt-swu-jugadores"></ol>
+                            </div>
+                        </div>
+
+                        <!-- Rondas / Clasificación / Top Cut -->
+                        <div class="col-lg-8">
+                            <ul class="nav nav-pills mb-3" id="gestionSubTabsSWU" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="rondas-tab-swu" data-bs-toggle="pill" data-bs-target="#rondas-section-swu" type="button" role="tab">Rondas</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="clasificacion-tab-swu" data-bs-toggle="pill" data-bs-target="#clasificacion-section-swu" type="button" role="tab">Clasificación Parcial</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="topcut-tab-swu" data-bs-toggle="pill" data-bs-target="#topcut-section-swu" type="button" role="tab">Top Cut</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <!-- Rondas -->
+                                <div class="tab-pane fade show active" id="rondas-section-swu" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="fw-bold m-0">Rondas Generadas</h5>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-outline-danger torneo-controls" id="btn-deshacer-ronda-swu" style="display: none;" title="Elimina la última ronda generada">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> Deshacer Ronda
+                                            </button>
+                                            <button class="btn btn-sm btn-primary torneo-controls" id="btn-generar-ronda-swu" style="display: none;">
+                                                <i class="fa-solid fa-plus me-1"></i> Nueva Ronda
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="rondas-container">
+                                        <!-- Mesas y emparejamientos dinámicos -->
+                                    </div>
+                                </div>
+
+                                <!-- Clasificación Parcial -->
+                                <div class="tab-pane fade" id="clasificacion-section-swu" role="tabpanel">
+                                    <h5 class="fw-bold mb-3">Posiciones del Torneo</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Jugador</th>
+                                                    <th class="text-center">Pts</th>
+                                                    <th class="text-center">Prog</th>
+                                                    <th class="text-center">BH</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tabla-clasificacion-swu"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Top Cut -->
+                                <div class="tab-pane fade" id="topcut-section-swu" role="tabpanel">
+                                    <div class="d-flex justify-content-end gap-2 mb-3">
+                                        <button class="btn btn-sm btn-outline-danger torneo-controls" id="btn-deshacer-topcut-swu" style="display: none;" title="Deshace la última ronda del top cut, o el top cut completo si no hay resultados">
+                                            <i class="fa-solid fa-rotate-left me-1"></i> Deshacer Top Cut
+                                        </button>
+                                    </div>
+                                    <div id="topcut-container">
+                                        <!-- Bracket dinámico -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN LIGAS -->
+            <div class="tab-pane fade" id="ligas-section" role="tabpanel">
+                <div class="card card-custom p-4">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+                        <div class="flex-grow-1">
+                            <div class="w-100">
+                                <label for="select-liga-swu" class="form-label fw-bold">Seleccionar Liga</label>
+                                <select id="select-liga-swu" class="form-select">
+                                    <option value="" disabled selected>Cargando ligas...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-outline-danger torneo-controls mt-lg-0" id="btn-eliminar-liga-swu" style="display: none;" disabled>
+                                <i class="fa-solid fa-trash me-2"></i>Eliminar Liga
+                            </button>
+                            <button id="btn-fusionar-puntos-swu" class="btn btn-info btn-sm" title="Fusionar puntos de invitado a usuario">
+                                <i class="fas fa-user-plus"></i> Fusionar Puntos
+                            </button>
+                            <button class="btn btn-premium torneo-controls mt-lg-0" id="btn-crear-liga-swu" style="display: none;">
+                                <i class="fa-solid fa-plus me-2"></i>Crear Liga
+                            </button>
+                        </div>
+                    </div>
+
+                    <h4 class="fw-bold mb-3"><i class="fa-solid fa-trophy text-warning me-2"></i>Clasificación General</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" style="width: 10%;">Posición</th>
+                                    <th scope="col">Nombre del Jugador</th>
+                                    <th scope="col" style="width: 15%;" class="text-center">Código</th>
+                                    <th scope="col" style="width: 20%;" class="text-center">Puntos Totales</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-clasificacion-liga-swu">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">Selecciona una liga para ver su clasificación</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer class="footer mt-auto py-3 bg-dark">
-        <!-- El footer se cargará aquí -->
-    </footer>
+    <!-- MODAL: Torneo -->
+    <div class="modal fade" id="modal-torneo-swu" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-torneo-swu-title">Crear Nuevo Torneo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-torneo-swu">
+                    <div class="modal-body">
+                        <input type="hidden" id="torneo-swu-id">
+                        <div class="mb-3">
+                            <label for="torneo-swu-nombre" class="form-label">Nombre del Torneo</label>
+                            <input type="text" class="form-control" id="torneo-swu-nombre" required placeholder="Ej: Jornada 1: SWU Semanal">
+                        </div>
+                        <div class="mb-3">
+                            <label for="torneo-swu-fecha" class="form-label">Fecha y Hora</label>
+                            <input type="datetime-local" class="form-control" id="torneo-swu-fecha" required>
+                        </div>
+                        <hr>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="torneo-swu-es-liga">
+                            <label class="form-check-label fw-bold" for="torneo-swu-es-liga">¿Este torneo pertenece a una liga?</label>
+                        </div>
+                        <div id="liga-bloque-swu" style="display: none;">
+                            <div class="mb-3">
+                                <label for="select-torneo-liga-swu" class="form-label">Seleccionar Liga *</label>
+                                <select id="select-torneo-liga-swu" class="form-select"></select>
+                            </div>
+                        </div>
+                        <div id="independiente-bloque-swu">
+                            <div class="mb-3">
+                                <label for="select-torneo-evento-swu" class="form-label">Asociar a Evento General (Opcional)</label>
+                                <select id="select-torneo-evento-swu" class="form-select">
+                                    <option value="">Ninguno</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="select-torneo-subevento-swu" class="form-label">Asociar a Actividad / Subevento (Opcional)</label>
+                            <select id="select-torneo-subevento-swu" class="form-select" disabled>
+                                <option value="">Selecciona un evento o liga primero</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-guardar-torneo-swu">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-    <!-- Scripts de Bootstrap y Firebase -->
+    <!-- MODAL: Liga -->
+    <div class="modal fade" id="modal-liga-swu" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crear Nueva Liga</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-liga-swu">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="liga-swu-nombre" class="form-label">Nombre de la Liga</label>
+                            <input type="text" class="form-control" id="liga-swu-nombre" required placeholder="Ej: Liga de SWU Invierno 2026">
+                        </div>
+                        <div class="mb-3">
+                            <label for="liga-swu-evento" class="form-label">Asociar a Evento Obligatorio *</label>
+                            <select id="liga-swu-evento" class="form-select" required></select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Crear Liga</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Gestionar Jugadores -->
+    <div class="modal fade" id="modal-jugadores-swu" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Gestionar Participantes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h6 class="fw-bold mb-3">Agregar Jugador Registrado</h6>
+                            <button class="btn btn-outline-primary w-100 mb-3" id="btn-importar-inscritos-swu" type="button">
+                                <i class="fa-solid fa-download me-2"></i>Traer inscritos de la actividad
+                            </button>
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <input type="text" id="input-buscar-usuario-swu" class="form-control" placeholder="Buscar socio..." autocomplete="off" list="datalist-usuarios-swu">
+                                    <datalist id="datalist-usuarios-swu"></datalist>
+                                    <button class="btn btn-primary" id="btn-agregar-usuario-swu">Añadir</button>
+                                </div>
+                                <small class="text-muted">Escribe el nombre del socio y selecciónalo de la lista.</small>
+                            </div>
+                            <hr>
+                            <h6 class="fw-bold mb-3">Agregar Jugador Invitado</h6>
+                            <div class="mb-3">
+                                <input type="text" class="form-control mb-2" id="input-nombre-invitado-swu" placeholder="Nombre completo">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="input-codigo-invitado-swu" placeholder="Código Liga (opcional)" maxlength="6" style="text-transform: uppercase;">
+                                    <button class="btn btn-outline-secondary" type="button" id="btn-generar-codigo-swu" title="Generar código nuevo"><i class="fa-solid fa-dice"></i></button>
+                                    <button class="btn btn-success" id="btn-agregar-invitado-swu">Añadir</button>
+                                </div>
+                                <small class="text-muted">Si el invitado ya ha jugado, usa su código para recuperar sus puntos.</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3">Jugadores en el Torneo (<span id="count-jugadores-swu">0</span>)</h6>
+                            <input type="text" id="filter-jugadores-actuales-swu" class="form-control form-control-sm mb-2" placeholder="Buscar en lista actual...">
+                            <ul class="list-group" id="lista-jugadores-swu" style="max-height: 300px; overflow-y: auto;"></ul>
+                        </div>
+                    </div>
+                    <hr class="mt-3">
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="fw-bold mb-2">Jugadores de Jornadas Anteriores</h6>
+                            <input type="text" id="filter-jugadores-previos-swu" class="form-control form-control-sm mb-2" placeholder="Buscar jugador...">
+                            <div style="max-height: 250px; overflow-y: auto;">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nombre</th>
+                                            <th>Código</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lista-jugadores-previos-swu"></tbody>
+                                </table>
+                            </div>
+                            <nav id="pagination-jugadores-previos-swu" class="mt-2"></nav>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="btn-confirmar-jugadores-swu">Confirmar y Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Resultados de Mesa (Bo3) -->
+    <div class="modal fade" id="modal-resultados-swu" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Resultados - Mesa <span id="modal-res-swu-mesa">1</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="form-resultados-swu">
+                    <div class="modal-body" id="modal-resultados-swu-body"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Fusionar Puntos -->
+    <div class="modal fade" id="modal-fusion-swu" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Fusionar Puntos de Invitado</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Selecciona un código de liga de invitado y un usuario registrado para transferir los puntos acumulados por el invitado a la cuenta del usuario.</p>
+                    <div class="mb-3">
+                        <label for="select-invitado-fusion-swu" class="form-label">Código de Liga de Invitado</label>
+                        <select class="form-select" id="select-invitado-fusion-swu" required>
+                            <option value="">-- Selecciona un código de invitado --</option>
+                        </select>
+                        <div class="form-text">Solo se muestran códigos de invitado de la liga activa.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="select-usuario-fusion-swu" class="form-label">Usuario Registrado</label>
+                        <select class="form-select" id="select-usuario-fusion-swu" required>
+                            <option value="">-- Selecciona un usuario --</option>
+                        </select>
+                        <div class="form-text">Los puntos del invitado se añadirán a este usuario.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary" id="btn-confirmar-fusion-swu">Fusionar Puntos</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Confirmación -->
+    <div class="modal fade" id="modal-confirmacion-swu" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">Confirmar Acción</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmacion-swu-texto"></div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-danger btn-sm" id="btn-confirmar-accion-swu">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
+
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
+
     <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-    <!-- Controladores de la aplicación -->
     <script src="/controllers/firebase-config.js"></script>
     <script src="/js/main.js"></script>
+    <script src="/js/utils.js"></script>
     <script src="/controllers/authController.js"></script>
     <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/starwarsUnlimitedController.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-    <!-- Comprobación de Acceso de Socio -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const restrictedContent = document.getElementById('restricted-content');
-            
             const checkAuth = () => {
                 firebase.auth().onAuthStateChanged(async user => {
                     if (user) {
                         const isSocio = await window.isUserSocio();
                         const isAdmin = await window.isUserAdmin();
-                        
+                        const isColaborador = await window.isUserColaborador();
                         if (isSocio || isAdmin) {
                             restrictedContent.style.display = 'block';
+                            const canManageTorneos = isAdmin || isColaborador;
+                            if (canManageTorneos) {
+                                document.querySelectorAll('.torneo-controls').forEach(el => {
+                                    el.style.display = 'inline-block';
+                                });
+                            }
+                            if (window.initializeSWUController) {
+                                window.initializeSWUController(canManageTorneos);
+                            }
                         } else {
                             restrictedContent.innerHTML = `
                                 <div class="row justify-content-center">
@@ -80,7 +557,7 @@
                                         <div class="alert alert-danger shadow-sm p-4 rounded-3" role="alert">
                                             <i class="fa-solid fa-circle-xmark fa-3x mb-3 text-danger"></i>
                                             <h3 class="fw-bold">Acceso Denegado</h3>
-                                            <p class="mb-0">Lo sentimos, esta sección es exclusiva para socios registrados. Si crees que esto es un error, por favor contacta con la administración.</p>
+                                            <p class="mb-0">Lo sentimos, esta sección es exclusiva para socios registrados.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -89,22 +566,21 @@
                         }
                     } else {
                         restrictedContent.innerHTML = `
-                                <div class="row justify-content-center">
-                                    <div class="col-md-8 text-center">
-                                        <div class="alert alert-warning shadow-sm p-4 rounded-3" role="alert">
-                                            <i class="fa-solid fa-triangle-exclamation fa-3x mb-3 text-warning"></i>
-                                            <h3 class="fw-bold">Inicio de Sesión Requerido</h3>
-                                            <p class="mb-3">Debes iniciar sesión para poder acceder a esta sección de Torneos.</p>
-                                            <a href="/login.html" class="btn btn-primary px-4 py-2">Iniciar Sesión</a>
-                                        </div>
+                            <div class="row justify-content-center">
+                                <div class="col-md-8 text-center">
+                                    <div class="alert alert-warning shadow-sm p-4 rounded-3" role="alert">
+                                        <i class="fa-solid fa-triangle-exclamation fa-3x mb-3 text-warning"></i>
+                                        <h3 class="fw-bold">Inicio de Sesión Requerido</h3>
+                                        <p class="mb-3">Debes iniciar sesión para acceder a esta sección.</p>
+                                        <a href="/login.html" class="btn btn-primary px-4 py-2">Iniciar Sesión</a>
                                     </div>
                                 </div>
+                            </div>
                         `;
                         restrictedContent.style.display = 'block';
                     }
                 });
             };
-
             const interval = setInterval(() => {
                 if (window.firebase && firebase.auth) {
                     clearInterval(interval);
@@ -113,6 +589,6 @@
             }, 100);
         });
     </script>
-
 </body>
 </html>
+
