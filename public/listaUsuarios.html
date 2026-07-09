@@ -57,7 +57,8 @@
         <div class="row">
             <div class="col">
                 <h1 class="mb-4">Listado de Usuarios</h1>
-                <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+                <p id="user-list-subtitle" class="text-muted small mb-3"></p>
+                <div class="d-flex flex-wrap gap-3 align-items-center mb-3" id="filters-area">
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 text-nowrap" for="filter-rol">Ver solo:</label>
                             <select id="filter-rol" class="form-select form-select-sm" style="width:auto">
@@ -81,9 +82,9 @@
                             </ul>
                         </div>
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="filter-proximos-deuda">
-                        <label class="form-check-label" for="filter-proximos-deuda">Próximos a deuda</label>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-primary btn-sm" id="btn-ver-activos">Activos</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-ver-desactivados">Desactivados</button>
                     </div>
                     <button class="btn btn-primary btn-sm" id="btn-actualizar-cuentas">
                         <i class="fa-solid fa-rotate me-1"></i>Actualizar Cuentas

@@ -69,6 +69,18 @@ window.isUserColaborador = function() {
     });
 };
 
+window.isUserDesactivado = function() {
+    return new Promise((resolve) => {
+        const user = auth.currentUser;
+        if (!user) { resolve(false); return; }
+        db.collection('usuarios').doc(user.uid).get().then(doc => {
+            resolve(doc.exists && doc.data().desactivado === true);
+        }).catch(error => {
+            console.error("Error al verificar estado de desactivación:", error);
+            resolve(false);
+        });
+    });
+};
 
 /**
  * Observador del estado de autenticación de Firebase.
@@ -80,6 +92,31 @@ auth.onAuthStateChanged(user => {
     if (window.renderAuthUI) {
         window.renderAuthUI(user);
     }
+});
+
+// Bloquear acceso a usuarios desactivados
+auth.onAuthStateChanged(user => {
+    const existingOverlay = document.getElementById('deactivation-overlay');
+    if (!user) {
+        if (existingOverlay) existingOverlay.remove();
+        return;
+    }
+    db.collection('usuarios').doc(user.uid).get().then(doc => {
+        if (doc.exists && doc.data().desactivado === true) {
+            if (document.getElementById('deactivation-overlay')) return;
+            const overlay = document.createElement('div');
+            overlay.id = 'deactivation-overlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;color:white;text-align:center;padding:2rem;';
+            overlay.innerHTML = `
+                <h2 class="mb-4">Cuenta desactivada</h2>
+                <p style="max-width:500px;font-size:1.1rem;">Su perfil ha sido desactivado, si considera que esto es un error contáctenos a través de nuestro correo <a href="mailto:pactodellotocadiz@gmail.com" style="color:#f8c291;font-weight:bold;">pactodellotocadiz@gmail.com</a></p>
+                <button onclick="firebase.auth().signOut();" class="btn btn-warning mt-4">Cerrar sesión</button>
+            `;
+            document.body.appendChild(overlay);
+        } else {
+            if (existingOverlay) existingOverlay.remove();
+        }
+    }).catch(() => {});
 });
 
 /**

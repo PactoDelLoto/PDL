@@ -94,6 +94,7 @@ async function populateNavbarLinks(isLoggedIn) {
                     return window.location.pathname === item.href;
                 });
                 const dropdownClass = isAnySubPageActive ? 'active' : '';
+                const hasSubDropdown = link.items.some(item => item.isSubDropdown);
 
                 const itemsHtml = link.items.map(item => {
                     if (item.isSubDropdown) {
@@ -121,7 +122,7 @@ async function populateNavbarLinks(isLoggedIn) {
 
                 return `
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle ${dropdownClass}" href="#" id="navbarDropdown${idSuffix}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle ${dropdownClass}" href="#" id="navbarDropdown${idSuffix}" role="button" data-bs-toggle="dropdown"${hasSubDropdown ? ' data-bs-auto-close="outside"' : ''} aria-expanded="false">
                             ${link.text}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDropdown${idSuffix}">
@@ -161,6 +162,39 @@ function populateFooterLinks() {
     }
 }
 
+function normalizarFecha(timestamp) {
+    if (!timestamp || !timestamp.toDate) return null;
+    const d = timestamp.toDate();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function getEstadoDeuda(pagadoHasta) {
+    const pagado = normalizarFecha(pagadoHasta);
+    if (!pagado) return null;
+    const hoy = new Date();
+    const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    if (pagado >= hoyNorm) return null;
+    const fechaLimite = new Date(pagado);
+    fechaLimite.setMonth(fechaLimite.getMonth() + 1);
+    fechaLimite.setDate(fechaLimite.getDate() + 1);
+    if (hoyNorm < fechaLimite) return 'debe1';
+    return 'debe2';
+}
+
+function calcularMesesDeuda(pagadoHasta) {
+    if (!pagadoHasta || !pagadoHasta.toDate) return 0;
+    const d = pagadoHasta.toDate();
+    const pagado = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const hoy = new Date();
+    const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    if (pagado >= hoyNorm) return 0;
+    const primerMesDeuda = new Date(pagado.getFullYear(), pagado.getMonth() + 1, 1);
+    const hoyPrimerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    if (hoyPrimerDia < primerMesDeuda) return 0;
+    return (hoyPrimerDia.getFullYear() - primerMesDeuda.getFullYear()) * 12
+        + hoyPrimerDia.getMonth() - primerMesDeuda.getMonth() + 1;
+}
+
 function setupAuthUI() {
     firebase.auth().onAuthStateChanged(async user => {
         populateNavbarLinks(!!user);
@@ -173,6 +207,9 @@ function setupAuthUI() {
             let displayName = user.email;
             let isSocio = false;
             let isAdmin = false;
+            let isColaborador = false;
+            let alCorriente = false;
+            let pagadoHasta = null;
             try {
                 const doc = await db.collection('usuarios').doc(user.uid).get();
                 if (doc.exists) {
@@ -182,8 +219,37 @@ function setupAuthUI() {
                     if (nombre && apellidos) displayName = `${nombre} ${apellidos.split(' ')[0]}`;
                     isSocio = data.isSocio === true;
                     isAdmin = data.isAdmin === true;
+                    isColaborador = data.isColaborador === true;
+                    alCorriente = data.alCorriente === true;
+                    pagadoHasta = data.pagadoHasta || null;
                 }
             } catch (e) {}
+
+            let roleBadgeHtml = '';
+            if (isAdmin) {
+                roleBadgeHtml = '<span class="badge bg-primary ms-1" style="font-size:0.6rem">Admin</span>';
+            } else if (isColaborador) {
+                roleBadgeHtml = '<span class="badge bg-info ms-1" style="font-size:0.6rem">Colab</span>';
+            } else if (isSocio) {
+                roleBadgeHtml = '<span class="badge bg-success ms-1" style="font-size:0.6rem">Socio</span>';
+            }
+
+            let bubbleHtml = '';
+            let tooltipText = '';
+            if (roleBadgeHtml && !alCorriente) {
+                const estado = getEstadoDeuda(pagadoHasta);
+                if (estado) {
+                    const meses = calcularMesesDeuda(pagadoHasta);
+                    const mesText = meses === 1 ? '1 mes' : `${meses} meses`;
+                    tooltipText = `Actualmente no estás al corriente de pago, debes ${mesText}. Si no abonas tu cuota durante tres meses perderás la condición de socio.`;
+                    const colorClass = estado === 'debe1' ? 'bg-warning text-dark' : 'bg-danger';
+                    bubbleHtml = `<span class="badge ${colorClass} rounded-pill ms-1" style="font-size:0.55rem;cursor:pointer" data-bs-toggle="tooltip" title="${tooltipText}"><i class="fa-solid fa-triangle-exclamation" style="font-size:0.55rem"></i></span>`;
+                }
+            }
+
+            if (tooltipText && roleBadgeHtml) {
+                roleBadgeHtml = roleBadgeHtml.replace('<span ', `<span data-bs-toggle="tooltip" title="${tooltipText}" `);
+            }
 
             const sugerenciasItem = (isSocio || isAdmin)
                 ? `<li><a class="dropdown-item" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a></li><li><hr class="dropdown-divider"></li>`
@@ -192,7 +258,7 @@ function setupAuthUI() {
             const desktopUI = `
                 <div class="dropdown">
                     <button class="btn btn-outline-light dropdown-toggle" type="button" id="user-menu-desktop" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-user-circle me-2"></i> ${displayName}
+                        <i class="fas fa-user-circle me-2"></i> ${displayName}${roleBadgeHtml}${bubbleHtml}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu-desktop">
                         <li><a class="dropdown-item" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a></li>
@@ -204,7 +270,7 @@ function setupAuthUI() {
                 </div>
             `;
             const mobileUI = `
-                <p class="text-light mb-2">${displayName}</p>
+                <p class="text-light mb-2">${displayName}${roleBadgeHtml}${bubbleHtml}</p>
                 <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a>
                 <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html?tab=actividades"><i class="fa-regular fa-calendar me-2"></i>Mis actividades</a>
                 ${isSocio || isAdmin ? `<a class="btn btn-outline-warning w-100 mb-2" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a>` : ''}
@@ -212,6 +278,10 @@ function setupAuthUI() {
             `;
             userActionsDesktop.innerHTML = desktopUI;
             userActionsMobile.innerHTML = mobileUI;
+
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                try { new bootstrap.Tooltip(el); } catch (e) {}
+            });
 
             document.getElementById('logout-button-desktop').addEventListener('click', e => { e.preventDefault(); firebase.auth().signOut(); });
             document.getElementById('logout-button-mobile').addEventListener('click', () => firebase.auth().signOut());

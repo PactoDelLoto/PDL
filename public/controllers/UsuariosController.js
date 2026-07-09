@@ -27,26 +27,13 @@ let usersTable;
 const editUserModalEl = document.getElementById('edit-user-modal');
 const editUserModal = editUserModalEl ? new bootstrap.Modal(editUserModalEl) : null;
 const filterRol = document.getElementById('filter-rol');
-const filterProximosDeuda = document.getElementById('filter-proximos-deuda');
 let filterEstadoPagoVal = '';
+let verDesactivados = false;
 const filterEstadoPagoContainer = document.getElementById('filter-estado-pago-container');
 const filterEstadoPagoBtn = document.getElementById('filter-estado-pago-btn');
 const filterEstadoPagoMenu = document.getElementById('filter-estado-pago-menu');
 const btnActualizarCuentas = document.getElementById('btn-actualizar-cuentas');
 const btnExportarCsv = document.getElementById('btn-exportar-csv');
-
-function isProximoDeuda(pagadoHasta, isSocio) {
-    if (!pagadoHasta || !isSocio) return false;
-    const pagado = normalizarFecha(pagadoHasta);
-    if (!pagado) return false;
-    const hoy = new Date();
-    const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    const fechaLimite = new Date(pagado);
-    fechaLimite.setMonth(fechaLimite.getMonth() + 3);
-    if (hoyNorm >= fechaLimite) return false;
-    const diasRestantes = Math.ceil((fechaLimite - hoyNorm) / (1000 * 60 * 60 * 24));
-    return diasRestantes <= 30;
-}
 
 function getEstadoDeuda(pagadoHasta) {
     const pagado = normalizarFecha(pagadoHasta);
@@ -107,17 +94,17 @@ function initializeUsersTable() {
                 data: null, orderable: false, searchable: false, className: 'text-center',
                 render: function (data, type, row) {
                     if (row.alCorriente) {
-                        return '<span class="badge bg-success"><i class="fa-solid fa-check"></i></span>';
+                        return '<span class="badge bg-success" data-bs-toggle="tooltip" title="Al corriente de pago"><i class="fa-solid fa-check"></i></span>';
                     }
                     if (!row.isSocio) {
-                        return '<span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>';
+                        return '<span class="badge bg-secondary" data-bs-toggle="tooltip" title="No es socio"><i class="fa-solid fa-xmark"></i></span>';
                     }
                     const estado = getEstadoDeuda(row.pagadoHasta);
                     if (estado === 'debe2') {
-                        return '<span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation"></i></span>';
+                        return '<span class="badge bg-danger" data-bs-toggle="tooltip" title="Debe 2 o más meses"><i class="fa-solid fa-triangle-exclamation"></i></span>';
                     }
                     if (estado === 'debe1') {
-                        return '<span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation"></i></span>';
+                        return '<span class="badge bg-warning text-dark" data-bs-toggle="tooltip" title="Debe 1 mes"><i class="fa-solid fa-triangle-exclamation"></i></span>';
                     }
                     return '<span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>';
                 },
@@ -138,6 +125,21 @@ function initializeUsersTable() {
                 render: function (data, type, row) {
                     const isMe = row.id === firebase.auth().currentUser.uid;
                     const meBadge = isMe ? '<span class="badge bg-info me-1" style="font-size:0.6rem">Tú</span>' : '';
+
+                    if (verDesactivados) {
+                        return `<div class="d-flex align-items-center justify-content-center gap-1">
+                            ${meBadge}
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-secondary dropdown-toggle py-0 px-1" type="button" data-bs-toggle="dropdown" title="Acciones">
+                                    <i class="fa-solid fa-gear"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" style="min-width:160px;font-size:0.85rem">
+                                    <li><button class="dropdown-item edit-user-btn" data-id="${row.id}"><i class="fa-solid fa-pen me-2"></i>Editar</button></li>
+                                    <li><button class="dropdown-item text-success reactivate-user-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid fa-rotate-left me-2"></i>Reactivar</button></li>
+                                </ul>
+                            </div>
+                        </div>`;
+                    }
 
                     const socioIcon = row.isSocio ? 'fa-user-minus' : 'fa-user-plus';
                     const socioText = row.isSocio ? 'Quitar Socio' : 'Hacer Socio';
@@ -160,7 +162,7 @@ function initializeUsersTable() {
                                 <li><button class="dropdown-item toggle-admin-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid ${adminIcon} me-2"></i>${adminText}</button></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><button class="dropdown-item edit-user-btn" data-id="${row.id}"><i class="fa-solid fa-pen me-2"></i>Editar</button></li>
-                                <li><button class="dropdown-item text-danger delete-user-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid fa-trash me-2"></i>Eliminar</button></li>
+                                <li><button class="dropdown-item text-danger deactivate-user-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid fa-ban me-2"></i>Desactivar</button></li>
                             </ul>
                         </div>
                     </div>`;
@@ -168,7 +170,12 @@ function initializeUsersTable() {
                 responsivePriority: 1
             }
         ],
-        order: [[0, 'asc']]
+        order: [[0, 'asc']],
+        drawCallback: function () {
+            document.querySelectorAll('#usuarios-table [data-bs-toggle="tooltip"]').forEach(el => {
+                try { new bootstrap.Tooltip(el); } catch (e) {}
+            });
+        }
     });
 
     // Registrar filtros combinados una vez
@@ -176,14 +183,10 @@ function initializeUsersTable() {
         const rowData = usersTable.row(dataIndex).data();
         if (!rowData) return true;
         const rolVal = filterRol ? filterRol.value : '';
-        const filterDeuda = filterProximosDeuda && filterProximosDeuda.checked;
         if (rolVal === 'admin' && !rowData.isAdmin) return false;
         if (rolVal === 'colaborador' && !rowData.isColaborador) return false;
         if (rolVal === 'socio' && !rowData.isSocio) return false;
         if (rolVal === 'noSocio' && rowData.isSocio) return false;
-        if (filterDeuda) {
-            return isProximoDeuda(rowData.pagadoHasta, rowData.isSocio);
-        }
         const estadoPagoVal = filterEstadoPagoVal;
         if (estadoPagoVal) {
             const pagado = normalizarFecha(rowData.pagadoHasta);
@@ -208,7 +211,11 @@ function initializeUsersTable() {
 function loadUsersIntoTable() {
     firebase.firestore().collection('usuarios').get()
         .then((querySnapshot) => {
-            const userData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            const allData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            const userData = allData.filter(u => {
+                if (verDesactivados) return u.desactivado === true;
+                return !u.desactivado;
+            });
             usersTable.clear().rows.add(userData).draw();
         })
         .catch((error) => {
@@ -246,20 +253,39 @@ function setupUserActionHandlers() {
         }
     });
 
-    tbody.on('click', '.delete-user-btn', function () {
+    tbody.on('click', '.deactivate-user-btn', function () {
         const userId = $(this).data('id');
         const userName = $(this).data('name');
 
         showConfirmationModal(
-            'Confirmar Eliminación',
-            `¿Estás seguro de que quieres eliminar a ${userName}? Esta acción es permanente y eliminará sus datos de la aplicación (no su cuenta de Google).`,
+            'Desactivar Usuario',
+            `¿Estás seguro de que quieres desactivar a ${userName}? El usuario no podrá acceder a la web hasta que sea reactivado.`,
             async () => {
                 try {
-                    await db.collection('usuarios').doc(userId).delete();
-                    showAlert(`Usuario ${userName} eliminado con éxito.`, 'success');
+                    await db.collection('usuarios').doc(userId).update({ desactivado: true });
+                    showAlert(`Usuario ${userName} desactivado con éxito.`, 'success');
                     loadUsersIntoTable();
                 } catch (error) {
-                    showAlert('Error al eliminar el usuario.', 'danger');
+                    showAlert('Error al desactivar el usuario.', 'danger');
+                }
+            }
+        );
+    });
+
+    tbody.on('click', '.reactivate-user-btn', function () {
+        const userId = $(this).data('id');
+        const userName = $(this).data('name');
+
+        showConfirmationModal(
+            'Reactivar Usuario',
+            `¿Estás seguro de que quieres reactivar a ${userName}? El usuario podrá volver a acceder a la web.`,
+            async () => {
+                try {
+                    await db.collection('usuarios').doc(userId).update({ desactivado: false });
+                    showAlert(`Usuario ${userName} reactivado con éxito.`, 'success');
+                    loadUsersIntoTable();
+                } catch (error) {
+                    showAlert('Error al reactivar el usuario.', 'danger');
                 }
             }
         );
@@ -303,8 +329,6 @@ function setupUserActionHandlers() {
         });
     }
 
-    if (filterProximosDeuda) filterProximosDeuda.addEventListener('change', redrawTable);
-
     // Estado inicial del filtro estado de pago
     if (filterEstadoPagoContainer && filterRol) {
         filterEstadoPagoContainer.classList.toggle('d-none', filterRol.value !== 'socio');
@@ -318,6 +342,49 @@ function setupUserActionHandlers() {
     // Botón Exportar CSV
     if (btnExportarCsv) {
         btnExportarCsv.addEventListener('click', handleExportarCsv);
+    }
+
+    // Toggle activos / desactivados
+    const btnVerActivos = document.getElementById('btn-ver-activos');
+    const btnVerDesactivados = document.getElementById('btn-ver-desactivados');
+
+    function actualizarVista() {
+        btnVerActivos.className = verDesactivados ? 'btn btn-outline-primary btn-sm' : 'btn btn-primary btn-sm';
+        btnVerDesactivados.className = verDesactivados ? 'btn btn-secondary btn-sm' : 'btn btn-outline-secondary btn-sm';
+
+        const subtitle = document.getElementById('user-list-subtitle');
+        if (subtitle) {
+            subtitle.textContent = verDesactivados ? 'Mostrando usuarios desactivados' : '';
+        }
+
+        const filtersArea = document.getElementById('filters-area');
+        if (filtersArea) {
+            filtersArea.style.display = verDesactivados ? 'none' : '';
+        }
+
+        filterEstadoPagoVal = '';
+        if (filterEstadoPagoBtn) filterEstadoPagoBtn.textContent = 'Todos';
+        if (filterRol) filterRol.value = '';
+        if (filterEstadoPagoContainer) filterEstadoPagoContainer.classList.add('d-none');
+
+        loadUsersIntoTable();
+    }
+
+    if (btnVerActivos) {
+        btnVerActivos.addEventListener('click', () => {
+            if (verDesactivados) {
+                verDesactivados = false;
+                actualizarVista();
+            }
+        });
+    }
+    if (btnVerDesactivados) {
+        btnVerDesactivados.addEventListener('click', () => {
+            if (!verDesactivados) {
+                verDesactivados = true;
+                actualizarVista();
+            }
+        });
     }
 
     $('#edit-user-form').on('submit', async function (e) {
