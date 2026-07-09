@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let eventosCache = [];
         let subeventosCache = [];
         let tempJugadores = [];
+        let cachedInscritosTotal = 0;
+        let cachedInscritosIds = [];
         let _jugadoresPrevios = [];
         let _previosPage = 1;
         const PREVIOS_PER_PAGE = 10;
@@ -763,6 +765,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- PLAYER MANAGEMENT ---
+        async function loadSubeventoInscritos() {
+            cachedInscritosTotal = 0;
+            cachedInscritosIds = [];
+            if (!selectedTournament || !selectedTournament.subeventoId) { updateImportStatus(); return; }
+            try {
+                const snapshot = await db.collection('subeventos')
+                    .doc(selectedTournament.subeventoId)
+                    .collection('inscripciones')
+                    .where('pagado', '==', true)
+                    .get();
+                cachedInscritosTotal = snapshot.size;
+                cachedInscritosIds = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return data.userId || (data.leagueCode ? `invitado_${data.leagueCode}` : null);
+                }).filter(id => id !== null);
+            } catch (e) { console.error('Error cargando inscritos del subevento:', e); }
+            updateImportStatus();
+        }
+        function updateImportStatus() {
+            const el = document.getElementById('import-status-modern');
+            if (!el) return;
+            if (!selectedTournament || !selectedTournament.subeventoId || cachedInscritosTotal === 0) { el.style.display = 'none'; return; }
+            const yaRegistrados = cachedInscritosIds.filter(id => tempJugadores.some(j => j.id === id)).length;
+            const pendientes = cachedInscritosTotal - yaRegistrados;
+            el.style.display = 'flex';
+            if (pendientes > 0) {
+                el.innerHTML = `<span class="text-muted"><strong>${yaRegistrados}/${cachedInscritosTotal}</strong> inscritos</span><span class="text-warning" title="Faltan ${pendientes} inscrito(s) por registrar"><i class="fa-solid fa-triangle-exclamation"></i> ${pendientes} pendiente(s)</span>`;
+            } else {
+                el.innerHTML = `<span class="text-success"><i class="fa-solid fa-check-circle"></i> <strong>${yaRegistrados}/${cachedInscritosTotal}</strong> inscritos registrados</span>`;
+            }
+        }
         function openJugadoresModal(torneoId) {
             const torneo = torneosCache.find(t => t.id === torneoId);
             if (!torneo) return;
@@ -770,6 +803,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tempJugadores = torneo.jugadores ? [...torneo.jugadores] : [];
             updateImportarInscritosButton();
             renderTempJugadoresList();
+            loadSubeventoInscritos();
             loadJugadoresPrevios().catch(e => console.error(e));
             const fActuales = document.getElementById('filter-jugadores-actuales-modern');
             if (fActuales) fActuales.value = '';
@@ -795,6 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn btn-sm btn-outline-danger btn-quitar-jugador-modern" data-id="${j.id}"><i class="fa-solid fa-times"></i></button>
                 </li>`;
             }).join('');
+            updateImportStatus();
         }
 
         function handleAgregarUsuario() {
@@ -1011,6 +1046,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 renderTempJugadoresList();
+                loadSubeventoInscritos();
                 if (window.showAlert) {
                     const msg = addedCount
                         ? `${addedCount} jugador(es) importado(s) desde la actividad.`

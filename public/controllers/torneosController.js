@@ -18,6 +18,8 @@ window.initializeTorneosController = function (canManage) {
     let torneosCache = [];
     let selectedTournament = null;
     let tempJugadores = []; // Jugadores en edición en el modal
+    let cachedInscritosTotal = 0;
+    let cachedInscritosIds = [];
 
     // Elementos DOM (Asegúrate de que coincidan con estos nombres)
     const listaTorneos = document.getElementById('lista-torneos-container');
@@ -973,6 +975,52 @@ window.initializeTorneosController = function (canManage) {
 
     // --- GESTIÓN DE PARTICIPANTES (MODAL) ---
 
+    async function loadSubeventoInscritos() {
+        cachedInscritosTotal = 0;
+        cachedInscritosIds = [];
+        if (!selectedTournament || !selectedTournament.subeventoId) {
+            updateImportStatus();
+            return;
+        }
+        try {
+            const snapshot = await db.collection('subeventos')
+                .doc(selectedTournament.subeventoId)
+                .collection('inscripciones')
+                .where('pagado', '==', true)
+                .get();
+            cachedInscritosTotal = snapshot.size;
+            cachedInscritosIds = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return data.userId || (data.leagueCode ? `invitado_${data.leagueCode}` : null);
+            }).filter(id => id !== null);
+        } catch (e) {
+            console.error('Error cargando inscritos del subevento:', e);
+        }
+        updateImportStatus();
+    }
+
+    function updateImportStatus() {
+        const el = document.getElementById('import-status-jornada');
+        if (!el) return;
+        if (!selectedTournament || !selectedTournament.subeventoId || cachedInscritosTotal === 0) {
+            el.style.display = 'none';
+            return;
+        }
+        const yaRegistrados = cachedInscritosIds.filter(id => tempJugadores.some(j => j.id === id)).length;
+        const pendientes = cachedInscritosTotal - yaRegistrados;
+        el.style.display = 'flex';
+        if (pendientes > 0) {
+            el.innerHTML = `
+                <span class="text-muted"><strong>${yaRegistrados}/${cachedInscritosTotal}</strong> inscritos</span>
+                <span class="text-warning" title="Faltan ${pendientes} inscrito(s) por registrar">
+                    <i class="fa-solid fa-triangle-exclamation"></i> ${pendientes} pendiente(s)
+                </span>
+            `;
+        } else {
+            el.innerHTML = `<span class="text-success"><i class="fa-solid fa-check-circle"></i> <strong>${yaRegistrados}/${cachedInscritosTotal}</strong> inscritos registrados</span>`;
+        }
+    }
+
     function openJugadoresModal(torneoId) {
         selectedTournament = torneosCache.find(t => t.id === torneoId);
         if (!selectedTournament) return;
@@ -980,6 +1028,7 @@ window.initializeTorneosController = function (canManage) {
         tempJugadores = selectedTournament.jugadores ? [...selectedTournament.jugadores] : [];
         updateImportarInscritosButton();
         renderTempJugadoresList();
+        loadSubeventoInscritos();
         loadJugadoresPrevios().catch(e => console.error(e));
         // Limpiar filtros
         const fActuales = document.getElementById('filter-jugadores-actuales');
@@ -1057,6 +1106,7 @@ window.initializeTorneosController = function (canManage) {
             });
 
             renderTempJugadoresList();
+            loadSubeventoInscritos();
             if (window.showAlert) {
                 const msg = addedCount
                     ? `${addedCount} jugador(es) importado(s) desde la actividad.`
@@ -1198,6 +1248,7 @@ window.initializeTorneosController = function (canManage) {
             list.innerHTML = `<li class="list-group-item text-center text-muted py-3">${
                 term ? 'No hay coincidencias.' : 'No hay participantes agregados.'
             }</li>`;
+            updateImportStatus();
             return;
         }
 
@@ -1238,6 +1289,7 @@ window.initializeTorneosController = function (canManage) {
                 </li>
             `;
         }).join('');
+        updateImportStatus();
     }
 
     async function handleConfirmJugadores() {

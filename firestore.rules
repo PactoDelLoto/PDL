@@ -133,5 +133,11 @@ match /sugerencias/{docId} {
   allow delete: if isAdmin();
 }
 
+// AUDITORÍA
+match /auditoria/{docId} {
+  allow create: if request.auth != null;
+  allow read: if isAdmin();
+}
+
 }
 }

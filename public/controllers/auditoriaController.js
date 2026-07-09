@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const auth = firebase.auth();
     let auditTable;
     let allEntries = [];
+    let userNameMap = {};
 
     const filterUser = document.getElementById('filter-audit-user');
     const filterSection = document.getElementById('filter-audit-section');
@@ -25,21 +26,24 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function initAuditoria() {
-        loadUserFilter();
-        initTable();
-        loadEntries();
-        setupFilters();
-        setupCleanupButton();
+        loadUserFilter().then(() => {
+            initSelect2();
+            initTable();
+            loadEntries();
+            setupFilters();
+            setupCleanupButton();
+        });
     }
 
-    function loadUserFilter() {
-        db.collection('usuarios').get().then(snapshot => {
+    async function loadUserFilter() {
+        try {
+            const snapshot = await db.collection('usuarios').get();
             const users = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
-                if (!data.desactivado) {
-                    users.push({ id: doc.id, nombre: `${data.nombre || ''} ${data.apellidos || ''}`.trim() || data.correo });
-                }
+                const fullName = `${data.nombre || ''} ${data.apellidos || ''}`.trim() || data.correo || 'Sin nombre';
+                userNameMap[doc.id] = fullName;
+                users.push({ id: doc.id, nombre: fullName });
             });
             users.sort((a, b) => a.nombre.localeCompare(b.nombre));
             users.forEach(u => {
@@ -48,7 +52,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 opt.textContent = u.nombre;
                 filterUser.appendChild(opt);
             });
-        }).catch(() => {});
+        } catch (e) {
+            console.error('Error al cargar usuarios:', e);
+        }
+    }
+
+    function initSelect2() {
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(filterUser).select2({
+                placeholder: 'Todos los usuarios',
+                allowClear: true,
+                width: '200px',
+                language: { noResults: () => 'No se encontraron resultados' }
+            });
+            $(filterSection).select2({
+                placeholder: 'Todas las secciones',
+                allowClear: true,
+                width: '170px'
+            });
+            $(filterAction).select2({
+                placeholder: 'Todas las acciones',
+                allowClear: true,
+                width: '170px'
+            });
+        }
     }
 
     function initTable() {
@@ -69,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     data: null, orderable: true,
                     render: function (row) {
-                        return row.userName || row.userId || '-';
+                        return userNameMap[row.userId] || row.userId || '-';
                     }
                 },
                 {
@@ -94,12 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 { data: 'description', orderable: false }
             ],
-            order: [[0, 'desc']],
-            drawCallback: function () {
-                document.querySelectorAll('#auditoria-table [data-bs-toggle="tooltip"]').forEach(el => {
-                    try { new bootstrap.Tooltip(el); } catch (e) {}
-                });
-            }
+            order: [[0, 'desc']]
         });
     }
 
@@ -136,9 +158,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setupFilters() {
         const redraw = () => applyFilters();
-        filterUser.addEventListener('change', redraw);
-        filterSection.addEventListener('change', redraw);
-        filterAction.addEventListener('change', redraw);
+        $(filterUser).on('change', redraw);
+        $(filterSection).on('change', redraw);
+        $(filterAction).on('change', redraw);
     }
 
     function setupCleanupButton() {
