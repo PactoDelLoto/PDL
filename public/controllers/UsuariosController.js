@@ -263,6 +263,7 @@ function setupUserActionHandlers() {
             async () => {
                 try {
                     await db.collection('usuarios').doc(userId).update({ desactivado: true });
+                    if (window.auditar) window.auditar('usuarios', 'desactivar', `Usuario "${userName}" desactivado`);
                     showAlert(`Usuario ${userName} desactivado con éxito.`, 'success');
                     loadUsersIntoTable();
                 } catch (error) {
@@ -282,6 +283,7 @@ function setupUserActionHandlers() {
             async () => {
                 try {
                     await db.collection('usuarios').doc(userId).update({ desactivado: false });
+                    if (window.auditar) window.auditar('usuarios', 'reactivar', `Usuario "${userName}" reactivado`);
                     showAlert(`Usuario ${userName} reactivado con éxito.`, 'success');
                     loadUsersIntoTable();
                 } catch (error) {
@@ -415,6 +417,7 @@ function setupUserActionHandlers() {
         try {
             await db.collection('usuarios').doc(userId).update(updatedData);
             editUserModal.hide();
+            if (window.auditar) window.auditar('usuarios', 'editar', `Usuario "${updatedData.nombre}" editado`);
             showAlert('Usuario actualizado con éxito.', 'success');
             loadUsersIntoTable();
         } catch (error) {
@@ -566,6 +569,7 @@ async function handleRoleToggle(button, role) {
                 }
 
                 await userDocRef.update(updates);
+                if (window.auditar) window.auditar('usuarios', 'cambio_rol', `Rol de "${userName}" actualizado`);
                 showAlert(`Rol de ${userName} actualizado.`, 'success');
                 loadUsersIntoTable();
             } catch (error) {

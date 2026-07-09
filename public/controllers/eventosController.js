@@ -644,9 +644,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (id) {
                 await db.collection('eventos').doc(id).update(eventoData);
+                if (window.auditar) window.auditar('eventos', 'editar', `Evento "${titulo}" editado`);
                 showAlert('Evento actualizado con éxito', 'success');
             } else {
                 await db.collection('eventos').add(eventoData);
+                if (window.auditar) window.auditar('eventos', 'crear', `Evento "${titulo}" creado`);
                 showAlert('Evento creado con éxito', 'success');
             }
             if (eventModal) eventModal.hide();
@@ -931,9 +933,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (id) {
                 await db.collection('tipoSubevento').doc(id).update({ nombre });
+                if (window.auditar) window.auditar('eventos', 'editar', `Tipo de actividad "${nombre}" editado`);
                 showAlert('Tipo actualizado correctamente.', 'success');
             } else {
                 await db.collection('tipoSubevento').add({ nombre });
+                if (window.auditar) window.auditar('eventos', 'crear', `Tipo de actividad "${nombre}" creado`);
                 showAlert('Tipo creado correctamente.', 'success');
             }
             // Reset y recarga
@@ -1132,8 +1136,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(() => {
                     showAlert(`${window.itemToDeleteType.charAt(0).toUpperCase() + window.itemToDeleteType.slice(1)} eliminado con éxito.`, 'success');
                     if (window.itemToDeleteType === 'evento') {
+                        if (window.auditar) window.auditar('eventos', 'eliminar', `Evento eliminado`);
                         loadEvents();
                     } else if (window.itemToDeleteType === 'subevento') {
+                        if (window.auditar) {
+                            const subData = (subeventosCache || []).find(s => s.id === window.itemToDeleteId);
+                            const eId = subData ? subData.eventoId : '';
+                            const eventoTitulo = eId ? (eventosCache.find(e => e.id === eId)?.titulo || '') : '';
+                            window.auditar('eventos', 'eliminar', `Actividad eliminada del evento "${eventoTitulo}"`);
+                        }
                         const eventId = new URLSearchParams(window.location.search).get('id');
                         if (eventId && window.loadSubeventos) {
                             window.loadSubeventos(eventId);
@@ -1142,6 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             loadEvents().then(() => loadAllSubeventos().then(() => renderViews()));
                         }
                     } else if (window.itemToDeleteType === 'tipo') {
+                        if (window.auditar) window.auditar('eventos', 'eliminar', `Tipo de actividad eliminado`);
                         loadEventTypes();
                     }
                 })

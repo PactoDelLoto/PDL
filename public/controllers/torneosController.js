@@ -945,6 +945,8 @@ window.initializeTorneosController = function (canManage) {
                 }
             });
 
+            if (window.auditar) window.auditar('torneos', 'finalizar', 'Torneo finalizado en Commander');
+
             // Actualizar caché local
             const localTorneo = torneosCache.find(t => t.id === selectedTournament.id);
             if (localTorneo) {
@@ -1503,6 +1505,7 @@ window.initializeTorneosController = function (canManage) {
         try {
             if (torneoId) {
                 await db.collection('torneos').doc(torneoId).update(data);
+                if (window.auditar) window.auditar('torneos', 'editar', 'Torneo editado en Commander');
                 if (window.showAlert) window.showAlert("Torneo actualizado con éxito.", "success");
             } else {
                 // Campos por defecto para nuevos torneos
@@ -1510,6 +1513,7 @@ window.initializeTorneosController = function (canManage) {
                 data.jugadores = [];
                 data.rondas = [];
                 await db.collection('torneos').add(data);
+                if (window.auditar) window.auditar('torneos', 'crear', 'Torneo creado en Commander');
                 if (window.showAlert) window.showAlert("Torneo creado con éxito en estado Borrador.", "success");
             }
             modalTorneo.hide();
@@ -1562,6 +1566,7 @@ window.initializeTorneosController = function (canManage) {
 
         try {
             await db.collection('torneos').doc(torneoId).update({ estado: 'en_curso' });
+            if (window.auditar) window.auditar('torneos', 'iniciar', 'Torneo iniciado en Commander');
             if (window.showAlert) window.showAlert("Torneo iniciado. Ya puedes generar emparejamientos y rondas.", "success");
             await loadInitialData();
             openTournamentManagement(torneoId);
@@ -1624,6 +1629,7 @@ window.initializeTorneosController = function (canManage) {
             }
 
             await torneoRef.delete();
+            if (window.auditar) window.auditar('torneos', 'eliminar', 'Torneo eliminado de Commander');
             if (window.showAlert) window.showAlert("Torneo eliminado y puntos de liga restados.", "success");
             await loadInitialData();
         } catch (error) {

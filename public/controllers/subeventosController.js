@@ -887,11 +887,22 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (subeventId) {
                 await db.collection('subeventos').doc(subeventId).update(subeventoData);
+                if (window.auditar) window.auditar('eventos', 'editar', `Actividad "${subeventoData.titulo}" editada`);
                 if (window.showAlert) window.showAlert('Subevento actualizado con éxito', 'success');
             } else {
                 subeventoData.creador = currentUser.uid;
                 subeventoData.plazasOcupadas = 0;
                 await db.collection('subeventos').add(subeventoData);
+                if (window.auditar) {
+                    let eventoTitulo = '';
+                    if (eventId) {
+                        try {
+                            const evRef = await db.collection('eventos').doc(eventId).get();
+                            if (evRef.exists) eventoTitulo = evRef.data().titulo || '';
+                        } catch (e) {}
+                    }
+                    window.auditar('eventos', 'crear', `Actividad "${subeventoData.titulo}" creada en evento "${eventoTitulo}"`);
+                }
                 if (window.showAlert) window.showAlert('Subevento creado con éxito', 'success');
             }
             if (subeventModal) subeventModal.hide();

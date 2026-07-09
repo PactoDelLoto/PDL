@@ -1098,10 +1098,12 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 if (id) {
                     await db.collection('torneos').doc(id).update(baseData);
+                    if (window.auditar) window.auditar('torneos', 'editar', 'Torneo editado en Riftbound');
                     showAlert('Torneo actualizado.', 'success');
                 } else {
                     const data = { ...baseData, estado: 'borrador', jugadores: [], rondas: [] };
                     await db.collection('torneos').add(data);
+                    if (window.auditar) window.auditar('torneos', 'crear', 'Torneo creado en Riftbound');
                     showAlert('Torneo creado.', 'success');
                 }
                 bootstrap.Modal.getInstance($id('modal-torneo-riftbound'))?.hide();
@@ -1120,6 +1122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             try {
                 await db.collection('torneos').doc(torneoId).update({ estado: 'en_curso' });
+                if (window.auditar) window.auditar('torneos', 'iniciar', 'Torneo iniciado en Riftbound');
                 await loadInitialData();
                 showAlert('Torneo iniciado.', 'success');
                 if (selectedTournament?.id === torneoId) openTournamentManagement(torneoId);
@@ -1148,6 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 await db.collection('torneos').doc(torneoId).delete();
+                if (window.auditar) window.auditar('torneos', 'eliminar', 'Torneo eliminado de Riftbound');
                 await loadInitialData();
                 showAlert('Torneo eliminado.', 'success');
             } catch (e) { showAlert('Error: ' + e.message, 'danger'); }

@@ -239,6 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const docId = $(this).data('id');
                 showConfirmationModal('Confirmar Eliminación', `¿Estás seguro de que quieres eliminar este artículo?`, async () => {
                     await db.collection('inventario').doc(docId).delete();
+                    if (window.auditar) window.auditar('inventario', 'eliminar', 'Artículo eliminado');
                     showAlert('Artículo eliminado con éxito.', 'success');
                     loadInventoryData();
                 });
@@ -269,9 +270,11 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             if (itemId) {
                 await db.collection('inventario').doc(itemId).update(itemData);
+                if (window.auditar) window.auditar('inventario', 'editar', `Artículo "${itemData.nombre}" editado`);
                 showAlert('Artículo actualizado con éxito.', 'success');
             } else {
                 await db.collection('inventario').add(itemData);
+                if (window.auditar) window.auditar('inventario', 'crear', `Artículo "${itemData.nombre}" creado`);
                 showAlert('Artículo añadido con éxito.', 'success');
             }
             itemModal.hide();
@@ -312,6 +315,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 idCategoria: newNumericId,
                 nombreCategoria: newCategoryName
             });
+            if (window.auditar) window.auditar('inventario', 'crear', `Categoría "${newCategoryName}" creada`);
 
             showAlert('Categoría añadida con éxito.', 'success');
             newCategoryInput.value = '';
@@ -341,6 +345,7 @@ document.addEventListener('DOMContentLoaded', function () {
             async () => {
                 try {
                     await db.collection('categoriasInventario').doc(docId).delete();
+                    if (window.auditar) window.auditar('inventario', 'eliminar', 'Categoría eliminada');
                     showAlert('Categoría eliminada con éxito.', 'success');
                     await loadAndInitCategoriasTable(true);
                     await loadAndPopulateCategoriesForModal();

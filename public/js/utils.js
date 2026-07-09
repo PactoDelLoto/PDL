@@ -67,6 +67,23 @@ function showConfirmationModal(title, bodyText, onConfirm) {
  * @param {string} description - Descripción.
  * @param {string} imageUrl - URL de la imagen del cartel.
  */
+window.auditar = async function (section, action, description, metadata) {
+    try {
+        const user = firebase.auth().currentUser;
+        if (!user) return;
+        await firebase.firestore().collection('auditoria').add({
+            timestamp: firebase.firestore.Timestamp.fromDate(new Date()),
+            userId: user.uid,
+            section: section,
+            action: action,
+            description: description,
+            metadata: metadata || {}
+        });
+    } catch (e) {
+        console.error('Error al registrar auditoría:', e);
+    }
+};
+
 function updateOGTags(title, description, imageUrl) {
     const setMeta = (property, content) => {
         let el = document.querySelector(`meta[property="${property}"]`);

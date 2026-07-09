@@ -76,6 +76,7 @@ async function populateNavbarLinks(isLoggedIn) {
         }
         if (isAdmin) {
             adminItems.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
+            adminItems.push({ text: 'Auditoría', href: '/auditoria.html' });
         }
 
         if (adminItems.length > 0) {
