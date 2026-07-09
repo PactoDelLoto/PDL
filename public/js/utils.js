@@ -43,7 +43,31 @@ function showAlert(message, type = 'success') {
  * @param {function} onConfirm - La función a ejecutar si el usuario confirma.
  */
 function showConfirmationModal(title, bodyText, onConfirm) {
-    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmation-modal'));
+    let modalEl = document.getElementById('confirmation-modal');
+    if (!modalEl) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+<div class="modal fade" id="confirmation-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmation-modal-body-text"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirm-action-btn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>`;
+        document.body.appendChild(wrapper.firstElementChild);
+        modalEl = document.getElementById('confirmation-modal');
+    }
+    const confirmationModal = new bootstrap.Modal(modalEl);
     document.getElementById('confirmationModalLabel').textContent = title;
     document.getElementById('confirmation-modal-body-text').textContent = bodyText;
 

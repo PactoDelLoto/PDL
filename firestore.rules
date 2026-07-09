@@ -70,10 +70,11 @@ match /subeventos/{docId} {
 // INSCRIPCIONES (collection group)
 match /{path=**}/inscripciones/{inscripcionId} {
 
-  // Lectura: propietario, administrador o colaborador
+  // Lectura: propietario (por userId o correo), administrador o colaborador
   allow read: if request.auth != null &&
     (
       resource.data.userId == request.auth.uid ||
+      resource.data.correo == request.auth.token.email ||
       isAdmin() ||
       isColaborador()
     );
@@ -137,6 +138,16 @@ match /sugerencias/{docId} {
 match /auditoria/{docId} {
   allow create: if request.auth != null;
   allow read: if isAdmin();
+}
+
+// SOLICITUDES
+match /solicitudes/{docId} {
+  allow create: if request.auth != null;
+  allow read: if request.auth != null &&
+    (resource.data.userId == request.auth.uid || isAdmin());
+  allow update: if request.auth != null &&
+    (resource.data.userId == request.auth.uid || isAdmin());
+  allow delete: if isAdmin();
 }
 
 }

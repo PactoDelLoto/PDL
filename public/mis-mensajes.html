@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis mensajes - Pacto del Loto</title>
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/DataTables/datatables.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+    <header></header>
+    <main class="container mt-5 pt-5 mb-5">
+        <div id="alert-container"></div>
+        <div class="row">
+            <div class="col">
+                <h1 class="mb-4">Mis mensajes</h1>
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0" id="inbox-title">Bandeja de entrada</h5>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small text-muted">Solo recibidos</span>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="toggle-mostrar-enviados">
+                                </div>
+                                <span class="small text-muted">Mostrar enviados</span>
+                            </div>
+                        </div>
+                        <table id="mis-mensajes-table" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Mensaje</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para ver/responder mensaje -->
+    <div class="modal fade" id="mensaje-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Mensaje</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1"><strong>Fecha:</strong> <span id="mensaje-modal-fecha"></span></p>
+                    <p class="mb-1"><strong>Tipo:</strong> <span id="mensaje-modal-tipo"></span></p>
+                    <hr>
+                    <div class="conversacion-scroll" style="max-height: 40vh; overflow-y: auto;" id="mensaje-conversacion">
+                    </div>
+                    <hr>
+                    <div class="mb-3" id="mensaje-modal-respuesta-user-container">
+                        <label for="mensaje-respuesta-input" class="form-label"><strong>Responder</strong></label>
+                        <textarea class="form-control" id="mensaje-respuesta-input" rows="3" placeholder="Escribe aquí si necesitas responder..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="mensaje-enviar-respuesta-btn">
+                        <i class="fa-solid fa-reply me-1"></i>Responder
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
+
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/DataTables/datatables.min.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/misMensajesController.js"></script>
+</body>
+</html>

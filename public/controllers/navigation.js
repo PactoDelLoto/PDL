@@ -1,3 +1,27 @@
+// Fallback global para showConfirmationModal si utils.js no está cargado
+if (typeof window.showConfirmationModal !== 'function') {
+    window.showConfirmationModal = function (title, bodyText, onConfirm) {
+        let modalEl = document.getElementById('confirmation-modal');
+        if (!modalEl) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = '<div class="modal fade" id="confirmation-modal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="confirmationModalLabel"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p id="confirmation-modal-body-text"></p></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-danger" id="confirm-action-btn">Confirmar</button></div></div></div></div>';
+            document.body.appendChild(wrapper.firstElementChild);
+            modalEl = document.getElementById('confirmation-modal');
+        }
+        const confirmationModal = new bootstrap.Modal(modalEl);
+        document.getElementById('confirmationModalLabel').textContent = title;
+        document.getElementById('confirmation-modal-body-text').textContent = bodyText;
+        const confirmBtn = document.getElementById('confirm-action-btn');
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        newConfirmBtn.addEventListener('click', function () {
+            onConfirm();
+            confirmationModal.hide();
+        });
+        confirmationModal.show();
+    };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const navbarContainer = document.querySelector('header');
     const footerContainer = document.querySelector('footer');
@@ -76,11 +100,12 @@ async function populateNavbarLinks(isLoggedIn) {
         }
         if (isAdmin) {
             adminItems.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
+            adminItems.push({ text: 'Solicitudes', href: '/solicitudes.html' });
             adminItems.push({ text: 'Auditoría', href: '/auditoria.html' });
         }
 
         if (adminItems.length > 0) {
-            links.push({ text: 'Administración', isDropdown: true, items: adminItems });
+            links.push({ text: 'Administración', isDropdown: true, items: adminItems, isAdmin: true });
         }
     }
 
@@ -120,11 +145,14 @@ async function populateNavbarLinks(isLoggedIn) {
                 }).join('');
 
                 const idSuffix = link.text === 'Administración' ? 'Admin' : 'Torneos';
+                const linkText = link.isAdmin
+                    ? `Administración<span id="admin-unread-badge" class="badge bg-danger rounded-pill ms-1" style="display:none;font-size:0.6rem">0</span>`
+                    : link.text;
 
                 return `
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle ${dropdownClass}" href="#" id="navbarDropdown${idSuffix}" role="button" data-bs-toggle="dropdown"${hasSubDropdown ? ' data-bs-auto-close="outside"' : ''} aria-expanded="false">
-                            ${link.text}
+                            ${linkText}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDropdown${idSuffix}">
                             ${itemsHtml}
@@ -252,28 +280,50 @@ function setupAuthUI() {
                 roleBadgeHtml = roleBadgeHtml.replace('<span ', `<span data-bs-toggle="tooltip" title="${tooltipText}" `);
             }
 
+            const userUnreadBubble = '<span id="user-unread-badge-desktop" class="badge bg-danger rounded-pill ms-1 user-unread-badge" style="display:none;font-size:0.65rem">0</span>';
+            const userUnreadBubbleMobile = '<span id="user-unread-badge-mobile" class="badge bg-danger rounded-pill ms-1 user-unread-badge" style="display:none;font-size:0.65rem">0</span>';
+
+            const misMensajesItem = `<li><a class="dropdown-item" href="/mis-mensajes.html"><i class="fa-regular fa-envelope me-2"></i>Mis mensajes<span id="user-unread-badge-menu" class="badge bg-danger rounded-pill ms-1" style="display:none;font-size:0.6rem">0</span></a></li>`;
+
+            // "Actualizar cuentas" for socios with debt, "Ser socio" for non-socios
+            let solicitudItem = '';
+            if (isSocio && !alCorriente) {
+                solicitudItem = `<li><a class="dropdown-item" href="#" id="btn-solicitar-actualizar-cuentas"><i class="fa-solid fa-rotate me-2"></i>Actualizar cuentas</a></li>`;
+            } else if (!isSocio) {
+                solicitudItem = `<li><a class="dropdown-item" href="#" id="btn-solicitar-ser-socio"><i class="fa-solid fa-user-plus me-2"></i>Ser socio</a></li>`;
+            }
+
             const sugerenciasItem = (isSocio || isAdmin)
-                ? `<li><a class="dropdown-item" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a></li><li><hr class="dropdown-divider"></li>`
+                ? `<li><a class="dropdown-item" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a></li>`
                 : '';
+
+            const commonItems = `
+                <li><a class="dropdown-item" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a></li>
+                <li><a class="dropdown-item" href="/perfil.html?tab=actividades"><i class="fa-regular fa-calendar me-2"></i>Mis actividades</a></li>
+                <li><hr class="dropdown-divider"></li>
+                ${misMensajesItem}
+                ${solicitudItem ? `<li>${solicitudItem}</li>` : ''}
+                ${sugerenciasItem ? `<li>${sugerenciasItem}</li>` : ''}
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#" id="logout-button-desktop"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</a></li>
+            `;
 
             const desktopUI = `
                 <div class="dropdown">
                     <button class="btn btn-outline-light dropdown-toggle" type="button" id="user-menu-desktop" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-user-circle me-2"></i> ${displayName}${roleBadgeHtml}${bubbleHtml}
+                        <i class="fas fa-user-circle me-2"></i> ${displayName}${roleBadgeHtml}${bubbleHtml}${userUnreadBubble}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu-desktop">
-                        <li><a class="dropdown-item" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a></li>
-                        <li><a class="dropdown-item" href="/perfil.html?tab=actividades"><i class="fa-regular fa-calendar me-2"></i>Mis actividades</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        ${sugerenciasItem}
-                        <li><a class="dropdown-item text-danger" href="#" id="logout-button-desktop"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</a></li>
+                        ${commonItems}
                     </ul>
                 </div>
             `;
             const mobileUI = `
-                <p class="text-light mb-2">${displayName}${roleBadgeHtml}${bubbleHtml}</p>
+                <p class="text-light mb-2">${displayName}${roleBadgeHtml}${bubbleHtml}${userUnreadBubbleMobile}</p>
                 <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a>
                 <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html?tab=actividades"><i class="fa-regular fa-calendar me-2"></i>Mis actividades</a>
+                <a class="btn btn-outline-light w-100 mb-2" href="/mis-mensajes.html"><i class="fa-regular fa-envelope me-2"></i>Mis mensajes</a>
+                ${solicitudItem ? `<a class="btn btn-outline-info w-100 mb-2" href="#" id="btn-solicitar-mobile">${solicitudItem.includes('Actualizar') ? 'Actualizar cuentas' : 'Ser socio'}</a>` : ''}
                 ${isSocio || isAdmin ? `<a class="btn btn-outline-warning w-100 mb-2" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a>` : ''}
                 <button class="btn btn-danger w-100" id="logout-button-mobile"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</button>
             `;
@@ -287,9 +337,213 @@ function setupAuthUI() {
             document.getElementById('logout-button-desktop').addEventListener('click', e => { e.preventDefault(); firebase.auth().signOut(); });
             document.getElementById('logout-button-mobile').addEventListener('click', () => firebase.auth().signOut());
 
+            // Solicitud "Actualizar cuentas"
+            const btnActualizar = document.getElementById('btn-solicitar-actualizar-cuentas');
+            if (btnActualizar) {
+                btnActualizar.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    const db = firebase.firestore();
+                    try {
+                        const cooldown = await checkSolicitudCooldown(db, user.uid, 'actualizar_cuentas');
+                        if (cooldown) {
+                            window.showAlert(`Ya enviaste una solicitud de actualización de cuentas el ${cooldown.fecha}. Debes esperar una semana desde esa fecha para enviar otra.`, 'warning');
+                            return;
+                        }
+                    } catch (e) {}
+                    window.showConfirmationModal(
+                        'Actualizar cuentas',
+                        'Al enviar esta solicitud, el equipo revisará que estés al corriente de pago para actualizar el estado de tus cuentas y así mantener tu condición de socio. Asegúrate de haber realizado el pago de las cuotas pendientes antes de continuar.',
+                        async function () {
+                            try {
+                                const doc = await db.collection('usuarios').doc(user.uid).get();
+                                if (!doc.exists) return;
+                                const data = doc.data();
+                                const nombre = data.nombre || '';
+                                const apellidos = data.apellidos || '';
+                                await db.collection('solicitudes').add({
+                                    userId: user.uid,
+                                    userName: `${nombre} ${apellidos}`.trim(),
+                                    userEmail: user.email,
+                                    tipo: 'actualizar_cuentas',
+                                    mensaje: 'Debido a que debía cuotas y actualmente me he puesto al día, solicito la actualización de mis cuentas. Gracias, un saludo.',
+                                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                                    leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
+                                    respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
+                                    leidoUser: false, leidoUserFecha: null,
+                                    status: 'pendiente',
+                                    conversacion: [{ rol: 'usuario', mensaje: 'Debido a que debía cuotas y actualmente me he puesto al día, solicito la actualización de mis cuentas. Gracias, un saludo.', fecha: new Date() }]
+                                });
+                                if (window.auditar) window.auditar('solicitudes', 'crear', 'Solicitud de actualización de cuentas enviada', { tipo: 'actualizar_cuentas' });
+                                if (window.showAlert) window.showAlert('Solicitud enviada correctamente. El equipo revisará tu caso.', 'success');
+                            } catch (err) {
+                                console.error('Error al crear solicitud:', err);
+                                if (window.showAlert) window.showAlert('Error al enviar la solicitud.', 'danger');
+                            }
+                        }
+                    );
+                });
+            }
+
+            // Solicitud "Ser socio" (para no socios)
+            const btnSerSocio = document.getElementById('btn-solicitar-ser-socio');
+            if (btnSerSocio) {
+                btnSerSocio.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    const db = firebase.firestore();
+                    try {
+                        const cooldown = await checkSolicitudCooldown(db, user.uid, 'ser_socio');
+                        if (cooldown) {
+                            window.showAlert(`Ya enviaste una solicitud para ser socio el ${cooldown.fecha}. Debes esperar una semana desde esa fecha para enviar otra.`, 'warning');
+                            return;
+                        }
+                    } catch (e) {}
+                    window.showConfirmationModal(
+                        'Solicitar ser socio',
+                        'Al enviar esta solicitud, el equipo evaluará tu petición para convertirte en socio. Podrás acceder a descuentos, actividades exclusivas y participar en la vida del club. Un administrador revisará tu caso y te responderá a la mayor brevedad.',
+                        async function () {
+                            try {
+                                const doc = await db.collection('usuarios').doc(user.uid).get();
+                                if (!doc.exists) return;
+                                const data = doc.data();
+                                const nombre = data.nombre || '';
+                                const apellidos = data.apellidos || '';
+                                await db.collection('solicitudes').add({
+                                    userId: user.uid,
+                                    userName: `${nombre} ${apellidos}`.trim(),
+                                    userEmail: user.email,
+                                    tipo: 'ser_socio',
+                                    mensaje: `${nombre} ${apellidos} quiere ser socio.`,
+                                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                                    leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
+                                    respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
+                                    leidoUser: false, leidoUserFecha: null,
+                                    status: 'pendiente',
+                                    conversacion: [{ rol: 'usuario', mensaje: `${nombre} ${apellidos} quiere ser socio.`, fecha: new Date() }]
+                                });
+                                if (window.auditar) window.auditar('solicitudes', 'crear', 'Solicitud de socio enviada', { tipo: 'ser_socio' });
+                                if (window.showAlert) window.showAlert('Solicitud enviada correctamente. El equipo se pondrá en contacto contigo.', 'success');
+                            } catch (err) {
+                                console.error('Error al crear solicitud:', err);
+                                if (window.showAlert) window.showAlert('Error al enviar la solicitud.', 'danger');
+                            }
+                        }
+                    );
+                });
+            }
+
+            // Mobile: same handler for solicitud button
+            const btnSolicitarMobile = document.getElementById('btn-solicitar-mobile');
+            if (btnSolicitarMobile) {
+                btnSolicitarMobile.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const desktopBtn = document.getElementById('btn-solicitar-actualizar-cuentas') || document.getElementById('btn-solicitar-ser-socio');
+                    if (desktopBtn) desktopBtn.click();
+                });
+            }
+
+            updateNotificationBubbles();
+            applySolicitudCooldown(db, user.uid);
+
         } else {
             userActionsDesktop.innerHTML = '<a href="/login.html" class="btn btn-outline-light me-2">Login</a><a href="/registro.html" class="btn btn-warning">Registro</a>';
             userActionsMobile.innerHTML = '<div class="d-grid gap-2"><a href="/login.html" class="btn btn-outline-light">Login</a><a href="/registro.html" class="btn btn-warning">Registro</a></div>';
         }
     });
+}
+
+async function updateNotificationBubbles() {
+    const db = firebase.firestore();
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    try {
+        const isAdmin = await window.isUserAdmin();
+        if (isAdmin) {
+            const snapshot = await db.collection('solicitudes')
+                .where('leidoAdmin', '==', false)
+                .get();
+            const count = snapshot.size;
+            const badge = document.getElementById('admin-unread-badge');
+            if (badge) {
+                badge.textContent = count;
+                badge.style.display = count > 0 ? '' : 'none';
+            }
+        }
+    } catch (e) { console.error('Error en admin badge:', e); }
+
+    try {
+        const userSnapshot = await db.collection('solicitudes')
+            .where('userId', '==', user.uid)
+            .get();
+        const userCount = userSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.respuestaAdmin && !data.leidoUser;
+        }).length;
+        ['user-unread-badge-desktop', 'user-unread-badge-mobile', 'user-unread-badge-menu'].forEach(id => {
+            const badge = document.getElementById(id);
+            if (badge) {
+                badge.textContent = userCount;
+                badge.style.display = userCount > 0 ? '' : 'none';
+            }
+        });
+    } catch (e) { console.error('Error en user badge:', e); }
+}
+
+async function checkSolicitudCooldown(db, uid, tipo) {
+    const snapshot = await db.collection('solicitudes')
+        .where('userId', '==', uid)
+        .get();
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    for (const doc of snapshot.docs) {
+        const data = doc.data();
+        if (data.tipo !== tipo) continue;
+        const fecha = data.fecha?.toDate?.();
+        if (fecha && fecha > weekAgo) {
+            const fechaStr = fecha.toLocaleDateString('es-ES');
+            return { fecha: fechaStr, docId: doc.id };
+        }
+    }
+    return null;
+}
+
+async function applySolicitudCooldown(db, uid) {
+    try {
+        const snapshot = await db.collection('solicitudes')
+            .where('userId', '==', uid)
+            .get();
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const cooldownTipos = {};
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const fecha = data.fecha?.toDate?.();
+            if (fecha && fecha > weekAgo) {
+                if (!cooldownTipos[data.tipo]) {
+                    cooldownTipos[data.tipo] = fecha.toLocaleDateString('es-ES');
+                }
+            }
+        });
+        const tipos = [
+            { tipo: 'actualizar_cuentas', btnId: 'btn-solicitar-actualizar-cuentas' },
+            { tipo: 'ser_socio', btnId: 'btn-solicitar-ser-socio' }
+        ];
+        for (const { tipo, btnId } of tipos) {
+            if (cooldownTipos[tipo]) {
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    btn.style.pointerEvents = 'none';
+                    btn.classList.add('opacity-50');
+                    btn.setAttribute('tabindex', '-1');
+                    btn.setAttribute('aria-disabled', 'true');
+                    btn.setAttribute('title', 'No puedes volver a solicitarlo hasta que pase una semana.');
+                    btn.setAttribute('data-bs-toggle', 'tooltip');
+                    btn.setAttribute('data-bs-placement', 'left');
+                    setTimeout(() => {
+                        try { new bootstrap.Tooltip(btn); } catch (e) {}
+                    }, 100);
+                }
+            }
+        }
+    } catch (e) {}
 }

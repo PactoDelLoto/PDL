@@ -1,6 +1,5 @@
 
 document.addEventListener('DOMContentLoaded', function () {
-    // --- ELEMENTOS DEL DOM ---
     const form = document.getElementById('registro-form');
     const googleLoginButton = document.getElementById('google-login-button');
     const passwordInput = document.getElementById('password');
@@ -9,6 +8,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const passwordErrorFeedback = document.getElementById('password-error-feedback');
     const togglePasswordIcon = document.getElementById('toggle-password');
     const toggleConfirmPasswordIcon = document.getElementById('toggle-confirm-password');
+    const registroContent = document.getElementById('registro-content');
+    const registroYaLogueado = document.getElementById('registro-ya-logueado');
+
+    // Si ya está logueado, ocultar formulario
+    auth.onAuthStateChanged(function (user) {
+        if (user) {
+            if (registroContent) registroContent.classList.add('d-none');
+            if (registroYaLogueado) registroYaLogueado.classList.remove('d-none');
+        }
+    });
 
     // --- LÓGICA DE VISIBILIDAD DE CONTRASEÑA ---
     function togglePasswordVisibility(input, icon) {
@@ -76,70 +85,65 @@ document.addEventListener('DOMContentLoaded', function () {
             const password = passwordInput.value;
             const nombre = document.getElementById('nombre').value;
             const apellidos = document.getElementById('apellidos').value;
-            const telefono = document.getElementById('telefono').value; // Asumiendo que tienes un input con id="telefono"
+            const telefono = document.getElementById('telefono').value;
+            const quieroSocio = document.getElementById('quiero-ser-socio')?.checked || false;
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Registrando...';
 
             auth.createUserWithEmailAndPassword(email, password)
                 .then(userCredential => {
                     const user = userCredential.user;
-                    // Guarda el documento del usuario en Firestore con la estructura correcta
                     return db.collection('usuarios').doc(user.uid).set({
                         UID: user.uid,
                         nombre: nombre,
                         apellidos: apellidos,
-                        correo: email, // Corregido de 'email' a 'correo'
+                        correo: email,
                         telefono: telefono,
-                        isAdmin: false, // Por defecto, no es admin
-                        isSocio: false, // Por defecto, no es socio
+                        isAdmin: false,
+                        isSocio: false,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }).then(() => {
-                        window.location.href = '/index.html';
-                    });
-                })
-                .catch(error => {
-                    const errorMessage = getFirebaseErrorMessage(error.code);
-                    errorDiv.textContent = errorMessage;
-                    errorDiv.classList.remove('d-none');
-                });
-        });
-    }
-
-    // --- MANEJO DEL LOGIN CON GOOGLE ---
-    if (googleLoginButton) {
-        googleLoginButton.addEventListener('click', function() {
-            const googleProvider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(googleProvider)
-                .then(result => {
-                    const user = result.user;
-                    const userRef = db.collection('usuarios').doc(user.uid);
-                    return userRef.get().then(docSnapshot => {
-                        if (!docSnapshot.exists) {
-                            const profile = result.additionalUserInfo.profile;
-                            // Guarda el documento del usuario de Google con la estructura correcta
-                            return userRef.set({
-                                UID: user.uid,
-                                nombre: profile.given_name || user.displayName.split(' ')[0],
-                                apellidos: profile.family_name || user.displayName.split(' ').slice(1).join(' '),
-                                correo: user.email, // Corregido
-                                telefono: user.phoneNumber || '', // Google no siempre provee teléfono
-                                isAdmin: false,
-                                isSocio: false,
-                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        if (quieroSocio) {
+                            return db.collection('solicitudes').add({
+                                userId: user.uid,
+                                userName: `${nombre} ${apellidos}`.trim(),
+                                userEmail: email,
+                                tipo: 'ser_socio',
+                                mensaje: `${nombre} ${apellidos} se ha registrado y quiere ser socio.`,
+                                fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                                leidoAdmin: false,
+                                leidoAdminPor: null,
+                                leidoAdminFecha: null,
+                                respuestaAdmin: null,
+                                respondidoAdminPor: null,
+                                respondidoAdminFecha: null,
+                                leidoUser: false,
+                                leidoUserFecha: null,
+                                status: 'pendiente',
+                                conversacion: [{ rol: 'usuario', mensaje: `${nombre} ${apellidos} se ha registrado y quiere ser socio.`, fecha: new Date() }]
                             });
                         }
-                    }).then(() => {
-                        window.location.href = '/index.html';
                     });
-                }).catch(error => {
+                })
+                .then(() => {
+                    window.location.href = '/index.html';
+                })
+                .catch(error => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Registrarse';
                     const errorMessage = getFirebaseErrorMessage(error.code);
-                    errorDiv.textContent = errorMessage;
-                    errorDiv.classList.remove('d-none');
+                    if (errorDiv) {
+                        errorDiv.textContent = errorMessage;
+                        errorDiv.classList.remove('d-none');
+                    }
                 });
         });
     }
 
-    // --- OTROS LISTENERS Y FUNCIONES DE ERROR (Sin cambios) ---
     if (confirmPasswordInput) confirmPasswordInput.addEventListener('input', () => confirmPasswordInput.setCustomValidity(''));
-    if (passwordInput) passwordInput.addEventListener('input', () => { passwordInput.setCustomValidity(''); passwordErrorFeedback.textContent = ''; });
+    if (passwordInput) passwordInput.addEventListener('input', () => { passwordInput.setCustomValidity(''); if (passwordErrorFeedback) passwordErrorFeedback.textContent = ''; });
 });
 
 function getFirebaseErrorMessage(errorCode) {
