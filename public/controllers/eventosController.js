@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filtros de vista: mostrar eventos / actividades
     const filterShowEventsEl = document.getElementById('filter-show-events');
     const filterShowActivitiesEl = document.getElementById('filter-show-activities');
-    const filterShowPastEl = document.getElementById('filter-show-past');
+    let selectedPeriod = 'upcoming';
     // Campos nuevos para eventos continuos
     const eventContinuoCheckbox = document.getElementById('event-continuo');
     const eventFechaInicioEl = document.getElementById('event-fechaInicio');
@@ -172,8 +172,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (filterShowEvents) filterShowEvents.addEventListener('change', applyEventFilterAndRender);
                 const filterShowActivities = document.getElementById('filter-show-activities');
                 if (filterShowActivities) filterShowActivities.addEventListener('change', applyEventFilterAndRender);
-                const filterShowPast = document.getElementById('filter-show-past');
-                if (filterShowPast) filterShowPast.addEventListener('change', applyEventFilterAndRender);
+                const periodFilter = document.getElementById('period-filter');
+                if (periodFilter) {
+                    periodFilter.addEventListener('click', (e) => {
+                        const btn = e.target.closest('[data-period]');
+                        if (!btn) return;
+                        periodFilter.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        selectedPeriod = btn.dataset.period;
+                        applyEventFilterAndRender();
+                    });
+                }
                 const filterShowUnpublished = document.getElementById('filter-show-unpublished');
                 if (filterShowUnpublished) filterShowUnpublished.addEventListener('change', applyEventFilterAndRender);
             });
@@ -231,7 +240,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 {
                     data: 'titulo', title: 'Título', render: (data, type, row) => {
                         const badge = row.kind === 'actividad' ? '<span class="badge bg-success ms-2">Actividad</span>' : '<span class="badge bg-primary ms-2">Evento</span>';
-                        return `${data || ''} ${badge}`;
+                        const noPubli = row.fechaPublicacion && new Date(row.fechaPublicacion) > new Date();
+                        const noPubliHtml = noPubli ? '<span class="badge ms-1" style="background:#e84393;color:#fff;">No publi</span>' : '';
+                        return `${data || ''} ${noPubliHtml} ${badge}`;
                     }
                 },
                 {
@@ -243,10 +254,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const end = data.fechaFin ? new Date((data.fechaFin || '') + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
                                 return `${start}${end ? ' — ' + end : ''}`;
                             }
+                            if (!data.fecha && !data.hora) return 'Indefinida';
                             const fecha = data.fecha ? new Date((data.fecha || '') + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
                             return `${fecha} ${data.hora || ''}`;
                         } catch (e) {
-                            return '';
+                            return 'Indefinida';
                         }
                     }
                 },
@@ -273,9 +285,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             `;
                         }
                         return `
-                            <a href="eventoDetalle.html?id=${data}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
-                            <button class="btn btn-sm btn-outline-primary btn-edit-event admin-controls" data-id="${data}" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-sm btn-outline-danger btn-delete-event admin-controls" data-id="${data}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            <a href="eventoDetalle.html?id=${row.id}" class="btn btn-sm btn-info" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                            <button class="btn btn-sm btn-outline-primary btn-edit-event admin-controls" data-id="${row.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger btn-delete-event admin-controls" data-id="${row.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
                         `;
                     }
                 }
@@ -350,17 +362,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     horaStr = item.hora || '';
                 }
             } else {
-                fechaStr = new Date((item.fechaEvento || '') + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                if (item.fechaEvento) {
+                    fechaStr = new Date(item.fechaEvento + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                } else {
+                    fechaStr = 'Indefinida';
+                }
                 horaStr = item.horaEvento || '';
             }
             const badge = kind === 'evento' ? `<span class="badge bg-primary">Evento</span>` : `<span class="badge bg-success">Actividad</span>`;
+            const noPubli = item.fechaPublicacion && new Date(item.fechaPublicacion) > new Date();
+            const noPubliHtml = noPubli ? '<span class="badge ms-1" style="background:#e84393;color:#fff;">No publi</span>' : '';
             const viewHref = kind === 'evento' ? `eventoDetalle.html?id=${item.id}` : `subeventoDetalle.html?id=${item.id}`;
             col.innerHTML = `
                 <div class="card h-100 shadow-sm" style="cursor:pointer" data-href="${viewHref}">
                     <img src="${imagen}" class="card-img-top">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">${titulo}</h5>
+                            <h5 class="card-title mb-0">${titulo}${noPubliHtml}</h5>
                             ${badge}
                         </div>
                         <p class="card-text text-muted small">${fechaStr} ${horaStr ? 'a las ' + horaStr : ''}</p>
@@ -409,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedType = typeFilterSelect ? typeFilterSelect.value : '';
         const showEvents = filterShowEventsEl ? filterShowEventsEl.checked : true;
         const showActivities = filterShowActivitiesEl ? filterShowActivitiesEl.checked : true;
-        const showPast = filterShowPastEl ? filterShowPastEl.checked : false;
         const showUnpublished = document.getElementById('filter-show-unpublished')?.checked || false;
         const searchTerm = (document.getElementById('search-input') && document.getElementById('search-input').value) ? document.getElementById('search-input').value.trim().toLowerCase() : '';
         if (!selectedType) {
@@ -420,17 +437,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (showEvents) {
                 upcomingEvents = eventosCache.filter(ev => {
-                    if (showPast) return true;
+                    if (!showUnpublished && ev.fechaPublicacion && ev.fechaPublicacion > now) return false;
+                    if (selectedPeriod === 'all') return true;
                     try {
-                        // Si el evento es continuo, considerarlo si su fechaFin aún no ha pasado
                         if (ev.continuo) {
                             if (!ev.fechaFin) return false;
                             const endDt = new Date((ev.fechaFin || '') + 'T23:59:59');
+                            if (selectedPeriod === 'past') return endDt < now;
                             return endDt > now;
                         }
-                        // Eventos normales: comprobar fecha + hora
                         if (!ev.fecha) return false;
                         const dt = new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00'));
+                        if (selectedPeriod === 'past') return dt < now;
                         return dt > now;
                     } catch (e) {
                         return false;
@@ -443,10 +461,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (showActivities) {
                 upcomingActivities = (subeventosCache || []).filter(s => {
-                    if (!s.fechaEvento) return false;
+                    if (!s.fechaEvento) {
+                        if (!showUnpublished && s.fechaPublicacion && s.fechaPublicacion > now) return false;
+                        return selectedPeriod !== 'past';
+                    }
                     if (!showUnpublished && s.fechaPublicacion && s.fechaPublicacion > now) return false;
-                    if (showPast) return true;
+                    if (selectedPeriod === 'all') return true;
                     const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
+                    if (selectedPeriod === 'past') return dt < now;
                     return dt > now;
                 });
                 if (searchTerm) {
@@ -460,8 +482,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (eventosDataTable) {
                 const tableRows = [];
-                if (showEvents) upcomingEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, fechaInicio: ev.fechaInicio, fechaFin: ev.fechaFin, continuo: !!ev.continuo, lugar: ev.lugar, kind: 'evento' }));
-                if (showActivities) upcomingActivities.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId }));
+                if (showEvents) upcomingEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, fechaInicio: ev.fechaInicio, fechaFin: ev.fechaFin, continuo: !!ev.continuo, lugar: ev.lugar, kind: 'evento', fechaPublicacion: ev.fechaPublicacion }));
+                if (showActivities) upcomingActivities.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId, fechaPublicacion: s.fechaPublicacion }));
                 eventosDataTable.clear().rows.add(tableRows).draw();
             }
             return;
@@ -478,10 +500,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const nowDate = new Date();
             const snapData = snap.docs.map(d => ({ id: d.id, ...d.data(), fechaPublicacion: d.data().fechaPublicacion && d.data().fechaPublicacion.toDate ? d.data().fechaPublicacion.toDate() : null }));
             let activityFiltered = (subeventosCache && subeventosCache.length ? subeventosCache : snapData).filter(s => s.tipoEventoId === selectedType).filter(s => {
-                if (!s.fechaEvento) return false;
+                if (!s.fechaEvento) {
+                    if (!showUnpublished && s.fechaPublicacion && s.fechaPublicacion > nowDate) return false;
+                    return selectedPeriod !== 'past';
+                }
                 if (!showUnpublished && s.fechaPublicacion && s.fechaPublicacion > nowDate) return false;
-                if (showPast) return true;
+                if (selectedPeriod === 'all') return true;
                 const dt = new Date((s.fechaEvento || '') + 'T' + (s.horaEvento || '00:00'));
+                if (selectedPeriod === 'past') return dt < nowDate;
                 return dt > nowDate;
             });
             if (searchTerm) {
@@ -491,12 +517,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const eventIds = new Set(activityFiltered.map(s => s.eventoId).filter(Boolean));
             const filteredEvents = eventosCache.filter(ev => {
                 if (!eventIds.has(ev.id)) return false;
-                if (showPast) return true;
+                if (!showUnpublished && ev.fechaPublicacion && ev.fechaPublicacion > nowDate) return false;
+                if (selectedPeriod === 'all') return true;
                 if (ev.continuo) {
                     if (!ev.fechaFin) return false;
-                    return new Date((ev.fechaFin || '') + 'T23:59:59') > nowDate;
+                    const endDt = new Date((ev.fechaFin || '') + 'T23:59:59');
+                    if (selectedPeriod === 'past') return endDt < nowDate;
+                    return endDt > nowDate;
                 }
-                return (new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00')) > nowDate);
+                const dt = new Date((ev.fecha || '') + 'T' + (ev.hora || '00:00'));
+                if (selectedPeriod === 'past') return dt < nowDate;
+                return dt > nowDate;
             });
             // Construir combinados
             const combinedForGallery = [
@@ -507,8 +538,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (eventosDataTable) {
                 const tableRows = [];
-                if (showEvents) filteredEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, fechaInicio: ev.fechaInicio, fechaFin: ev.fechaFin, continuo: !!ev.continuo, lugar: ev.lugar, kind: 'evento' }));
-                if (showActivities) activityFiltered.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId }));
+                if (showEvents) filteredEvents.forEach(ev => tableRows.push({ id: ev.id, titulo: ev.titulo, fecha: ev.fecha, hora: ev.hora, fechaInicio: ev.fechaInicio, fechaFin: ev.fechaFin, continuo: !!ev.continuo, lugar: ev.lugar, kind: 'evento', fechaPublicacion: ev.fechaPublicacion }));
+                if (showActivities) activityFiltered.forEach(s => tableRows.push({ id: s.id, titulo: s.titulo, fecha: s.fechaEvento, hora: s.horaEvento, lugar: s.lugar, kind: 'actividad', eventoId: s.eventoId, fechaPublicacion: s.fechaPublicacion }));
                 eventosDataTable.clear().rows.add(tableRows).draw();
             }
         } catch (error) {
@@ -961,7 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
         $(`#eventos-${view}-container`).show();
         $('#view-gallery-btn, #view-table-btn').removeClass('active');
         $(`#view-${view}-btn`).addClass('active');
-        if (view === 'table' && eventosDataTable) {
+        if (view === 'table' && eventosDataTable && eventosDataTable.responsive) {
             eventosDataTable.responsive.recalc();
         }
     }

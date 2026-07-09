@@ -773,7 +773,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     descEl.innerHTML += `<div class="mt-3"><a href="${safeBasesUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-alt me-1"></i> ${label}</a></div>`;
                 }
             }
-            if (dateEl) dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${(sub.fechaEvento || '')} ${sub.horaEvento ? 'a las ' + sub.horaEvento : ''}`;
+            if (dateEl) {
+                const fecha = sub.fechaEvento || '';
+                const hora = sub.horaEvento || '';
+                if (fecha || hora) {
+                    dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> ${fecha} ${hora ? 'a las ' + hora : ''}`;
+                } else {
+                    dateEl.innerHTML = `<i class="fas fa-calendar-alt"></i> Indefinida`;
+                }
+            }
             if (placeEl) placeEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${window.escapeHtml ? window.escapeHtml(sub.lugar || '') : (sub.lugar || '')}`;
             if (tipoEl) tipoEl.textContent = (window.getTiposCache ? (window.getTiposCache().find(t => t.id === sub.tipoEventoId)?.nombre) : '') || 'Desconocido';
             // Herencia de imagen: si la actividad no tiene imagen, buscar la del evento padre

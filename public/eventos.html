@@ -61,32 +61,23 @@
                     </div>
 
                     <!-- Filtro por Tipo -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <select id="type-filter" class="form-select">
                             <option value="">Filtrar por tipo</option>
                         </select>
-                        <div class="mt-2">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="filter-show-events" checked>
-                                <label class="form-check-label" for="filter-show-events">Eventos</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="filter-show-activities">
-                                <label class="form-check-label" for="filter-show-activities">Actividades</label>
-                            </div>
-                            <div class="form-check form-check-inline admin-controls">
-                                <input class="form-check-input" type="checkbox" id="filter-show-past">
-                                <label class="form-check-label" for="filter-show-past">Mostrar finalizados</label>
-                            </div>
-                            <div class="form-check form-check-inline colaborador-controls">
-                                <input class="form-check-input" type="checkbox" id="filter-show-unpublished">
-                                <label class="form-check-label" for="filter-show-unpublished">Mostrar no publicados</label>
-                            </div>
+                    </div>
+
+                    <!-- Período -->
+                    <div class="col-md-3">
+                        <div class="btn-group w-100" role="group" id="period-filter">
+                            <button type="button" class="btn btn-outline-primary active" data-period="upcoming">Próximos</button>
+                            <button type="button" class="btn btn-outline-primary" data-period="all">Todos</button>
+                            <button type="button" class="btn btn-outline-primary" data-period="past">Pasados</button>
                         </div>
                     </div>
 
                     <!-- Switch de Vista -->
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <div class="btn-group w-100" role="group">
                             <button type="button" id="view-gallery-btn" class="btn btn-outline-primary active"
                                 title="Vista de Galería"><i class="fas fa-th-large"></i></button>
@@ -96,13 +87,30 @@
                     </div>
 
                     <!-- Controles de Admin -->
-                    <div class="col-md-3 text-end admin-controls">
+                    <div class="col-md-2 text-end admin-controls">
                         <button id="create-event-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Crear
                             Evento</button>
-                        <button id="manage-types-btn" class="btn btn-secondary"><i class="fas fa-cog"></i> Gestionar
-                            Tipos</button>
+                        <button id="manage-types-btn" class="btn btn-secondary" title="Gestionar Tipos"><i class="fas fa-cog"></i></button>
                     </div>
 
+                </div>
+                <div class="row g-3 mt-2 align-items-center">
+                    <div class="col-auto">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="filter-show-events" checked>
+                            <label class="form-check-label" for="filter-show-events">Eventos</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="filter-show-activities" checked>
+                            <label class="form-check-label" for="filter-show-activities">Actividades</label>
+                        </div>
+                    </div>
+                    <div class="col-auto ms-auto colaborador-controls">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="filter-show-unpublished">
+                            <label class="form-check-label" for="filter-show-unpublished">Mostrar no publicados</label>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

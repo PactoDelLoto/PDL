@@ -239,8 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function formatActivityDate(subevent) {
+        if (!subevent.fechaEvento) return 'Indefinida';
         const date = getActivityDate(subevent);
-        if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
+        if (Number.isNaN(date.getTime())) return 'Indefinida';
 
         const formattedDate = date.toLocaleDateString('es-ES', {
             day: '2-digit', month: '2-digit', year: 'numeric'
