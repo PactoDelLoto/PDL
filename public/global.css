@@ -565,4 +565,23 @@ footer, .bg-dark {
       filter: invert(1);
     }
 
+    /* Conversación en modales: altura adaptable en móvil */
+    .conversacion-scroll {
+      max-height: 40vh;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 576px) {
+      .conversacion-scroll {
+        max-height: 50vh;
+      }
+      .conversacion-scroll .d-inline-block {
+        max-width: 95% !important;
+      }
+      .modal-footer .btn {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.5rem;
+      }
+    }
+
 

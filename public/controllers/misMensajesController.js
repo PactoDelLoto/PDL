@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const conversacionContainer = document.getElementById('mensaje-conversacion');
     const respuestaInput = document.getElementById('mensaje-respuesta-input');
     const enviarRespuestaBtn = document.getElementById('mensaje-enviar-respuesta-btn');
+    const marcarNoLeidoBtn = document.getElementById('mensaje-marcar-no-leido-btn');
 
     auth.onAuthStateChanged(function (user) {
         if (!user) {
@@ -39,10 +40,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function esMensajeRecibido(m) {
+        if (m.respuestaAdmin) return true;
+        if (m.conversacion && Array.isArray(m.conversacion) && m.conversacion.length > 0) {
+            return m.conversacion[0].rol === 'equipo';
+        }
+        return false;
+    }
+
     function renderTable() {
         let data = allMensajes;
         if (!mostrarEnviados) {
-            data = data.filter(m => m.respuestaAdmin);
+            data = data.filter(esMensajeRecibido);
         }
         mensajesTable.clear().rows.add(data).draw();
     }
@@ -52,14 +61,14 @@ document.addEventListener('DOMContentLoaded', function () {
             language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
             responsive: true,
             pageLength: 15,
-            order: [[0, 'desc']],
+            order: [],
             data: [],
             columns: [
                 {
-                    data: 'fecha', orderable: true,
-                    render: function (data) {
-                        if (!data || !data.toDate) return '-';
-                        return data.toDate().toLocaleString('es-ES');
+                    data: function (row) { return row.fecha?.toDate?.()?.getTime() || 0; },
+                    render: function (data, type, row) {
+                        if (!row.fecha || !row.fecha.toDate) return '-';
+                        return row.fecha.toDate().toLocaleString('es-ES');
                     }
                 },
                 {
@@ -80,19 +89,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     data: null, orderable: true,
                     render: function (row) {
-                        if (row.respuestaAdmin && !row.leidoUser) return '<span class="badge bg-warning text-dark">Nueva respuesta</span>';
+                        if (row.respuestaAdmin && !row.leidoUser) return '<span class="badge bg-warning" style="color:#000!important">Nueva respuesta</span>';
                         if (row.respuestaAdmin) return '<span class="badge bg-secondary">Respondido</span>';
-                        return '<span class="badge bg-info text-dark">Enviado</span>';
+                        if (!row.leidoUser) return '<span class="badge bg-warning" style="color:#000!important">Nuevo</span>';
+                        return '<span class="badge bg-secondary">Leído</span>';
                     }
                 },
                 {
                     data: null, orderable: false,
                     render: function (row) {
-                        const unreadClass = (row.respuestaAdmin && !row.leidoUser) ? 'btn-warning' : 'btn-outline-secondary';
-                        return `<button class="btn btn-sm ${unreadClass} btn-ver-mensaje" data-id="${row.id}" title="Ver"><i class="fa-solid fa-eye"></i></button>`;
+                        const leido = row.leidoUser === true;
+                        return `<button class="btn btn-sm ${leido ? 'btn-outline-secondary' : 'btn-warning'} btn-toggle-leido" data-id="${row.id}" data-leido="${leido}" title="${leido ? 'Marcar como no leído' : 'Marcar como leído'}">
+                            <i class="fa-solid ${leido ? 'fa-envelope-open' : 'fa-envelope'}"></i>
+                        </button>`;
                     }
                 }
             ]
+        });
+
+        // Click en fila → abre modal
+        $('#mis-mensajes-table tbody').on('click', 'tr', function (e) {
+            if (e.target.closest('button')) return;
+            const data = mensajesTable.row(this).data();
+            if (data) abrirMensaje(data);
         });
     }
 
@@ -121,13 +140,29 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
+    function toggleLeidoMensaje(id, marcarLeido) {
+        const data = allMensajes.find(m => m.id === id);
+        db.collection('solicitudes').doc(id).update({
+            leidoUser: marcarLeido,
+            leidoUserFecha: marcarLeido ? firebase.firestore.FieldValue.serverTimestamp() : null
+        }).then(() => {
+            loadMensajes(auth.currentUser.uid);
+            if (typeof updateNotificationBubbles === 'function') updateNotificationBubbles();
+        }).catch(err => {
+            console.error('Error al cambiar estado de lectura:', err);
+            window.showAlert('Error al cambiar el estado.', 'danger');
+        });
+    }
+
     function setupModalEvents() {
         document.getElementById('mis-mensajes-table').addEventListener('click', function (e) {
-            const verBtn = e.target.closest('.btn-ver-mensaje');
-            if (verBtn) {
-                const id = verBtn.dataset.id;
-                const data = allMensajes.find(m => m.id === id);
-                if (data) abrirMensaje(data);
+            const toggleBtn = e.target.closest('.btn-toggle-leido');
+            if (toggleBtn) {
+                e.stopPropagation();
+                const id = toggleBtn.dataset.id;
+                const leido = toggleBtn.dataset.leido === 'true';
+                toggleLeidoMensaje(id, !leido);
+                return;
             }
         });
 
@@ -159,6 +194,15 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
+        if (marcarNoLeidoBtn) {
+            marcarNoLeidoBtn.addEventListener('click', function () {
+                if (!currentMensajeId) return;
+                toggleLeidoMensaje(currentMensajeId, false);
+                marcarNoLeidoBtn.classList.add('d-none');
+                modal.hide();
+            });
+        }
+
         document.getElementById('mensaje-modal').addEventListener('hidden.bs.modal', function () {
             currentMensajeId = null;
             respuestaInput.value = '';
@@ -183,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const isEquipo = msg.rol === 'equipo';
             const fecha = msg.fecha ? (msg.fecha.toDate ? msg.fecha.toDate().toLocaleString('es-ES') : '') : '';
             html += `
-                <div class="mb-3 ${isEquipo ? 'text-end' : ''}">
+                <div class="mb-3 ${isEquipo ? '' : 'text-end'}">
                     <div class="d-inline-block p-2 rounded ${isEquipo ? 'bg-primary text-white' : 'bg-light'}" style="max-width:85%">
                         <small class="fw-bold d-block">${isEquipo ? 'Equipo' : 'Tú'}</small>
                         <p class="mb-0" style="white-space: pre-wrap;">${escapeHtml2(msg.mensaje)}</p>
@@ -193,6 +237,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         conversacionContainer.innerHTML = html;
 
+        // Mostrar botón "marcar como no leído" si ya estaba leído
+        if (marcarNoLeidoBtn) {
+            if (data.leidoUser === true) {
+                marcarNoLeidoBtn.classList.remove('d-none');
+            } else {
+                marcarNoLeidoBtn.classList.add('d-none');
+            }
+        }
+
         modal.show();
 
         // Scroll al final de la conversación al abrir
@@ -200,12 +253,13 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => { conversacionContainer.scrollTop = conversacionContainer.scrollHeight; }, 150);
         }
 
-        // Marcar como leído por usuario si hay respuesta sin leer
-        if (data.respuestaAdmin && !data.leidoUser) {
+        // Marcar como leído por usuario si no lo estaba
+        if (!data.leidoUser) {
             db.collection('solicitudes').doc(data.id).update({
                 leidoUser: true,
                 leidoUserFecha: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
+                if (marcarNoLeidoBtn) marcarNoLeidoBtn.classList.remove('d-none');
                 loadMensajes(auth.currentUser.uid);
                 if (typeof updateNotificationBubbles === 'function') updateNotificationBubbles();
             }).catch(err => console.error('Error al marcar como leído:', err));

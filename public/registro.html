@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,13 +24,55 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
-        .password-container{position:relative;}.toggle-password{position:absolute;top:50%;right:15px;transform:translateY(-50%);cursor:pointer;color:#6c757d;}#password-strength{font-size:.9rem;}#password-strength .strength-check{transition:color .3s ease;}#password-strength .strength-check.valid{color:#198754;}#password-strength .strength-check.invalid{color:#dc3545;}#password-strength .strength-check .fa-check-circle,#password-strength .strength-check .fa-times-circle{margin-right:8px;}
-        .btn-google{background-color:#4285F4;color:white;}.btn-google:hover{background-color:#357ae8;color:white;}
+        .password-container {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        #password-strength {
+            font-size: .9rem;
+        }
+
+        #password-strength .strength-check {
+            transition: color .3s ease;
+        }
+
+        #password-strength .strength-check.valid {
+            color: #198754;
+        }
+
+        #password-strength .strength-check.invalid {
+            color: #dc3545;
+        }
+
+        #password-strength .strength-check .fa-check-circle,
+        #password-strength .strength-check .fa-times-circle {
+            margin-right: 8px;
+        }
+
+        .btn-google {
+            background-color: #4285F4;
+            color: white;
+        }
+
+        .btn-google:hover {
+            background-color: #357ae8;
+            color: white;
+        }
     </style>
 
     <!-- Script para cargar componentes comunes -->
     <script src="/jquery-3.7.1.min.js"></script>
 </head>
+
 <body>
 
     <header>
@@ -46,7 +89,46 @@
                             <h2 class="card-title text-center mb-4">Crea tu cuenta</h2>
                             <form id="registro-form" class="needs-validation" novalidate>
                                 <!-- ... (campos existentes) ... -->
-                                <div class="mb-3"><label for="nombre" class="form-label">Nombre</label><input type="text" class="form-control" id="nombre" required><div class="invalid-feedback">Por favor, introduce tu nombre.</div></div><div class="mb-3"><label for="apellidos" class="form-label">Apellidos</label><input type="text" class="form-control" id="apellidos" required><div class="invalid-feedback">Por favor, introduce tus apellidos.</div></div><div class="mb-3"><label for="telefono" class="form-label">Teléfono</label><input type="tel" class="form-control" id="telefono" required pattern="[0-9]{9}"><div class="invalid-feedback">Por favor, introduce un número de teléfono válido (9 dígitos).</div></div><div class="mb-3"><label for="email" class="form-label">Correo electrónico</label><input type="email" class="form-control" id="email" required><div class="invalid-feedback">Por favor, introduce un correo electrónico válido.</div></div><div class="mb-3"><label for="password" class="form-label">Contraseña</label><div class="password-container"><input type="password" class="form-control" id="password" required><i class="fas fa-eye-slash toggle-password" id="toggle-password"></i></div><div id="password-strength" class="mt-2"><div id="length-check" class="strength-check invalid"><i class="fas fa-times-circle"></i> Mínimo 8 caracteres</div><div id="case-check" class="strength-check invalid"><i class="fas fa-times-circle"></i> Una mayúscula y una minúscula</div><div id="number-check" class="strength-check invalid"><i class="fas fa-times-circle"></i> Al menos un número</div><div id="symbol-check" class="strength-check invalid"><i class="fas fa-times-circle"></i> Al menos un símbolo</div></div><div id="password-error-feedback" class="invalid-feedback"></div></div><div class="mb-4"><label for="confirm-password" class="form-label">Confirmar Contraseña</label><div class="password-container"><input type="password" class="form-control" id="confirm-password" required><i class="fas fa-eye-slash toggle-password" id="toggle-confirm-password"></i></div></div>
+                                <div class="mb-3"><label for="nombre" class="form-label">Nombre</label><input
+                                        type="text" class="form-control" id="nombre" required>
+                                    <div class="invalid-feedback">Por favor, introduce tu nombre.</div>
+                                </div>
+                                <div class="mb-3"><label for="apellidos" class="form-label">Apellidos</label><input
+                                        type="text" class="form-control" id="apellidos" required>
+                                    <div class="invalid-feedback">Por favor, introduce tus apellidos.</div>
+                                </div>
+                                <div class="mb-3"><label for="telefono" class="form-label">Teléfono</label><input
+                                        type="tel" class="form-control" id="telefono" required pattern="[0-9]{9}">
+                                    <div class="invalid-feedback">Por favor, introduce un número de teléfono válido (9
+                                        dígitos).</div>
+                                </div>
+                                <div class="mb-3"><label for="email" class="form-label">Correo electrónico</label><input
+                                        type="email" class="form-control" id="email" required>
+                                    <div class="invalid-feedback">Por favor, introduce un correo electrónico válido.
+                                    </div>
+                                </div>
+                                <div class="mb-3"><label for="password" class="form-label">Contraseña</label>
+                                    <div class="password-container"><input type="password" class="form-control"
+                                            id="password" required><i class="fas fa-eye-slash toggle-password"
+                                            id="toggle-password"></i></div>
+                                    <div id="password-strength" class="mt-2">
+                                        <div id="length-check" class="strength-check invalid"><i
+                                                class="fas fa-times-circle"></i> Mínimo 8 caracteres</div>
+                                        <div id="case-check" class="strength-check invalid"><i
+                                                class="fas fa-times-circle"></i> Una mayúscula y una minúscula</div>
+                                        <div id="number-check" class="strength-check invalid"><i
+                                                class="fas fa-times-circle"></i> Al menos un número</div>
+                                        <div id="symbol-check" class="strength-check invalid"><i
+                                                class="fas fa-times-circle"></i> Al menos un símbolo</div>
+                                    </div>
+                                    <div id="password-error-feedback" class="invalid-feedback"></div>
+                                </div>
+                                <div class="mb-4"><label for="confirm-password" class="form-label">Confirmar
+                                        Contraseña</label>
+                                    <div class="password-container"><input type="password" class="form-control"
+                                            id="confirm-password" required><i class="fas fa-eye-slash toggle-password"
+                                            id="toggle-confirm-password"></i></div>
+                                </div>
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="quiero-ser-socio">
@@ -58,10 +140,13 @@
                                         <i class="fa-solid fa-circle-info me-1"></i>
                                         Ser socio tiene una cuota de <strong>2€ al mes</strong>. Si tienes dudas,
                                         <a href="/contacto.html" class="alert-link">contáctanos</a>.
+                                        <p>Si seleccionas esta opción te llegará la respuesta a la sección mis mensajes.
+                                        </p>
                                     </div>
                                 </div>
                                 <div id="auth-error" class="alert alert-danger d-none" role="alert"></div>
-                                <div class="d-grid"><button type="submit" class="btn btn-primary btn-block">Registrarse</button></div>
+                                <div class="d-grid"><button type="submit"
+                                        class="btn btn-primary btn-block">Registrarse</button></div>
                             </form>
                             <div class="text-center mt-3">
                                 <p>¿Ya tienes cuenta? <a href="/login.html">Inicia sesión</a></p>
@@ -94,4 +179,5 @@
     <script src="/controllers/registerController.js"></script>
 
 </body>
+
 </html>

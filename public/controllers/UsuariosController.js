@@ -35,17 +35,26 @@ const filterEstadoPagoMenu = document.getElementById('filter-estado-pago-menu');
 const btnActualizarCuentas = document.getElementById('btn-actualizar-cuentas');
 const btnExportarCsv = document.getElementById('btn-exportar-csv');
 
-function getEstadoDeuda(pagadoHasta) {
-    const pagado = normalizarFecha(pagadoHasta);
-    if (!pagado) return null;
+function calcularMesesDeuda(pagadoHasta) {
+    if (!pagadoHasta || !pagadoHasta.toDate) return 0;
+    const d = pagadoHasta.toDate();
+    const pagado = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const hoy = new Date();
     const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    if (pagado >= hoyNorm) return null;
-    const fechaLimite = new Date(pagado);
-    fechaLimite.setMonth(fechaLimite.getMonth() + 1);
-    fechaLimite.setDate(fechaLimite.getDate() + 1);
-    if (hoyNorm < fechaLimite) return 'debe1';
-    return 'debe2';
+    if (pagado >= hoyNorm) return 0;
+    const primerMesDeuda = new Date(pagado.getFullYear(), pagado.getMonth() + 1, 1);
+    const hoyPrimerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    if (hoyPrimerDia < primerMesDeuda) return 0;
+    return (hoyPrimerDia.getFullYear() - primerMesDeuda.getFullYear()) * 12
+        + hoyPrimerDia.getMonth() - primerMesDeuda.getMonth() + 1;
+}
+
+function getEstadoDeuda(pagadoHasta) {
+    const meses = calcularMesesDeuda(pagadoHasta);
+    if (meses === 0) return null;
+    if (meses === 1) return 'debe1';
+    if (meses === 2) return 'debe2';
+    return 'debe3';
 }
 
 function normalizarFecha(timestamp) {
@@ -100,11 +109,14 @@ function initializeUsersTable() {
                         return '<span class="badge bg-secondary" data-bs-toggle="tooltip" title="No es socio"><i class="fa-solid fa-xmark"></i></span>';
                     }
                     const estado = getEstadoDeuda(row.pagadoHasta);
+                    if (estado === 'debe3') {
+                        return '<span class="badge bg-danger" data-bs-toggle="tooltip" title="Debe 3 o más meses"><i class="fa-solid fa-triangle-exclamation"></i></span>';
+                    }
                     if (estado === 'debe2') {
-                        return '<span class="badge bg-danger" data-bs-toggle="tooltip" title="Debe 2 o más meses"><i class="fa-solid fa-triangle-exclamation"></i></span>';
+                        return '<span class="badge bg-warning text-dark" data-bs-toggle="tooltip" title="Debe 2 meses"><i class="fa-solid fa-triangle-exclamation"></i></span>';
                     }
                     if (estado === 'debe1') {
-                        return '<span class="badge bg-warning text-dark" data-bs-toggle="tooltip" title="Debe 1 mes"><i class="fa-solid fa-triangle-exclamation"></i></span>';
+                        return '<span class="badge bg-info" data-bs-toggle="tooltip" title="Debe 1 mes"><i class="fa-solid fa-triangle-exclamation"></i></span>';
                     }
                     return '<span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>';
                 },
@@ -113,10 +125,17 @@ function initializeUsersTable() {
             {
                 data: null, orderable: false, searchable: false, className: 'text-center',
                 render: function (data, type, row) {
-                    const val = row.pagadoHasta && row.pagadoHasta.toDate
-                        ? row.pagadoHasta.toDate().toISOString().split('T')[0]
-                        : (row.pagadoHasta || '');
-                    return `<input type="date" class="form-control form-control-sm user-pagado-hasta" style="min-width:90px;font-size:0.7rem" data-id="${row.id}" value="${val}">`;
+                    const months = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                    let selected = '';
+                    if (row.pagadoHasta && row.pagadoHasta.toDate) {
+                        selected = row.pagadoHasta.toDate().getMonth() + 1;
+                    }
+                    let html = `<select class="form-select form-select-sm user-pagado-hasta" style="min-width:90px;font-size:0.7rem" data-id="${row.id}">`;
+                    html += '<option value="">—</option>';
+                    for (let i = 1; i <= 12; i++) {
+                        html += `<option value="${i}"${selected == i ? ' selected' : ''}>${months[i]}</option>`;
+                    }
+                    return html + '</select>';
                 },
                 responsivePriority: 3
             },
@@ -189,17 +208,8 @@ function initializeUsersTable() {
         if (rolVal === 'noSocio' && rowData.isSocio) return false;
         const estadoPagoVal = filterEstadoPagoVal;
         if (estadoPagoVal) {
-            const pagado = normalizarFecha(rowData.pagadoHasta);
-            if (!pagado) return false;
-            const hoyFiltro = new Date();
-            const hoyNorm = new Date(hoyFiltro.getFullYear(), hoyFiltro.getMonth(), hoyFiltro.getDate());
-            if (estadoPagoVal === 'debe1' && pagado >= hoyNorm) return false;
-            if (estadoPagoVal === 'debe2') {
-                const fechaLimite = new Date(pagado);
-                fechaLimite.setMonth(fechaLimite.getMonth() + 1);
-                fechaLimite.setDate(fechaLimite.getDate() + 1);
-                if (pagado >= hoyNorm || hoyNorm < fechaLimite) return false;
-            }
+            const estado = getEstadoDeuda(rowData.pagadoHasta);
+            if (estado !== estadoPagoVal) return false;
         }
         return true;
     });
@@ -293,16 +303,19 @@ function setupUserActionHandlers() {
         );
     });
 
-    // Cambio del input pagadoHasta
+    // Cambio del selector de mes pagadoHasta
     tbody.on('change', '.user-pagado-hasta', async function () {
         const userId = $(this).data('id');
-        const val = $(this).val();
+        const month = parseInt($(this).val());
         let fecha = null;
-        if (val) {
-            fecha = firebase.firestore.Timestamp.fromDate(new Date(val + 'T23:59:59'));
+        if (month) {
+            const now = new Date();
+            const year = now.getFullYear();
+            fecha = firebase.firestore.Timestamp.fromDate(new Date(year, month, 0));
         }
         try {
             await db.collection('usuarios').doc(userId).update({ pagadoHasta: fecha });
+            loadUsersIntoTable();
         } catch (error) {
             showAlert('Error al actualizar la fecha de pago.', 'danger');
         }
@@ -428,8 +441,6 @@ function setupUserActionHandlers() {
 
 async function handleActualizarCuentas() {
     const db = firebase.firestore();
-    const now = new Date();
-    const hoy = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     try {
         const snapshot = await db.collection('usuarios').get();
@@ -440,15 +451,13 @@ async function handleActualizarCuentas() {
             const data = doc.data();
             let alCorriente = false;
             let socioStatus = data.isSocio;
-            const pagadoHasta = normalizarFecha(data.pagadoHasta);
+            const mesesDeuda = data.pagadoHasta ? calcularMesesDeuda(data.pagadoHasta) : null;
 
-            if (pagadoHasta && pagadoHasta >= hoy) {
+            if (data.pagadoHasta && mesesDeuda === 0) {
                 alCorriente = true;
                 socioStatus = true;
-            } else if (pagadoHasta) {
-                const fechaLimite = new Date(pagadoHasta);
-                fechaLimite.setMonth(fechaLimite.getMonth() + 3);
-                if (hoy >= fechaLimite) {
+            } else if (data.pagadoHasta) {
+                if (mesesDeuda >= 4) {
                     socioStatus = false;
                 } else {
                     socioStatus = true;

@@ -96,8 +96,15 @@ match /{path=**}/inscripciones/{inscripcionId} {
       )
     );
 
-  // Solo administradores o colaboradores pueden modificar o borrar
-  allow update, delete: if isAdmin() || isColaborador();
+  // Solo administradores o colaboradores pueden modificar
+  allow update: if isAdmin() || isColaborador();
+  // El usuario propietario puede borrar su propia inscripción (cancelar); admin/colab pueden borrar cualquiera
+  allow delete: if request.auth != null &&
+    (
+      resource.data.userId == request.auth.uid ||
+      isAdmin() ||
+      isColaborador()
+    );
 }
 
 // TIPOS DE ACTIVIDADES

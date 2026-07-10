@@ -4,7 +4,7 @@ if (typeof window.showConfirmationModal !== 'function') {
         let modalEl = document.getElementById('confirmation-modal');
         if (!modalEl) {
             const wrapper = document.createElement('div');
-            wrapper.innerHTML = '<div class="modal fade" id="confirmation-modal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="confirmationModalLabel"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p id="confirmation-modal-body-text"></p></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-danger" id="confirm-action-btn">Confirmar</button></div></div></div></div>';
+            wrapper.innerHTML = '<div class="modal fade" id="confirmation-modal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="confirmationModalLabel"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p id="confirmation-modal-body-text"></p></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-danger" id="confirm-action-btn">Confirmar</button></div></div></div></div>';
             document.body.appendChild(wrapper.firstElementChild);
             modalEl = document.getElementById('confirmation-modal');
         }
@@ -198,16 +198,11 @@ function normalizarFecha(timestamp) {
 }
 
 function getEstadoDeuda(pagadoHasta) {
-    const pagado = normalizarFecha(pagadoHasta);
-    if (!pagado) return null;
-    const hoy = new Date();
-    const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    if (pagado >= hoyNorm) return null;
-    const fechaLimite = new Date(pagado);
-    fechaLimite.setMonth(fechaLimite.getMonth() + 1);
-    fechaLimite.setDate(fechaLimite.getDate() + 1);
-    if (hoyNorm < fechaLimite) return 'debe1';
-    return 'debe2';
+    const meses = calcularMesesDeuda(pagadoHasta);
+    if (meses === 0) return null;
+    if (meses === 1) return 'debe1';
+    if (meses === 2) return 'debe2';
+    return 'debe3';
 }
 
 function calcularMesesDeuda(pagadoHasta) {
@@ -217,11 +212,10 @@ function calcularMesesDeuda(pagadoHasta) {
     const hoy = new Date();
     const hoyNorm = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
     if (pagado >= hoyNorm) return 0;
-    const primerMesDeuda = new Date(pagado.getFullYear(), pagado.getMonth() + 1, 1);
-    const hoyPrimerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    if (hoyPrimerDia < primerMesDeuda) return 0;
-    return (hoyPrimerDia.getFullYear() - primerMesDeuda.getFullYear()) * 12
-        + hoyPrimerDia.getMonth() - primerMesDeuda.getMonth() + 1;
+    const mesesPagado = pagado.getFullYear() * 12 + pagado.getMonth();
+    const mesesHoy = hoyNorm.getFullYear() * 12 + hoyNorm.getMonth();
+    if (mesesHoy <= mesesPagado) return 1;
+    return mesesHoy - mesesPagado;
 }
 
 function setupAuthUI() {
@@ -270,8 +264,11 @@ function setupAuthUI() {
                 if (estado) {
                     const meses = calcularMesesDeuda(pagadoHasta);
                     const mesText = meses === 1 ? '1 mes' : `${meses} meses`;
-                    tooltipText = `Actualmente no estás al corriente de pago, debes ${mesText}. Si no abonas tu cuota durante tres meses perderás la condición de socio.`;
-                    const colorClass = estado === 'debe1' ? 'bg-warning text-dark' : 'bg-danger';
+                    tooltipText = `Actualmente no estás al corriente de pago, debes ${mesText}. Si no abonas tu cuota durante cuatro meses perderás la condición de socio.`;
+                    let colorClass;
+                    if (estado === 'debe1') colorClass = 'bg-info';
+                    else if (estado === 'debe2') colorClass = 'bg-warning text-dark';
+                    else colorClass = 'bg-danger';
                     bubbleHtml = `<span class="badge ${colorClass} rounded-pill ms-1" style="font-size:0.55rem;cursor:pointer" data-bs-toggle="tooltip" title="${tooltipText}"><i class="fa-solid fa-triangle-exclamation" style="font-size:0.55rem"></i></span>`;
                 }
             }
@@ -285,14 +282,6 @@ function setupAuthUI() {
 
             const misMensajesItem = `<li><a class="dropdown-item" href="/mis-mensajes.html"><i class="fa-regular fa-envelope me-2"></i>Mis mensajes<span id="user-unread-badge-menu" class="badge bg-danger rounded-pill ms-1" style="display:none;font-size:0.6rem">0</span></a></li>`;
 
-            // "Actualizar cuentas" for socios with debt, "Ser socio" for non-socios
-            let solicitudItem = '';
-            if (isSocio && !alCorriente) {
-                solicitudItem = `<li><a class="dropdown-item" href="#" id="btn-solicitar-actualizar-cuentas"><i class="fa-solid fa-rotate me-2"></i>Actualizar cuentas</a></li>`;
-            } else if (!isSocio) {
-                solicitudItem = `<li><a class="dropdown-item" href="#" id="btn-solicitar-ser-socio"><i class="fa-solid fa-user-plus me-2"></i>Ser socio</a></li>`;
-            }
-
             const sugerenciasItem = (isSocio || isAdmin)
                 ? `<li><a class="dropdown-item" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a></li>`
                 : '';
@@ -302,7 +291,6 @@ function setupAuthUI() {
                 <li><a class="dropdown-item" href="/perfil.html?tab=actividades"><i class="fa-regular fa-calendar me-2"></i>Mis actividades</a></li>
                 <li><hr class="dropdown-divider"></li>
                 ${misMensajesItem}
-                ${solicitudItem ? `<li>${solicitudItem}</li>` : ''}
                 ${sugerenciasItem ? `<li>${sugerenciasItem}</li>` : ''}
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item text-danger" href="#" id="logout-button-desktop"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</a></li>
@@ -323,7 +311,6 @@ function setupAuthUI() {
                 <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html"><i class="fa-regular fa-user me-2"></i>Mi Perfil</a>
                 <a class="btn btn-outline-light w-100 mb-2" href="/perfil.html?tab=actividades"><i class="fa-regular fa-calendar me-2"></i>Mis actividades</a>
                 <a class="btn btn-outline-light w-100 mb-2" href="/mis-mensajes.html"><i class="fa-regular fa-envelope me-2"></i>Mis mensajes</a>
-                ${solicitudItem ? `<a class="btn btn-outline-info w-100 mb-2" href="#" id="btn-solicitar-mobile">${solicitudItem.includes('Actualizar') ? 'Actualizar cuentas' : 'Ser socio'}</a>` : ''}
                 ${isSocio || isAdmin ? `<a class="btn btn-outline-warning w-100 mb-2" href="/buzon-sugerencias.html"><i class="fa-regular fa-lightbulb me-2"></i>Sugerencias socios</a>` : ''}
                 <button class="btn btn-danger w-100" id="logout-button-mobile"><i class="fa-solid fa-right-from-bracket me-2"></i>Cerrar Sesión</button>
             `;
@@ -337,112 +324,7 @@ function setupAuthUI() {
             document.getElementById('logout-button-desktop').addEventListener('click', e => { e.preventDefault(); firebase.auth().signOut(); });
             document.getElementById('logout-button-mobile').addEventListener('click', () => firebase.auth().signOut());
 
-            // Solicitud "Actualizar cuentas"
-            const btnActualizar = document.getElementById('btn-solicitar-actualizar-cuentas');
-            if (btnActualizar) {
-                btnActualizar.addEventListener('click', async function (e) {
-                    e.preventDefault();
-                    const db = firebase.firestore();
-                    try {
-                        const cooldown = await checkSolicitudCooldown(db, user.uid, 'actualizar_cuentas');
-                        if (cooldown) {
-                            window.showAlert(`Ya enviaste una solicitud de actualización de cuentas el ${cooldown.fecha}. Debes esperar una semana desde esa fecha para enviar otra.`, 'warning');
-                            return;
-                        }
-                    } catch (e) {}
-                    window.showConfirmationModal(
-                        'Actualizar cuentas',
-                        'Al enviar esta solicitud, el equipo revisará que estés al corriente de pago para actualizar el estado de tus cuentas y así mantener tu condición de socio. Asegúrate de haber realizado el pago de las cuotas pendientes antes de continuar.',
-                        async function () {
-                            try {
-                                const doc = await db.collection('usuarios').doc(user.uid).get();
-                                if (!doc.exists) return;
-                                const data = doc.data();
-                                const nombre = data.nombre || '';
-                                const apellidos = data.apellidos || '';
-                                await db.collection('solicitudes').add({
-                                    userId: user.uid,
-                                    userName: `${nombre} ${apellidos}`.trim(),
-                                    userEmail: user.email,
-                                    tipo: 'actualizar_cuentas',
-                                    mensaje: 'Debido a que debía cuotas y actualmente me he puesto al día, solicito la actualización de mis cuentas. Gracias, un saludo.',
-                                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                                    leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
-                                    respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
-                                    leidoUser: false, leidoUserFecha: null,
-                                    status: 'pendiente',
-                                    conversacion: [{ rol: 'usuario', mensaje: 'Debido a que debía cuotas y actualmente me he puesto al día, solicito la actualización de mis cuentas. Gracias, un saludo.', fecha: new Date() }]
-                                });
-                                if (window.auditar) window.auditar('solicitudes', 'crear', 'Solicitud de actualización de cuentas enviada', { tipo: 'actualizar_cuentas' });
-                                if (window.showAlert) window.showAlert('Solicitud enviada correctamente. El equipo revisará tu caso.', 'success');
-                            } catch (err) {
-                                console.error('Error al crear solicitud:', err);
-                                if (window.showAlert) window.showAlert('Error al enviar la solicitud.', 'danger');
-                            }
-                        }
-                    );
-                });
-            }
-
-            // Solicitud "Ser socio" (para no socios)
-            const btnSerSocio = document.getElementById('btn-solicitar-ser-socio');
-            if (btnSerSocio) {
-                btnSerSocio.addEventListener('click', async function (e) {
-                    e.preventDefault();
-                    const db = firebase.firestore();
-                    try {
-                        const cooldown = await checkSolicitudCooldown(db, user.uid, 'ser_socio');
-                        if (cooldown) {
-                            window.showAlert(`Ya enviaste una solicitud para ser socio el ${cooldown.fecha}. Debes esperar una semana desde esa fecha para enviar otra.`, 'warning');
-                            return;
-                        }
-                    } catch (e) {}
-                    window.showConfirmationModal(
-                        'Solicitar ser socio',
-                        'Al enviar esta solicitud, el equipo evaluará tu petición para convertirte en socio. Podrás acceder a descuentos, actividades exclusivas y participar en la vida del club. Un administrador revisará tu caso y te responderá a la mayor brevedad.',
-                        async function () {
-                            try {
-                                const doc = await db.collection('usuarios').doc(user.uid).get();
-                                if (!doc.exists) return;
-                                const data = doc.data();
-                                const nombre = data.nombre || '';
-                                const apellidos = data.apellidos || '';
-                                await db.collection('solicitudes').add({
-                                    userId: user.uid,
-                                    userName: `${nombre} ${apellidos}`.trim(),
-                                    userEmail: user.email,
-                                    tipo: 'ser_socio',
-                                    mensaje: `${nombre} ${apellidos} quiere ser socio.`,
-                                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                                    leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
-                                    respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
-                                    leidoUser: false, leidoUserFecha: null,
-                                    status: 'pendiente',
-                                    conversacion: [{ rol: 'usuario', mensaje: `${nombre} ${apellidos} quiere ser socio.`, fecha: new Date() }]
-                                });
-                                if (window.auditar) window.auditar('solicitudes', 'crear', 'Solicitud de socio enviada', { tipo: 'ser_socio' });
-                                if (window.showAlert) window.showAlert('Solicitud enviada correctamente. El equipo se pondrá en contacto contigo.', 'success');
-                            } catch (err) {
-                                console.error('Error al crear solicitud:', err);
-                                if (window.showAlert) window.showAlert('Error al enviar la solicitud.', 'danger');
-                            }
-                        }
-                    );
-                });
-            }
-
-            // Mobile: same handler for solicitud button
-            const btnSolicitarMobile = document.getElementById('btn-solicitar-mobile');
-            if (btnSolicitarMobile) {
-                btnSolicitarMobile.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const desktopBtn = document.getElementById('btn-solicitar-actualizar-cuentas') || document.getElementById('btn-solicitar-ser-socio');
-                    if (desktopBtn) desktopBtn.click();
-                });
-            }
-
             updateNotificationBubbles();
-            applySolicitudCooldown(db, user.uid);
 
         } else {
             userActionsDesktop.innerHTML = '<a href="/login.html" class="btn btn-outline-light me-2">Login</a><a href="/registro.html" class="btn btn-warning">Registro</a>';
@@ -477,7 +359,7 @@ async function updateNotificationBubbles() {
             .get();
         const userCount = userSnapshot.docs.filter(doc => {
             const data = doc.data();
-            return data.respuestaAdmin && !data.leidoUser;
+            return !data.leidoUser;
         }).length;
         ['user-unread-badge-desktop', 'user-unread-badge-mobile', 'user-unread-badge-menu'].forEach(id => {
             const badge = document.getElementById(id);
@@ -507,43 +389,4 @@ async function checkSolicitudCooldown(db, uid, tipo) {
     return null;
 }
 
-async function applySolicitudCooldown(db, uid) {
-    try {
-        const snapshot = await db.collection('solicitudes')
-            .where('userId', '==', uid)
-            .get();
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        const cooldownTipos = {};
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const fecha = data.fecha?.toDate?.();
-            if (fecha && fecha > weekAgo) {
-                if (!cooldownTipos[data.tipo]) {
-                    cooldownTipos[data.tipo] = fecha.toLocaleDateString('es-ES');
-                }
-            }
-        });
-        const tipos = [
-            { tipo: 'actualizar_cuentas', btnId: 'btn-solicitar-actualizar-cuentas' },
-            { tipo: 'ser_socio', btnId: 'btn-solicitar-ser-socio' }
-        ];
-        for (const { tipo, btnId } of tipos) {
-            if (cooldownTipos[tipo]) {
-                const btn = document.getElementById(btnId);
-                if (btn) {
-                    btn.style.pointerEvents = 'none';
-                    btn.classList.add('opacity-50');
-                    btn.setAttribute('tabindex', '-1');
-                    btn.setAttribute('aria-disabled', 'true');
-                    btn.setAttribute('title', 'No puedes volver a solicitarlo hasta que pase una semana.');
-                    btn.setAttribute('data-bs-toggle', 'tooltip');
-                    btn.setAttribute('data-bs-placement', 'left');
-                    setTimeout(() => {
-                        try { new bootstrap.Tooltip(btn); } catch (e) {}
-                    }, 100);
-                }
-            }
-        }
-    } catch (e) {}
-}
+

@@ -607,6 +607,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Crear mensaje automático en Mis mensajes
             if (auth.currentUser && payload.userId) {
                 try {
+                    const esReserva = payload.pagado === false;
+                    const accionTexto = esReserva ? 'Has reservado plaza en' : 'Te has inscrito en';
+                    let mensajeTexto = `${accionTexto} la actividad: ${currentSubevent.titulo || 'Sin nombre'}`;
+                    let conversacionTexto = mensajeTexto;
+                    if (esReserva) {
+                        conversacionTexto += ' Recuerda que la inscripción se completa cuando realices el pago de la inscripción.';
+                    }
                     const userDoc = await db.collection('usuarios').doc(auth.currentUser.uid).get();
                     const userData = userDoc.data();
                     await db.collection('solicitudes').add({
@@ -614,13 +621,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         userName: `${userData?.nombre || ''} ${userData?.apellidos || ''}`.trim() || auth.currentUser.email,
                         userEmail: auth.currentUser.email,
                         tipo: 'inscripcion_actividad',
-                        mensaje: `Te has inscrito en la actividad: ${currentSubevent.nombre || 'Sin nombre'}`,
+                        mensaje: mensajeTexto,
                         fecha: firebase.firestore.FieldValue.serverTimestamp(),
                         leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
                         respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
                         leidoUser: false, leidoUserFecha: null,
                         status: 'pendiente',
-                        conversacion: [{ rol: 'usuario', mensaje: `Te has inscrito en la actividad: ${currentSubevent.nombre || 'Sin nombre'}`, fecha: new Date() }]
+                        conversacion: [{ rol: 'equipo', mensaje: conversacionTexto, fecha: new Date() }]
                     });
                 } catch (e) { console.error('Error al crear mensaje de inscripción:', e); }
             }

@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         messagesTable = $('#messages-table').DataTable({
             language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
+            responsive: true,
             pageLength: 10,
             order: [[0, 'desc']],
             columns: [

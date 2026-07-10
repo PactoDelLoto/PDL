@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const respuestaInput = document.getElementById('solicitud-respuesta-input');
     const enviarRespuestaBtn = document.getElementById('solicitud-enviar-respuesta-btn');
     const eliminarBtn = document.getElementById('solicitud-eliminar-btn');
+    const marcarNoLeidoBtn = document.getElementById('solicitud-marcar-no-leido-btn');
 
     auth.onAuthStateChanged(async function (user) {
         if (!user) return;
@@ -36,14 +37,14 @@ document.addEventListener('DOMContentLoaded', function () {
             language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
             responsive: true,
             pageLength: 15,
-            order: [[0, 'desc']],
+            order: [],
             data: [],
             columns: [
                 {
-                    data: 'fecha', orderable: true,
-                    render: function (data) {
-                        if (!data || !data.toDate) return '-';
-                        return data.toDate().toLocaleString('es-ES');
+                    data: function (row) { return row.fecha?.toDate?.()?.getTime() || 0; },
+                    render: function (data, type, row) {
+                        if (!row.fecha || !row.fecha.toDate) return '-';
+                        return row.fecha.toDate().toLocaleString('es-ES');
                     }
                 },
                 {
@@ -83,14 +84,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     data: null, orderable: false,
                     render: function (row) {
-                        const unreadClass = !row.leidoAdmin ? 'btn-warning' : 'btn-outline-secondary';
+                        const leido = row.leidoAdmin;
                         return `
-                            <button class="btn btn-sm ${unreadClass} btn-ver-solicitud" data-id="${row.id}" title="Ver detalle"><i class="fa-solid fa-eye"></i></button>
+                            <button class="btn btn-sm ${leido ? 'btn-outline-secondary' : 'btn-warning'} btn-toggle-leido" data-id="${row.id}" data-leido="${leido}" title="${leido ? 'Marcar como no leído' : 'Marcar como leído'}">
+                                <i class="fa-solid ${leido ? 'fa-envelope-open' : 'fa-envelope'}"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-danger btn-eliminar-solicitud" data-id="${row.id}" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                         `;
                     }
                 }
             ]
+        });
+
+        // Click en fila → abre modal
+        $('#solicitudes-table tbody').on('click', 'tr', function (e) {
+            if (e.target.closest('button')) return;
+            const data = solicitudesTable.row(this).data();
+            if (data) abrirSolicitud(data);
         });
     }
 
@@ -123,19 +133,37 @@ document.addEventListener('DOMContentLoaded', function () {
         $(showRead).on('change', applyFilters);
     }
 
+    function toggleLeidoSolicitud(id, marcarLeido) {
+        const data = allSolicitudes.find(s => s.id === id);
+        const update = {
+            leidoAdmin: marcarLeido,
+            leidoAdminPor: marcarLeido ? auth.currentUser.uid : null,
+            leidoAdminFecha: marcarLeido ? firebase.firestore.FieldValue.serverTimestamp() : null
+        };
+        db.collection('solicitudes').doc(id).update(update).then(() => {
+            if (window.auditar) window.auditar('solicitudes', marcarLeido ? 'marcar_leido' : 'marcar_no_leido', `Solicitud ${marcarLeido ? 'marcada como leída' : 'marcada como no leída'}`, { solicitudId: id, tipo: data?.tipo });
+            loadSolicitudes();
+            if (typeof updateNotificationBubbles === 'function') updateNotificationBubbles();
+        }).catch(err => {
+            console.error('Error al cambiar estado de lectura:', err);
+            window.showAlert('Error al cambiar el estado.', 'danger');
+        });
+    }
+
     function setupModalEvents() {
-        // Delegación de eventos para botones en la tabla
         document.getElementById('solicitudes-table').addEventListener('click', function (e) {
-            const verBtn = e.target.closest('.btn-ver-solicitud');
-            if (verBtn) {
-                const id = verBtn.dataset.id;
-                const data = allSolicitudes.find(s => s.id === id);
-                if (data) abrirSolicitud(data);
+            const toggleBtn = e.target.closest('.btn-toggle-leido');
+            if (toggleBtn) {
+                e.stopPropagation();
+                const id = toggleBtn.dataset.id;
+                const leido = toggleBtn.dataset.leido === 'true';
+                toggleLeidoSolicitud(id, !leido);
                 return;
             }
-            const eliminarBtn = e.target.closest('.btn-eliminar-solicitud');
-            if (eliminarBtn) {
-                const id = eliminarBtn.dataset.id;
+            const elimBtn = e.target.closest('.btn-eliminar-solicitud');
+            if (elimBtn) {
+                e.stopPropagation();
+                const id = elimBtn.dataset.id;
                 borrarSolicitud(id);
                 return;
             }
@@ -186,6 +214,15 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
+        if (marcarNoLeidoBtn) {
+            marcarNoLeidoBtn.addEventListener('click', function () {
+                if (!currentSolicitudId) return;
+                toggleLeidoSolicitud(currentSolicitudId, false);
+                marcarNoLeidoBtn.classList.add('d-none');
+                modal.hide();
+            });
+        }
+
         document.getElementById('solicitud-modal').addEventListener('hidden.bs.modal', function () {
             currentSolicitudId = null;
             respuestaInput.value = '';
@@ -201,9 +238,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         renderConversacion(data, conversacionContainer);
 
+        // Mostrar botón "marcar como no leído" si ya estaba leído
+        if (marcarNoLeidoBtn) {
+            if (data.leidoAdmin) {
+                marcarNoLeidoBtn.classList.remove('d-none');
+            } else {
+                marcarNoLeidoBtn.classList.add('d-none');
+            }
+        }
+
         modal.show();
 
-        // Scroll al final de la conversación al abrir
         if (conversacionContainer) {
             setTimeout(() => { conversacionContainer.scrollTop = conversacionContainer.scrollHeight; }, 150);
         }
@@ -216,6 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 leidoAdminFecha: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
                 if (window.auditar) window.auditar('solicitudes', 'leer', `Solicitud leída de ${data.userName || 'usuario'}`, { solicitudId: data.id, tipo: data.tipo });
+                if (marcarNoLeidoBtn) marcarNoLeidoBtn.classList.remove('d-none');
                 loadSolicitudes();
                 if (typeof updateNotificationBubbles === 'function') updateNotificationBubbles();
             }).catch(err => console.error('Error al marcar como leído:', err));

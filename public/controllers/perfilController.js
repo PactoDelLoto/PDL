@@ -23,6 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const prevBtn = document.getElementById('prev-page');
     const nextBtn = document.getElementById('next-page');
 
+    const solicitudesSection = document.getElementById('profile-solicitudes-section');
+    const btnActualizarContainer = document.getElementById('btn-solicitar-actualizar-cuentas-container');
+    const btnSerSocioContainer = document.getElementById('btn-solicitar-ser-socio-container');
+    const btnActualizar = document.getElementById('btn-solicitar-actualizar-cuentas');
+    const btnSerSocio = document.getElementById('btn-solicitar-ser-socio');
+
     let currentUser = null;
     let allActivities = [];
     let currentPage = 1;
@@ -101,6 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
             updateRoleBadge(socioBadge, 'Socio', userData.isSocio === true);
             updateRoleBadge(colaboradorBadge, 'Colaborador', userData.isColaborador === true);
             updateRoleBadge(adminBadge, 'Admin', userData.isAdmin === true);
+
+            const isSocio = userData.isSocio === true;
+            const pagadoHasta = userData.pagadoHasta || null;
+            showSolicitudButtons(isSocio, pagadoHasta);
+            applyProfileCooldown(db, user.uid);
 
             profileCard.classList.remove('d-none');
         } catch (error) {
@@ -203,6 +214,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const placeText = escapeText(subevent.lugar || 'Lugar por confirmar');
             const regId = regRef.id;
 
+            const eventDate = getActivityDate(subevent);
+            const isPast = eventDate < new Date();
+
             return `
                 <div class="list-group-item list-group-item-action">
                     <a href="/subeventoDetalle.html?id=${encodeURIComponent(id)}" class="text-decoration-none text-reset">
@@ -213,11 +227,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="mb-1">${dateText}</p>
                         <small class="text-muted">${placeText}</small>
                     </a>
+                    ${isPast ? '' : `
                     <div class="text-end mt-2">
-                        <button class="btn btn-danger btn-sm cancel-registration-btn" data-reg-id="${escapeText(regId)}" data-subevent-title="${escapeText(subevent.titulo || 'Actividad sin titulo')}">
+                        <button class="btn btn-danger btn-sm cancel-registration-btn" data-reg-path="${escapeText(regRef.path)}" data-subevent-id="${escapeText(id)}" data-subevent-title="${escapeText(subevent.titulo || 'Actividad sin titulo')}">
                             <i class="fa-solid fa-xmark me-1"></i>Anular inscripción
                         </button>
                     </div>
+                    `}
                 </div>
             `;
         }).join('');
@@ -274,11 +290,139 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingBox.classList.toggle('d-none', !isLoading);
     }
 
+    function showSolicitudButtons(isSocio, pagadoHasta) {
+        if (!solicitudesSection) return;
+        const tieneDeuda = isSocio && pagadoHasta ? !!getEstadoDeuda(pagadoHasta) : false;
+        if (tieneDeuda) {
+            solicitudesSection.classList.remove('d-none');
+            btnActualizarContainer.classList.remove('d-none');
+            btnSerSocioContainer.classList.add('d-none');
+        } else if (!isSocio) {
+            solicitudesSection.classList.remove('d-none');
+            btnActualizarContainer.classList.add('d-none');
+            btnSerSocioContainer.classList.remove('d-none');
+        } else {
+            solicitudesSection.classList.add('d-none');
+            btnActualizarContainer.classList.add('d-none');
+            btnSerSocioContainer.classList.add('d-none');
+        }
+    }
+
+    async function handleSolicitud(tipo) {
+        if (!currentUser) return;
+        try {
+            const cooldown = await checkSolicitudCooldown(db, currentUser.uid, tipo);
+            if (cooldown) {
+                showAlert(`Ya enviaste una solicitud el ${cooldown.fecha}. Debes esperar una semana desde esa fecha para enviar otra.`, 'warning');
+                return;
+            }
+        } catch (e) {}
+
+        const titles = { actualizar_cuentas: 'Actualizar cuentas', ser_socio: 'Solicitar ser socio' };
+        const messages = {
+            actualizar_cuentas: 'Al enviar esta solicitud, el equipo revisará que estés al corriente de pago para actualizar el estado de tus cuentas y así mantener tu condición de socio. Asegúrate de haber realizado el pago de las cuotas pendientes antes de continuar.',
+            ser_socio: 'Al enviar esta solicitud, el equipo evaluará tu petición para convertirte en socio. Podrás acceder a descuentos, actividades exclusivas y participar en la vida del club. Un administrador revisará tu caso y te responderá a la mayor brevedad.'
+        };
+        const mensajesTexto = {
+            actualizar_cuentas: 'Debido a que debía cuotas y actualmente me he puesto al día, solicito la actualización de mis cuentas. Gracias, un saludo.',
+            ser_socio: ''
+        };
+
+        showConfirmationModal(titles[tipo], messages[tipo], async function () {
+            try {
+                const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+                if (!doc.exists) return;
+                const data = doc.data();
+                const nombre = data.nombre || '';
+                const apellidos = data.apellidos || '';
+                const mensaje = tipo === 'actualizar_cuentas'
+                    ? mensajesTexto.actualizar_cuentas
+                    : `${nombre} ${apellidos} quiere ser socio.`;
+                await db.collection('solicitudes').add({
+                    userId: currentUser.uid,
+                    userName: `${nombre} ${apellidos}`.trim(),
+                    userEmail: currentUser.email,
+                    tipo: tipo,
+                    mensaje: mensaje,
+                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                    leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
+                    respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
+                    leidoUser: true, leidoUserFecha: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'pendiente',
+                    conversacion: [{ rol: 'usuario', mensaje: mensaje, fecha: new Date() }]
+                });
+                if (window.auditar) window.auditar('solicitudes', 'crear', `Solicitud de ${tipo === 'actualizar_cuentas' ? 'actualización de cuentas' : 'socio'} enviada`, { tipo });
+                showAlert('Solicitud enviada correctamente. El equipo revisará tu caso.', 'success');
+                applyProfileCooldown(db, currentUser.uid);
+            } catch (err) {
+                console.error('Error al crear solicitud:', err);
+                showAlert('Error al enviar la solicitud.', 'danger');
+            }
+        });
+    }
+
+    if (btnActualizar) {
+        btnActualizar.addEventListener('click', () => handleSolicitud('actualizar_cuentas'));
+    }
+    if (btnSerSocio) {
+        btnSerSocio.addEventListener('click', () => handleSolicitud('ser_socio'));
+    }
+
+    async function applyProfileCooldown(db, uid) {
+        try {
+            const snapshot = await db.collection('solicitudes').where('userId', '==', uid).get();
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const cooldownTipos = {};
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const fecha = data.fecha?.toDate?.();
+                if (fecha && fecha > weekAgo) {
+                    if (!cooldownTipos[data.tipo]) {
+                        cooldownTipos[data.tipo] = fecha;
+                    }
+                }
+            });
+            const tipos = [
+                { tipo: 'actualizar_cuentas', btnId: 'btn-solicitar-actualizar-cuentas', containerId: 'btn-solicitar-actualizar-cuentas-container' },
+                { tipo: 'ser_socio', btnId: 'btn-solicitar-ser-socio', containerId: 'btn-solicitar-ser-socio-container' }
+            ];
+            for (const { tipo, btnId, containerId } of tipos) {
+                if (cooldownTipos[tipo]) {
+                    const btn = document.getElementById(btnId);
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.classList.add('opacity-50');
+                        btn.style.pointerEvents = 'none';
+                        const tooltipText = tipo === 'ser_socio'
+                            ? 'Ya has solicitado ser socio, debes esperar una semana para volver a solicitarlo.'
+                            : 'No puedes volver a solicitarlo hasta que pase una semana.';
+                        let wrapper = btn.parentElement;
+                        if (!wrapper || !wrapper.classList.contains('btn-tooltip-wrapper')) {
+                            wrapper = document.createElement('span');
+                            wrapper.className = 'd-inline-block btn-tooltip-wrapper';
+                            wrapper.tabIndex = 0;
+                            btn.parentNode.insertBefore(wrapper, btn);
+                            wrapper.appendChild(btn);
+                        }
+                        wrapper.setAttribute('data-bs-toggle', 'tooltip');
+                        wrapper.setAttribute('data-bs-placement', 'top');
+                        wrapper.title = tooltipText;
+                        setTimeout(() => {
+                            try { new bootstrap.Tooltip(wrapper); } catch (e) {}
+                        }, 100);
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
     document.addEventListener('click', e => {
         const btn = e.target.closest('.cancel-registration-btn');
         if (!btn) return;
 
-        const regId = btn.dataset.regId;
+        const regPath = btn.dataset.regPath;
+        const subeventId = btn.dataset.subeventId;
         const subeventTitle = btn.dataset.subeventTitle;
 
         showConfirmationModal(
@@ -286,12 +430,32 @@ document.addEventListener('DOMContentLoaded', () => {
             `¿Seguro que quieres anular tu inscripción en "${subeventTitle}"?`,
             async () => {
                 try {
-                    const activity = allActivities.find(a => a.regRef && a.regRef.id === regId);
-                    if (!activity) {
+                    const regRef = db.doc(regPath);
+                    const regDoc = await regRef.get();
+                    if (!regDoc.exists) {
                         showAlert('No se encontró la inscripción.', 'danger');
                         return;
                     }
-                    await activity.regRef.delete();
+                    await regRef.delete();
+
+                    // Crear notificación de cancelación para el admin
+                    const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+                    const userData = userDoc.data();
+                    const userNombre = `${userData?.nombre || ''} ${userData?.apellidos || ''}`.trim() || currentUser.email;
+                    await db.collection('solicitudes').add({
+                        userId: currentUser.uid,
+                        userName: userNombre,
+                        userEmail: currentUser.email,
+                        tipo: 'cancelacion actividad',
+                        mensaje: `${userNombre} ha cancelado su inscripción en "${subeventTitle}".`,
+                        fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                        leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
+                        respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
+                        leidoUser: true, leidoUserFecha: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'pendiente',
+                        conversacion: [{ rol: 'usuario', mensaje: `He cancelado mi inscripción en "${subeventTitle}".`, fecha: new Date() }]
+                    });
+
                     showAlert('Inscripción anulada correctamente.', 'success');
                     await loadUserActivities(currentUser);
                 } catch (error) {

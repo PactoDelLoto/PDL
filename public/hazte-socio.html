@@ -96,9 +96,14 @@
     <section class="py-5 bg-white">
         <div class="container">
             <div class="text-center mb-4">
-                <a href="/registro.html" class="btn btn-primary btn-lg mb-3">
+                <a href="/registro.html" class="btn btn-primary btn-lg mb-3" id="hazte-socio-cta-btn">
                     <i class="fa-solid fa-user-plus me-2"></i>¡Quiero registrarme!
                 </a>
+                <div id="hazte-socio-info" class="alert alert-warning small mt-2 mb-4 mx-auto text-start d-none" role="alert" style="max-width:600px;">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Ser socio tiene una cuota de <strong>2€ al mes</strong>. Si tienes dudas,
+                    <a href="/contacto.html" class="alert-link">contáctanos</a>.
+                </div>
                 <h2 class="fw-bold">Información de socio</h2>
                 <p>Consulta toda la información sobre cómo hacerte socio de Pacto del Loto:</p>
             </div>
@@ -119,6 +124,7 @@
 
     <!-- Scripts de Bootstrap y Firebase -->
     <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/utils.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -127,6 +133,76 @@
     <script src="/controllers/firebase-config.js"></script>
     <script src="/controllers/authController.js"></script>
     <script src="/controllers/navigation.js"></script>
+
+    <script>
+        firebase.auth().onAuthStateChanged(async function(user) {
+            const ctaBtn = document.getElementById('hazte-socio-cta-btn');
+            const infoBox = document.getElementById('hazte-socio-info');
+            if (user) {
+                let esSocio = false;
+                try {
+                    const doc = await firebase.firestore().collection('usuarios').doc(user.uid).get();
+                    if (doc.exists) esSocio = doc.data().isSocio === true;
+                } catch (e) {}
+                if (!esSocio && ctaBtn) {
+                    ctaBtn.href = '#';
+                    ctaBtn.innerHTML = '<i class="fa-solid fa-user-plus me-2"></i>¡Quiero ser socio!';
+                    ctaBtn.classList.remove('btn-primary');
+                    ctaBtn.classList.add('btn-success');
+                    ctaBtn.addEventListener('click', async function(e) {
+                        e.preventDefault();
+                        const db = firebase.firestore();
+                        try {
+                            const cooldown = await checkSolicitudCooldown(db, user.uid, 'ser_socio');
+                            if (cooldown) {
+                                showAlert('Ya enviaste una solicitud para ser socio el ' + cooldown.fecha + '. Debes esperar una semana desde esa fecha para enviar otra.', 'warning');
+                                return;
+                            }
+                        } catch (e) {}
+                        showConfirmationModal(
+                            'Solicitar ser socio',
+                            'Al enviar esta solicitud, el equipo evaluará tu petición para convertirte en socio. Podrás acceder a descuentos, actividades exclusivas y participar en la vida del club. Un administrador revisará tu caso y te responderá a la mayor brevedad.',
+                            async function() {
+                                try {
+                                    const doc = await db.collection('usuarios').doc(user.uid).get();
+                                    if (!doc.exists) return;
+                                    const data = doc.data();
+                                    const nombre = data.nombre || '';
+                                    const apellidos = data.apellidos || '';
+                                    await db.collection('solicitudes').add({
+                                        userId: user.uid,
+                                        userName: (nombre + ' ' + apellidos).trim(),
+                                        userEmail: user.email,
+                                        tipo: 'ser_socio',
+                                        mensaje: nombre + ' ' + apellidos + ' quiere ser socio.',
+                                        fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                                        leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
+                                        respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
+                                        leidoUser: false, leidoUserFecha: null,
+                                        status: 'pendiente',
+                                        conversacion: [{ rol: 'usuario', mensaje: nombre + ' ' + apellidos + ' quiere ser socio.', fecha: new Date() }]
+                                    });
+                                    if (window.auditar) window.auditar('solicitudes', 'crear', 'Solicitud de socio enviada', { tipo: 'ser_socio' });
+                                    showAlert('Solicitud enviada correctamente. El equipo se pondrá en contacto contigo.', 'success');
+                                } catch (err) {
+                                    console.error('Error al crear solicitud:', err);
+                                    showAlert('Error al enviar la solicitud.', 'danger');
+                                }
+                            }
+                        );
+                    });
+                    if (infoBox) infoBox.classList.remove('d-none');
+                } else if (esSocio && ctaBtn) {
+                    ctaBtn.href = '/perfil.html';
+                    ctaBtn.innerHTML = '<i class="fa-regular fa-user me-2"></i>Ir a mi perfil';
+                    ctaBtn.classList.remove('btn-primary');
+                    ctaBtn.classList.add('btn-outline-primary');
+                }
+            } else {
+                if (infoBox) infoBox.classList.add('d-none');
+            }
+        });
+    </script>
 
 </body>
 </html>
