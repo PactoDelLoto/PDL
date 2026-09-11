@@ -39,6 +39,44 @@
       "density": "SPARSE_ALL"
     },
     {
+      "collectionGroup": "incidencias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaCreacion",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "incidencias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "idArticulo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaCreacion",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
       "collectionGroup": "subeventos",
       "queryScope": "COLLECTION",
       "fields": [

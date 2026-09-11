@@ -96,6 +96,8 @@ async function populateNavbarLinks(isLoggedIn) {
                     { text: 'Riftbound', href: '/mtg-riftbound.html', locked: false }
                 ]
             });
+        }
+        if (isColaborador) {
             adminItems.push({ text: 'Inventario', href: '/inventario.html' });
         }
         if (isAdmin) {

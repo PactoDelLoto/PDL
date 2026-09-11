@@ -28,8 +28,8 @@ match /usuarios/{userId} {
 
 // CATEGORÍAS DE INVENTARIO
 match /categoriasInventario/{docId} {
-  allow read: if isSocio() || isAdmin();
-  allow write: if isAdmin();
+  allow read: if isColaborador();
+  allow write: if isColaborador();
 }
 
 // EVENTOS
@@ -40,14 +40,22 @@ match /eventos/{docId} {
 
 // INVENTARIO
 match /inventario/{docId} {
-  allow read: if isSocio() || isAdmin();
-  allow write: if isAdmin();
+  allow read: if isColaborador();
+  allow write: if isColaborador();
 }
 
 // PRÉSTAMOS
 match /prestamos/{docId} {
   allow read: if isSocio() || isAdmin();
   allow write: if isSocio() || isAdmin();
+}
+
+// INCIDENCIAS
+match /incidencias/{docId} {
+  allow read: if isColaborador();
+  allow create: if isColaborador();
+  allow update: if isColaborador();
+  allow delete: if isColaborador();
 }
 
 // SUBEVENTOS

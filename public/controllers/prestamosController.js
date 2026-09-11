@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtroEvento = document.getElementById('filtro-evento');
 
     // DataTables
-    let prestamosActivosTable, prestamosHistorialTable;
+    let prestamosActivosTable, prestamosHistorialTable, prestamosStatsTable;
 
     // State
     let currentUser = null;
@@ -23,10 +23,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- INITIALIZATION ---
-    auth.onAuthStateChanged(user => {
+    auth.onAuthStateChanged(async user => {
         if (user) {
             currentUser = user;
-            initializePrestamosPage();
+            const isColaborador = await window.isUserColaborador();
+            if (isColaborador) {
+                initializePrestamosPage();
+            }
         }
     });
 
@@ -53,6 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('#articulo').select2('destroy');
             }
 
+            // Load articles with open incidencias to filter them out
+            const incidenciasSnapshot = await db.collection('incidencias').where('estado', '==', 'abierta').get();
+            const articulosConIncidencia = new Set();
+            incidenciasSnapshot.forEach(doc => {
+                articulosConIncidencia.add(doc.data().idArticulo);
+            });
+
             const snapshot = await db.collection("inventario").orderBy('nombre').get();
             articuloSelect.innerHTML = '<option value="">Seleccione un artículo</option>';
 
@@ -63,7 +73,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (total > 0) {
                     const disponibles = (item.cantidadRestante === undefined || item.cantidadRestante === null) ? total : item.cantidadRestante;
                     if (disponibles > 0) {
-                        const optionText = `${item.nombre} (${disponibles}/${total} disponibles)`;
+                        // Filter out articles with open incidencias unless forzarPrestamo is true
+                        const tieneIncidencia = articulosConIncidencia.has(doc.id);
+                        if (tieneIncidencia && item.forzarPrestamo !== true) {
+                            return; // Skip this article
+                        }
+
+                        let optionText = `${item.nombre} (${disponibles}/${total} disponibles)`;
+                        if (tieneIncidencia && item.forzarPrestamo === true) {
+                            optionText += ' ⚠️ (Forzado)';
+                        }
                         articuloSelect.add(new Option(optionText, doc.id));
                     }
                 }
@@ -80,11 +99,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadFiltros() {
+        // Load articles with open incidencias to filter them out from history
+        let articulosConIncidencia = new Set();
+        try {
+            const incidenciasSnapshot = await db.collection('incidencias').where('estado', '==', 'abierta').get();
+            incidenciasSnapshot.forEach(doc => {
+                articulosConIncidencia.add(doc.data().idArticulo);
+            });
+        } catch (error) {
+            console.error("Error cargando incidencias para filtro: ", error);
+        }
+
         try {
             const snapshot = await db.collection("inventario").orderBy('nombre').get();
             filtroArticulo.innerHTML = '<option value="">Todos</option>';
             snapshot.forEach(doc => {
-                filtroArticulo.add(new Option(doc.data().nombre, doc.id));
+                const item = doc.data();
+                if (!articulosConIncidencia.has(doc.id) || item.forzarPrestamo === true) {
+                    filtroArticulo.add(new Option(item.nombre, doc.id));
+                }
             });
         } catch (error) {
             console.error("Error cargando artículos para filtro: ", error);
@@ -160,9 +193,11 @@ document.addEventListener('DOMContentLoaded', () => {
             renderLoanStats();
         });
         $(document).on('change', '#stats-event-filter', function () {
-            // El filtro de evento se lee directamente en renderLoanStats, solo necesitamos llamar a la función
+            // El filtro de evento se lee directamente en las funciones, solo necesitamos llamarlas
             renderLoanStats();
         });
+        $(document).on('change', '#stats-limit-filter', () => renderLoanStats());
+        $(document).on('change', '#stats-min-loans-filter', () => renderPrestamosStatsTable());
         $('#tabla-prestamos-activos tbody').on('click', '.btn-devolver', handleDevolucion);
         $('#tabla-prestamos-historial tbody').on('click', '.btn-cancelar-devolucion', handleCancelarDevolucion);
     }
@@ -383,48 +418,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- UTILITY FUNCTIONS ---
 
+    async function getPrestamosData() {
+        const eventFilter = document.getElementById('stats-event-filter')?.value || '';
+        const now = new Date();
+        const filterDate = new Date();
+        filterDate.setDate(now.getDate() - statsDateFilter.days);
+
+        const snapshot = await db.collection('prestamos')
+            .where('fechaHoraPrestamo', '>=', filterDate)
+            .get();
+
+        const counts = {};
+        snapshot.forEach(doc => {
+            const data = doc.data();
+
+            // Filtro local por evento para evitar necesidad de índices compuestos complejos
+            if (eventFilter && data.Evento !== eventFilter) return;
+
+            const nombre = data.nombreArticulo || 'Desconocido';
+            if (!counts[nombre]) counts[nombre] = { count: 0, lastDate: null };
+            counts[nombre].count++;
+
+            const fecha = data.fechaHoraPrestamo ? data.fechaHoraPrestamo.toDate() : null;
+            if (fecha && (!counts[nombre].lastDate || fecha > counts[nombre].lastDate)) {
+                counts[nombre].lastDate = fecha;
+            }
+        });
+
+        return Object.entries(counts)
+            .map(([nombre, info]) => ({ nombre, count: info.count, lastDate: info.lastDate }))
+            .sort((a, b) => b.count - a.count);
+    }
+
     async function renderLoanStats() {
         const canvas = document.getElementById('loansChart');
         if (!canvas) return;
 
         try {
-            const eventFilter = document.getElementById('stats-event-filter')?.value || '';
-            const now = new Date();
-            const filterDate = new Date();
-            filterDate.setDate(now.getDate() - statsDateFilter.days);
+            const selectedItems = document.getElementById('stats-limit-filter')?.value || '10';
+            const limit = parseInt(selectedItems, 10) || 0;
 
-            let query = db.collection('prestamos')
-                .where('fechaHoraPrestamo', '>=', filterDate)
+            const sortedData = await getPrestamosData();
+            const chartData = limit > 0 ? sortedData.slice(0, limit) : sortedData;
 
-            const snapshot = await query.get();
-
-            const counts = {};
-            snapshot.forEach(doc => {
-                const data = doc.data();
-
-                // Filtro local por evento para evitar necesidad de índices compuestos complejos
-                if (eventFilter && data.Evento !== eventFilter) return;
-
-                const nombre = data.nombreArticulo || 'Desconocido';
-                counts[nombre] = (counts[nombre] || 0) + 1;
+            const labels = chartData.map(d => {
+                return d.nombre.length > 30 ? d.nombre.substring(0, 27) + "..." : d.nombre;
             });
-
-            const sortedData = Object.entries(counts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 10);
-
-            const labels = sortedData.map(d => {
-                const name = d[0];
-                return name.length > 30 ? name.substring(0, 27) + "..." : name;
-            });
-            const values = sortedData.map(d => d[1]);
+            const values = chartData.map(d => d.count);
 
             if (statsChart) {
                 statsChart.destroy();
                 statsChart = null;
             }
 
-            if (sortedData.length === 0) {
+            if (chartData.length === 0) {
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -441,32 +488,81 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 ctx.font = "400 14px 'Roboto', sans-serif";
                 ctx.fillText("Prueba a cambiar el periodo o el evento seleccionado.", canvas.width / 2, canvas.height / 2 + 40);
-                return;
+            } else {
+                statsChart = new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Número de préstamos',
+                            data: values,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
             }
 
-            statsChart = new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Número de préstamos',
-                        data: values,
-                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    }
-                }
-            });
+            renderPrestamosStatsTable(sortedData);
+
         } catch (error) {
             console.error("Error al generar estadísticas: ", error);
+        }
+    }
+
+    async function renderPrestamosStatsTable(providedData) {
+        const tableEl = document.getElementById('tabla-prestamos-stats');
+        if (!tableEl) return;
+
+        try {
+            const minLoans = parseInt(document.getElementById('stats-min-loans-filter')?.value || '0', 10) || 0;
+            const allData = providedData || await getPrestamosData();
+            const filteredData = allData.filter(d => d.count >= minLoans);
+
+            if ($.fn.DataTable.isDataTable('#tabla-prestamos-stats')) {
+                prestamosStatsTable.destroy();
+            }
+
+            prestamosStatsTable = $('#tabla-prestamos-stats').DataTable({
+                language: { url: "//cdn.datatables.net/plug-ins/1.11.3/i18n/es_es.json" },
+                responsive: true,
+                pageLength: 10,
+                order: [[1, 'desc']],
+                data: filteredData,
+                columns: [
+                    { data: 'nombre' },
+                    {
+                        data: 'count',
+                        className: 'text-center',
+                        render: function (data, type) {
+                            if (type === 'display') {
+                                return `<span class="badge bg-primary">${data}</span>`;
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'lastDate',
+                        className: 'text-center',
+                        render: function (data, type) {
+                            if (!data) return 'N/A';
+                            if (type === 'sort' || type === 'type') return data.getTime();
+                            return data.toLocaleString();
+                        }
+                    }
+                ]
+            });
+        } catch (error) {
+            console.error("Error al generar la tabla de préstamos por producto: ", error);
         }
     }
 
