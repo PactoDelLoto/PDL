@@ -415,6 +415,48 @@ auth.onAuthStateChanged(async user => {
         }
     }
 
+    async function handleExportarCsv() {
+        try {
+            const snapshot = await db.collection('inventario').get();
+            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            if (items.length === 0) {
+                showAlert('No hay artículos para exportar.', 'info');
+                return;
+            }
+
+            const escapeCsv = (val) => {
+                if (val === null || val === undefined) return '';
+                const s = String(val);
+                if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+                    return '"' + s.replace(/"/g, '""') + '"';
+                }
+                return s;
+            };
+
+            const headers = ['Artículo', 'Tipo', 'Cantidad', 'Incidencias abiertas'];
+            const rows = items.map(item => [
+                escapeCsv(item.nombre),
+                escapeCsv(item.categoria || ''),
+                item.cantidad,
+                incidenciasCountCache[item.id] || 0
+            ].join(','));
+
+            const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `inventario_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        } catch (error) {
+            console.error("Error al exportar CSV:", error);
+            showAlert('Error al exportar el CSV.', 'danger');
+        }
+    }
+
     async function loadAndInitCategoriasTable(forceReload = false) {
         if ($.fn.DataTable.isDataTable('#categorias-table') && !forceReload) return;
 
@@ -456,6 +498,7 @@ auth.onAuthStateChanged(async user => {
         $('#play-game-btn').on('click', function () {
             window.location.href = '/juego.html';
         });
+        $('#btn-exportar-csv').on('click', handleExportarCsv);
         $('#category-filter').on('change', function () { inventarioTable.column(1).search($(this).val()).draw(); });
         $('button[data-bs-target="#categorias-section"]').on('shown.bs.tab', () => loadAndInitCategoriasTable());
         $('button[data-bs-target="#incidencias-section"]').on('shown.bs.tab', () => loadIncidenciasTable());

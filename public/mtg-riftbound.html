@@ -225,6 +225,28 @@
                                             <tbody id="tabla-clasificacion-riftbound"></tbody>
                                         </table>
                                     </div>
+
+                                    <section class="mt-4 p-3 rounded bg-light border" id="sorteo-section-riftbound">
+                                        <h6 class="fw-bold mb-2"><i class="fa-solid fa-shuffle text-primary me-1"></i>Sorteos</h6>
+                                        <form class="d-flex flex-wrap gap-3 align-items-end mb-0">
+                                            <div>
+                                                <label for="sorteo-omitir-top-riftbound" class="form-label small mb-1">Omitir top</label>
+                                                <select id="sorteo-omitir-top-riftbound" class="form-select form-select-sm"></select>
+                                            </div>
+                                            <div>
+                                                <label for="sorteo-numero-riftbound" class="form-label small mb-1">Número de sorteos</label>
+                                                <input type="number" id="sorteo-numero-riftbound" class="form-control form-control-sm" style="width: 110px;" min="1" value="1">
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="sorteo-retirados-riftbound">
+                                                <label class="form-check-label small" for="sorteo-retirados-riftbound">¿Contar retirados?</label>
+                                            </div>
+                                            <div>
+                                                <button type="button" id="sorteo-lanzar-riftbound" class="btn btn-sm btn-primary"><i class="fa-solid fa-shuffle me-1"></i>Lanzar sorteo</button>
+                                            </div>
+                                        </form>
+                                        <div id="sorteo-resultado-riftbound" class="mt-2"></div>
+                                    </section>
                                 </div>
 
                                 <!-- Top Cut -->

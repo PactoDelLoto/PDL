@@ -246,6 +246,28 @@
                                             </tbody>
                                         </table>
                                     </div>
+
+                                    <section class="mt-4 p-3 rounded bg-light border" id="sorteo-section-cmd">
+                                        <h6 class="fw-bold mb-2"><i class="fa-solid fa-shuffle text-primary me-1"></i>Sorteos</h6>
+                                        <form class="d-flex flex-wrap gap-3 align-items-end mb-0">
+                                            <div>
+                                                <label for="sorteo-omitir-top-cmd" class="form-label small mb-1">Omitir top</label>
+                                                <select id="sorteo-omitir-top-cmd" class="form-select form-select-sm"></select>
+                                            </div>
+                                            <div>
+                                                <label for="sorteo-numero-cmd" class="form-label small mb-1">Número de sorteos</label>
+                                                <input type="number" id="sorteo-numero-cmd" class="form-control form-control-sm" style="width: 110px;" min="1" value="1">
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="sorteo-retirados-cmd">
+                                                <label class="form-check-label small" for="sorteo-retirados-cmd">¿Contar retirados?</label>
+                                            </div>
+                                            <div>
+                                                <button type="button" id="sorteo-lanzar-cmd" class="btn btn-sm btn-primary"><i class="fa-solid fa-shuffle me-1"></i>Lanzar sorteo</button>
+                                            </div>
+                                        </form>
+                                        <div id="sorteo-resultado-cmd" class="mt-2"></div>
+                                    </section>
                                 </div>
                             </div>
                         </div>

@@ -225,6 +225,28 @@
                                             <tbody id="tabla-clasificacion-modern"></tbody>
                                         </table>
                                     </div>
+
+                                    <section class="mt-4 p-3 rounded bg-light border" id="sorteo-section-modern">
+                                        <h6 class="fw-bold mb-2"><i class="fa-solid fa-shuffle text-primary me-1"></i>Sorteos</h6>
+                                        <form class="d-flex flex-wrap gap-3 align-items-end mb-0">
+                                            <div>
+                                                <label for="sorteo-omitir-top-modern" class="form-label small mb-1">Omitir top</label>
+                                                <select id="sorteo-omitir-top-modern" class="form-select form-select-sm"></select>
+                                            </div>
+                                            <div>
+                                                <label for="sorteo-numero-modern" class="form-label small mb-1">Número de sorteos</label>
+                                                <input type="number" id="sorteo-numero-modern" class="form-control form-control-sm" style="width: 110px;" min="1" value="1">
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="sorteo-retirados-modern">
+                                                <label class="form-check-label small" for="sorteo-retirados-modern">¿Contar retirados?</label>
+                                            </div>
+                                            <div>
+                                                <button type="button" id="sorteo-lanzar-modern" class="btn btn-sm btn-primary"><i class="fa-solid fa-shuffle me-1"></i>Lanzar sorteo</button>
+                                            </div>
+                                        </form>
+                                        <div id="sorteo-resultado-modern" class="mt-2"></div>
+                                    </section>
                                 </div>
 
                                 <!-- Top Cut -->

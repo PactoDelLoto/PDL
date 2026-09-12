@@ -480,11 +480,112 @@ window.initializeTorneosController = function (canManage) {
             return;
         }
 
-        container.innerHTML = jugadores.map((j, i) => `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span><!--<span class="badge bg-secondary me-2">${i + 1}</span>-->${j.nombre}</span>
-            </li>
-        `).join('');
+        const gestEnCurso = canManage && selectedTournament.estado === 'en_curso';
+        const pendientes = tieneResultadosPendientes();
+
+        container.innerHTML = jugadores.map(j => {
+            const isDropped = !!j.dropped;
+            const bloqueado = isDropped && isPlayerBloqueado(j);
+            let dropControls = '';
+            if (gestEnCurso) {
+                if (isDropped) {
+                    if (bloqueado) {
+                        dropControls = `<span class="btn btn-sm btn-outline-secondary disabled" title="Bloqueado: deshaz la última ronda generada para poder reincorporarlo"><i class="fa-solid fa-lock"></i></span>`;
+                    } else {
+                        dropControls = `<button class="btn btn-sm btn-outline-success btn-reincorporar-jugador" data-id="${j.id}" title="Reincorporar al torneo"><i class="fa-solid fa-user-plus"></i></button>`;
+                    }
+                } else {
+                    if (pendientes) {
+                        dropControls = `<span class="btn btn-sm btn-outline-secondary disabled" title="Completa los resultados de la ronda actual para poder retirar a un jugador"><i class="fa-solid fa-ban"></i></span>`;
+                    } else {
+                        dropControls = `<button class="btn btn-sm btn-outline-danger btn-drop-jugador" data-id="${j.id}" title="Retirar del torneo"><i class="fa-solid fa-user-minus"></i></button>`;
+                    }
+                }
+            }
+            return `
+                <li class="list-group-item d-flex justify-content-between align-items-center ${isDropped ? 'list-group-item-secondary' : ''}" style="${isDropped ? 'opacity:0.65;' : ''}">
+                    <span>${j.nombre} ${isDropped ? '<span class="badge bg-danger ms-1">retirado</span>' : ''}</span>
+                    <span class="d-flex align-items-center gap-2">${dropControls}</span>
+                </li>
+            `;
+        }).join('');
+    }
+
+    // --- SISTEMA DE RETIRADA (DROP) DE JUGADORES ---
+    function tieneResultadosPendientes() {
+        const rondas = selectedTournament.rondas || [];
+        if (rondas.length === 0) return false;
+        const ultima = rondas[rondas.length - 1];
+        return (ultima.mesas || []).some(m =>
+            (m.jugadores || []).some(jId => !m.resultados || !m.resultados[jId])
+        );
+    }
+
+    function isPlayerBloqueado(jugador) {
+        return !!(jugador.dropped && (selectedTournament.rondas || []).length > (jugador.droppedAtRound || 0));
+    }
+
+    function actualizarJugadoresLocales(jugadores) {
+        selectedTournament.jugadores = jugadores;
+        const local = torneosCache.find(t => t.id === selectedTournament.id);
+        if (local) local.jugadores = jugadores;
+    }
+
+    async function handleDropJugador(playerId) {
+        if (!selectedTournament) return;
+        const jugador = (selectedTournament.jugadores || []).find(j => j.id === playerId);
+        if (!jugador) return;
+
+        if (tieneResultadosPendientes()) {
+            if (window.showAlert) window.showAlert("No se puede retirar a un jugador mientras la última ronda tenga resultados pendientes. Completa los resultados primero.", "warning");
+            return;
+        }
+
+        const puntos = (calculateStandings(selectedTournament).find(s => s.id === playerId) || {}).puntos || 0;
+        if (!confirm(`¿Seguro que quieres retirar a "${jugador.nombre}" del torneo? Conservará sus ${Number(puntos).toFixed(1)} punto(s) actuales, pero ya no se emparejará en rondas futuras.`)) return;
+
+        try {
+            const jugadores = (selectedTournament.jugadores || []).map(j =>
+                j.id === playerId
+                    ? { ...j, dropped: true, droppedAtRound: (selectedTournament.rondas || []).length }
+                    : j
+            );
+            await db.collection('torneos').doc(selectedTournament.id).update({ jugadores });
+            actualizarJugadoresLocales(jugadores);
+            renderGestionJugadoresList();
+            renderClasificacionInterna();
+            if (window.showAlert) window.showAlert(`"${jugador.nombre}" retirado del torneo. Conserva ${Number(puntos).toFixed(1)} punto(s).`, "warning");
+        } catch (error) {
+            console.error('Error al retirar al jugador:', error);
+            if (window.showAlert) window.showAlert("Error al retirar al jugador.", "danger");
+        }
+    }
+
+    async function handleReincorporarJugador(playerId) {
+        if (!selectedTournament) return;
+        const jugador = (selectedTournament.jugadores || []).find(j => j.id === playerId);
+        if (!jugador) return;
+
+        if (isPlayerBloqueado(jugador)) {
+            if (window.showAlert) window.showAlert(`"${jugador.nombre}" está bloqueado porque ya se generó una ronda posterior a su retirada. Deshaz esa ronda para poder reincorporarlo.`, "warning");
+            return;
+        }
+
+        if (!confirm(`¿Seguro que quieres reincorporar a "${jugador.nombre}" al torneo? Volverá a contar para los emparejamientos.`)) return;
+
+        try {
+            const jugadores = (selectedTournament.jugadores || []).map(j =>
+                j.id === playerId ? { ...j, dropped: false, droppedAtRound: null } : j
+            );
+            await db.collection('torneos').doc(selectedTournament.id).update({ jugadores });
+            actualizarJugadoresLocales(jugadores);
+            renderGestionJugadoresList();
+            renderClasificacionInterna();
+            if (window.showAlert) window.showAlert(`"${jugador.nombre}" reincorporado al torneo.`, "success");
+        } catch (error) {
+            console.error('Error al reincorporar al jugador:', error);
+            if (window.showAlert) window.showAlert("Error al reincorporar al jugador.", "danger");
+        }
     }
 
     // -------------------------------------------------------
@@ -517,8 +618,11 @@ window.initializeTorneosController = function (canManage) {
         if (!selectedTournament) return;
 
         const jugadores = selectedTournament.jugadores || [];
-        if (jugadores.length < 3) {
-            if (window.showAlert) window.showAlert("Se necesitan al menos 3 jugadores para jugar.", "warning");
+        // Solo los jugadores activos (no retirados) participan en los emparejamientos
+        const activos = jugadores.filter(j => !j.dropped);
+        const numRetirados = jugadores.length - activos.length;
+        if (activos.length < 3) {
+            if (window.showAlert) window.showAlert("Se necesitan al menos 3 jugadores activos para jugar.", "warning");
             return;
         }
 
@@ -527,23 +631,23 @@ window.initializeTorneosController = function (canManage) {
 
         const confirmText = esRondaInicial
             ? "¿Seguro que quieres iniciar la Ronda 1?"
-            : "¿Seguro que quieres generar la siguiente ronda?";
+            : `¿Seguro que quieres generar la siguiente ronda?${numRetirados > 0 ? ` Se excluirá a ${numRetirados} jugador(es) retirado(s).` : ''}`;
         if (!confirm(confirmText)) return;
 
-        // 1. Calcular tamaños de mesa
-        const tableSizes = calculateTableSizes(jugadores.length);
+        // 1. Calcular tamaños de mesa con los jugadores activos
+        const tableSizes = calculateTableSizes(activos.length);
         // Tablas de 4 primero (jugadores de más puntos), luego las de 3
         tableSizes.sort((a, b) => b - a);
 
         // 2. Ordenar jugadores por ranking (ronda 1 = aleatorio)
         let sortedPlayers;
         if (esRondaInicial) {
-            sortedPlayers = [...jugadores].sort(() => Math.random() - 0.5);
+            sortedPlayers = [...activos].sort(() => Math.random() - 0.5);
         } else {
             const standings = calculateStandings(selectedTournament);
             // standings ya viene ordenado por puntos desc + buchholz desc
             sortedPlayers = standings
-                .map(s => jugadores.find(j => j.id === s.id))
+                .map(s => activos.find(j => j.id === s.id))
                 .filter(Boolean);
         }
 
@@ -708,14 +812,67 @@ window.initializeTorneosController = function (canManage) {
         }
 
         tbody.innerHTML = standings.map((player, index) => `
-            <tr>
+            <tr${player.dropped ? ' class="table-secondary"' : ''} style="${player.dropped ? 'opacity:0.6;' : ''}">
                 <td class="fw-bold">${index + 1}</td>
-                <td>${player.nombre}</td>
+                <td>${player.nombre} ${player.dropped ? '<span class="badge bg-danger ms-1">retirado</span>' : ''}</td>
                 <td class="text-center">${Number(player.puntosMesa).toFixed(1)}</td>
                 <td class="text-center text-success">+${Number(player.puntosExtra).toFixed(1)}</td>
                 <td class="fw-bold text-center text-primary">${Number(player.puntos).toFixed(1)}</td>
                 <td class="text-center text-muted small" title="Buchholz (desempate): suma de puntos de tus rivales">${Number(player.buchholz || 0).toFixed(1)}</td>
             </tr>
+        `).join('');
+        poblarSelectOmitirTop();
+    }
+
+    // --- SORTEOS ---
+    function poblarSelectOmitirTop() {
+        const sel = document.getElementById('sorteo-omitir-top-cmd');
+        if (!sel) return;
+        const total = (selectedTournament?.jugadores || []).length;
+        sel.innerHTML = '<option value="0">0 (ninguno)</option>' +
+            Array.from({ length: total }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
+    }
+
+    function lanzarSorteo() {
+        const torneo = selectedTournament;
+        const resultEl = document.getElementById('sorteo-resultado-cmd');
+        if (!torneo || !resultEl) return;
+        const jugadores = torneo.jugadores || [];
+        if (jugadores.length === 0) {
+            if (window.showAlert) window.showAlert('No hay jugadores en el torneo.', 'warning');
+            return;
+        }
+
+        const omitirTop = parseInt(document.getElementById('sorteo-omitir-top-cmd')?.value || '0', 10);
+        let num = parseInt(document.getElementById('sorteo-numero-cmd')?.value || '1', 10);
+        if (Number.isNaN(num) || num < 1) num = 1;
+        const contarRetirados = document.getElementById('sorteo-retirados-cmd')?.checked || false;
+
+        let pool = calculateStandings(torneo);
+        if (omitirTop >= pool.length) {
+            if (window.showAlert) window.showAlert('"Omitir top" excluye a todos los jugadores. Bájalo para poder sortear.', 'warning');
+            return;
+        }
+        pool = pool.slice(omitirTop);
+        if (!contarRetirados) pool = pool.filter(s => !s.dropped);
+        if (pool.length === 0) {
+            if (window.showAlert) window.showAlert('No quedan jugadores elegibles (revisa "Omitir top" y los retirados).', 'warning');
+            return;
+        }
+
+        if (num > pool.length) {
+            if (window.showAlert) window.showAlert(`Solo hay ${pool.length} jugador(es) elegible(s); se sortearán ${pool.length}.`, 'info');
+            num = pool.length;
+        }
+
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        const ganadores = shuffled.slice(0, num);
+
+        resultEl.innerHTML = ganadores.map((g, i) => `
+            <div class="d-flex align-items-center gap-2 py-1 border-bottom">
+                <span class="badge bg-success">Sorteo ${i + 1}</span>
+                <span>${g.nombre}</span>
+            </div>
         `).join('');
     }
 
@@ -731,7 +888,7 @@ window.initializeTorneosController = function (canManage) {
         // Acumular puntos y registrar rivales
         const scores = {};
         jugadores.forEach(j => {
-            scores[j.id] = { id: j.id, nombre: j.nombre, puntos: 0, puntosMesa: 0, puntosExtra: 0, rivalIds: [] };
+            scores[j.id] = { id: j.id, nombre: j.nombre, puntos: 0, puntosMesa: 0, puntosExtra: 0, rivalIds: [], dropped: j.dropped || false };
         });
 
         rondas.forEach(r => {
@@ -866,6 +1023,7 @@ window.initializeTorneosController = function (canManage) {
             selectedTournament.rondas = rondas;
             modalResultados.hide();
             renderRondas();
+            renderGestionJugadoresList();
             renderClasificacionInterna();
             if (window.showAlert) window.showAlert("Resultados registrados con éxito.", "success");
         } catch (error) {
@@ -1789,6 +1947,9 @@ window.initializeTorneosController = function (canManage) {
         const btnFinalizarTorneo = document.getElementById('btn-finalizar-torneo');
         if (btnFinalizarTorneo) btnFinalizarTorneo.addEventListener('click', handleFinalizeTournament);
 
+        const btnLanzarSorteo = document.getElementById('sorteo-lanzar-cmd');
+        if (btnLanzarSorteo) btnLanzarSorteo.addEventListener('click', lanzarSorteo);
+
         const btnIniciarTorneo = document.getElementById('btn-iniciar-torneo-gestion');
         if (btnIniciarTorneo) {
             btnIniciarTorneo.addEventListener('click', () => {
@@ -1905,6 +2066,14 @@ window.initializeTorneosController = function (canManage) {
             // Cargar resultados de mesa
             if (target.classList.contains('btn-resultados-mesa')) {
                 openMesaResultsModal(target.dataset.ronda, target.dataset.mesa);
+            }
+
+            // Retirar / reincorporar jugador
+            if (target.classList.contains('btn-drop-jugador')) {
+                handleDropJugador(target.dataset.id);
+            }
+            if (target.classList.contains('btn-reincorporar-jugador')) {
+                handleReincorporarJugador(target.dataset.id);
             }
         });
 
