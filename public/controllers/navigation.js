@@ -104,6 +104,7 @@ async function populateNavbarLinks(isLoggedIn) {
             adminItems.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
             adminItems.push({ text: 'Solicitudes', href: '/solicitudes.html' });
             adminItems.push({ text: 'Auditoría', href: '/auditoria.html' });
+            adminItems.push({ text: 'Tesorería', href: '/tesoreria.html' });
         }
 
         if (adminItems.length > 0) {

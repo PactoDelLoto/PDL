@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesorería - Pacto del Loto</title>
+
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/DataTables/datatables.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        @media (max-width: 768px) {
+            #treasury-tabs-content {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .tesoreria-table th,
+            .tesoreria-table td {
+                white-space: nowrap;
+            }
+        }
+
+        .saldo-card .form-control {
+            min-width: 120px;
+        }
+
+        .tesoreria-table tfoot th {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .balance-strip {
+            border-radius: 0 0 .25rem .25rem;
+            font-size: .9rem;
+        }
+
+        .month-load-indicator {
+            display: inline-block;
+            width: .5rem;
+            height: .5rem;
+            margin-left: .2rem;
+            border-radius: 50%;
+            vertical-align: middle;
+            background-color: #dc3545;
+        }
+
+        .month-load-indicator.month-load-loaded {
+            background-color: #198754;
+        }
+    </style>
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+
+<body>
+    <header></header>
+
+    <main class="container mt-5 pt-5 mb-5">
+        <div id="alert-container"></div>
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+            <h1 class="mb-0"><i class="fa-solid fa-coins me-2"></i>Gestión de Tesorería</h1>
+            <div class="d-flex align-items-center gap-2">
+                <label for="year-select" class="form-label mb-0 text-nowrap">Seleccionar año:</label>
+                <select id="year-select" class="form-select form-select-sm w-auto"></select>
+            </div>
+        </div>
+
+        <div id="no-data-banner" class="alert alert-warning d-none">
+            <i class="fa-solid fa-circle-exclamation me-2"></i><strong>No hay datos para este año.</strong> Abre la
+            pestaña de un mes y usa los formularios «Añadir gastos/ingresos» para registrar movimientos.
+        </div>
+
+        <ul class="nav nav-tabs" id="treasury-tabs" role="tablist"></ul>
+        <div class="tab-content mt-3" id="treasury-tabs-content"></div>
+
+        <div id="tesoreria-loading" class="text-center py-5 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <div class="mt-2 text-muted">Cargando tesorería...</div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
+
+    <!-- Modal: crear sección por evento -->
+    <div class="modal fade" id="evento-section-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva sección por evento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="evento-section-select" class="form-label">Selecciona el evento</label>
+                    <select id="evento-section-select" class="form-select"></select>
+                    <div class="mt-3">
+                        <label for="evento-section-nombre" class="form-label">Nombre del anexo personalizado</label>
+                        <input type="text" id="evento-section-nombre" class="form-control" placeholder="Ej.: Colaboraciones externas">
+                        <div class="form-text">Déjalo vacío si vas a seleccionar un evento.</div>
+                    </div>
+                    <div class="form-text mt-2">Se creará una sección con tablas de gastos e ingresos vinculadas al
+                        evento, y podrás relacionar cada fila con una de sus actividades.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirm-evento-section-btn">Crear sección</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: edición de fila -->
+    <div class="modal fade" id="row-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="row-modal-title">Editar movimiento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="row-form">
+                        <div class="mb-3">
+                            <label for="row-concepto" class="form-label">Concepto *</label>
+                            <input type="text" class="form-control" id="row-concepto" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="row-fecha" class="form-label">Fecha</label>
+                            <input type="date" class="form-control" id="row-fecha">
+                            <div class="form-text">Si se deja vacía se usa la fecha de hoy.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="row-monto" class="form-label" id="row-monto-label">Coste</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="row-monto" required>
+                        </div>
+                        <div class="mb-3" id="row-actividad-container" style="display:none;">
+                            <label for="row-actividad" class="form-label">Actividad del evento</label>
+                            <select id="row-actividad" class="form-select">
+                                <option value="">Sin actividad específica</option>
+                            </select>
+                        </div>
+                        <div class="row" id="row-extras-container" style="display:none;">
+                            <div class="col-6 mb-3" id="row-numjug-container" style="display:none;">
+                                <label for="row-numjug" class="form-label">Nº jugadores</label>
+                                <input type="number" min="0" class="form-control" id="row-numjug">
+                            </div>
+                            <div class="col-6 mb-3" id="row-enmano-container" style="display:none;">
+                                <label for="row-enmano" class="form-label">En mano</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="row-enmano">
+                            </div>
+                        </div>
+                        <div class="mb-3" id="row-factura-container" style="display:none;">
+                            <label class="form-label" for="row-factura-enlace">Enlace de la factura</label>
+                            <input type="url" class="form-control" id="row-factura-enlace" placeholder="https://...">
+                            <div class="form-text">Añade el enlace a la imagen de la factura.</div>
+                        </div>
+                        <div class="form-check mb-3" id="row-cuotas-container" style="display:none;">
+                            <input class="form-check-input" type="checkbox" id="row-cuotas-socios">
+                            <label class="form-check-label" for="row-cuotas-socios">Ingresos cuotas socios</label>
+                        </div>
+                        <input type="hidden" id="row-key">
+                        <input type="hidden" id="row-campo">
+                        <input type="hidden" id="row-seccion">
+                        <input type="hidden" id="row-sub">
+                        <input type="hidden" id="row-id">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" form="row-form" id="save-row-btn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/DataTables/datatables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="/js/utils.js"></script>
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/tesoreriaController.js?v=1.0"></script>
+</body>
+
+</html>

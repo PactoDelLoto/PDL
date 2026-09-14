@@ -165,5 +165,10 @@ match /solicitudes/{docId} {
   allow delete: if isAdmin();
 }
 
+// TESORERÍA
+match /tesoreria/{docId} {
+  allow read, write: if isAdmin();
+}
+
 }
 }
