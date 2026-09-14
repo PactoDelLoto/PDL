@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let monthDocs = {};                 // 'YYYY-MM' -> doc data | null
     let activeMonthKey = ym(currentYear, new Date().getMonth() + 1);
     let saldoVisibles = {};             // 'YYYY-MM' -> número (saldo mostrado)
+    let efectivoVisibles = {};          // 'YYYY-MM' -> número (efectivo mostrado)
     let renderedMonths = new Set();     // claves de mes cuyo pane ya se ha pintado (render perezoso)
     let eventosCache = [];
     let subeventosPorEvento = {};       // eventoId -> [subeventos]
@@ -71,6 +72,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return value === true || value === 1 || value === 'true';
     }
 
+    function esExterno(row) {
+        return row && (row.externo === true || row.externo === 1 || row.externo === 'true');
+    }
+
     function facturaEnlace(fila) {
         return String(fila && (fila.facturaEnlace || fila.enlaceFactura || fila.facturaUrl) || '').trim();
     }
@@ -123,6 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
             year: y,
             month: m,
             saldoDisponible: null,
+            efectivoEnMano: null,
             ingresosOrdinarios: [],
             gastosOrdinarios: [],
             ingresosExtraordinarios: [],
@@ -167,9 +173,13 @@ document.addEventListener('DOMContentLoaded', function () {
         monthDocs[key] = doc;
         // Un cambio en un mes puede afectar los saldos automáticos de todos
         // los meses posteriores.
-        saldoVisibles = {};
+saldoVisibles = {};
         if (doc.saldoDisponible === null || doc.saldoDisponible === undefined) {
             await computeSaldoCalculado(key);
+        }
+        efectivoVisibles = {};
+        if (doc.efectivoEnMano === null || doc.efectivoEnMano === undefined) {
+            await computeEfectivoCalculado(key);
         }
     }
 
@@ -210,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         const prev = prevYm(key);
         const saldoAnterior = prev ? await computeSaldoCalculado(prev, visitados) : 0;
-        const saldoCalculado = saldoAnterior + totalesMes(key).balance;
+        const saldoCalculado = Math.round((saldoAnterior + totalesMes(key).balance) * 100) / 100;
         if (!isFinite(saldoCalculado)) throw new Error('Saldo no numÃ©rico.');
         saldoVisibles[key] = saldoCalculado;
         return saldoCalculado;
@@ -224,27 +234,72 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Neto del mes de los importes "En mano" de los movimientos de evento:
+    // en mano de ingresos − en mano de gastos.
+    function enManoMes(key) {
+        const doc = monthDocs[key] || baseMes(key);
+        let enManoIngresos = 0, enManoGastos = 0;
+        (Array.isArray(doc.seccionesEvento) ? doc.seccionesEvento : []).forEach(s => {
+            (Array.isArray(s.ingresos) ? s.ingresos : []).forEach(r => { enManoIngresos += Number(r.enMano) || 0; });
+            (Array.isArray(s.gastos) ? s.gastos : []).forEach(r => { enManoGastos += Number(r.enMano) || 0; });
+        });
+        return Math.round((enManoIngresos - enManoGastos) * 100) / 100;
+    }
+
+    // Efectivo mostrado: explícito, o autocalculado con el efectivo del mes
+    // anterior (0 si no existe) más el neto "en mano" del mes.
+    async function computeEfectivoCalculado(key, visitados = new Set()) {
+        if (key in efectivoVisibles) return efectivoVisibles[key];
+        if (visitados.has(key)) throw new Error('No se puede calcular el efectivo por una referencia circular.');
+        visitados.add(key);
+        const doc = await getMesDoc(key, false);
+        if (doc && doc.efectivoEnMano !== null && doc.efectivoEnMano !== undefined && !isNaN(doc.efectivoEnMano)) {
+            efectivoVisibles[key] = Number(doc.efectivoEnMano);
+            return efectivoVisibles[key];
+        }
+        const prev = prevYm(key);
+        const efectivoAnterior = prev ? await computeEfectivoCalculado(prev, visitados) : 0;
+        const calculado = Math.round((efectivoAnterior + enManoMes(key)) * 100) / 100;
+        if (!isFinite(calculado)) throw new Error('Efectivo no numérico.');
+        efectivoVisibles[key] = calculado;
+        return calculado;
+    }
+
+    async function precomputeEfectivo(year, months) {
+        efectivoVisibles = {};
+        const keys = months.map(m => ym(year, m));
+        for (const k of keys) {
+            if (!(k in efectivoVisibles)) await computeEfectivoCalculado(k);
+        }
+    }
+
     // ---------- Totales ----------
 
     function totalesMes(key) {
         const doc = monthDocs[key] || baseMes(key);
-        const sum = (arr, campo) => (Array.isArray(arr) ? arr.reduce((a, r) => a + (Number(r[campo]) || 0), 0) : 0);
+        const sum = (arr, campo) => (Array.isArray(arr) ? arr.reduce((a, r) => a + (!esExterno(r) ? (Number(r[campo]) || 0) : 0), 0) : 0);
         const gOrd = sum(doc.gastosOrdinarios, 'coste');
         const iOrd = sum(doc.ingresosOrdinarios, 'cuantia');
         const gExt = sum(doc.gastosExtraordinarios, 'coste');
         const iExt = sum(doc.ingresosExtraordinarios, 'cuantia');
         let gEvt = 0, iEvt = 0, cuotasSocios = 0, movs = 0, factSi = 0, factNo = 0, factSiImporte = 0, factNoImporte = 0;
         (Array.isArray(doc.gastosOrdinarios) ? doc.gastosOrdinarios : []).forEach(r => {
+            if (esExterno(r)) return;
             movs++; if (tieneFactura(r)) { factSi++; factSiImporte += Number(r.coste) || 0; } else { factNo++; factNoImporte += Number(r.coste) || 0; }
         });
         (Array.isArray(doc.ingresosOrdinarios) ? doc.ingresosOrdinarios : []).forEach(r => {
+            if (esExterno(r)) return;
             movs++;
             if (r.cuotasSocios === true || r.cuotasSocios === 1 || r.cuotasSocios === 'true') cuotasSocios += Number(r.cuantia) || 0;
         });
         (Array.isArray(doc.gastosExtraordinarios) ? doc.gastosExtraordinarios : []).forEach(r => {
+            if (esExterno(r)) return;
             movs++; if (tieneFactura(r)) { factSi++; factSiImporte += Number(r.coste) || 0; } else { factNo++; factNoImporte += Number(r.coste) || 0; }
         });
-        (Array.isArray(doc.ingresosExtraordinarios) ? doc.ingresosExtraordinarios : []).forEach(() => movs++);
+        (Array.isArray(doc.ingresosExtraordinarios) ? doc.ingresosExtraordinarios : []).forEach(r => {
+            if (esExterno(r)) return;
+            movs++;
+        });
         (Array.isArray(doc.seccionesEvento) ? doc.seccionesEvento : []).forEach(s => {
             (Array.isArray(s.gastos) ? s.gastos : []).forEach(r => {
                 gEvt += Number(r.cantidad) || 0; movs++;
@@ -323,6 +378,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Resetear estado
         renderedMonths = new Set();
         saldoVisibles = {};
+        efectivoVisibles = {};
         Object.values(statsCharts).forEach(ch => { try { ch.destroy(); } catch (e) { } });
         statsCharts = {};
 
@@ -393,6 +449,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (cached && cached.docs) {
                     Object.keys(cached.docs).forEach(key => { monthDocs[key] = cached.docs[key]; });
                     await precomputeSaldos(year, months);
+                    await precomputeEfectivo(year, months);
                     totalYearsLoaded.add(year);
                     renderTotalPane(year);
                     return;
@@ -403,6 +460,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return getMesDoc(key, false, { force: key === currentKey });
             }));
             await precomputeSaldos(year, months);
+            await precomputeEfectivo(year, months);
             writeTotalCache(year, months);
             totalYearsLoaded.add(year);
             const hayDatos = months.some(m => monthHasData(monthDocs[ym(year, m)]));
@@ -452,6 +510,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const saldoFinal = months.length ? saldoVisibles[ym(year, months[months.length - 1])] : 0;
+        const efectivoFinal = months.length ? efectivoVisibles[ym(year, months[months.length - 1])] : 0;
         const balance = tIng - tGas;
         const sinDatos = tIng === 0 && tGas === 0 && movs === 0;
         const mesActual = new Date().getMonth() + 1;
@@ -477,15 +536,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${card('Total gastos del año', tGas, 'text-danger', 'fa-solid fa-arrow-trend-down')}
                 ${card('Balance anual', balance, balance >= 0 ? 'text-success' : 'text-danger', 'fa-solid fa-scale-balanced')}
                 ${card('Saldo final', saldoFinal, 'text-primary', 'fa-solid fa-wallet')}
+                ${card('Efectivo en mano', efectivoFinal, 'text-warning', 'fa-solid fa-hand-holding-dollar')}
                 ${card('Cuotas de socios', tCuotas, 'text-info', 'fa-solid fa-users')}
             </div>
             <div class="d-flex flex-wrap gap-2 mb-3">
-                <button class="btn btn-info" id="btn-stats-total-${year}"><i class="fa-solid fa-chart-column me-1"></i>Ver estadísticas y gráficas anuales</button>
                 <span class="align-self-center text-muted small"><i class="fa-solid fa-file-invoice me-1"></i>Gastos con factura: ${factSiN} (${fmtEur(factSiI)}) · Sin factura: ${factNoN} (${fmtEur(factNoI)})</span>
             </div>
-            <div class="card shadow-sm d-none" id="stats-section-${year}">
+            <div class="card shadow-sm" id="stats-section-${year}">
                 <div class="card-body">
-                    <h6 class="card-title">Gastos vs Ingresos por mes</h6>
+                    <h6 class="card-title mb-3">Gráfica anual</h6>
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-2" role="group" aria-label="Datos mostrados en la gráfica anual">
+                        <span class="text-muted small fw-bold">Datos a mostrar:</span>
+                        <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-chart-series="ingresos" checked> <span class="form-check-label">Ingresos</span></label>
+                        <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-chart-series="gastos" checked> <span class="form-check-label">Gastos</span></label>
+                        <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-chart-series="saldo"> <span class="form-check-label">Saldo disponible</span></label>
+                        <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-chart-series="cuotas"> <span class="form-check-label">Cuotas de socios</span></label>
+                    </div>
                     <div class="mt-3" style="height: 320px;">
                         <canvas id="stats-chart-${year}"></canvas>
                     </div>
@@ -524,12 +590,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        document.getElementById(`btn-stats-total-${year}`).addEventListener('click', () => {
-            const sec = document.getElementById(`stats-section-${year}`);
-            const oculto = sec.classList.contains('d-none');
-            sec.classList.toggle('d-none', !oculto);
-            if (oculto) renderStatsChart(year);
+        pane.querySelectorAll('[data-chart-series]').forEach(control => {
+            control.addEventListener('change', () => renderStatsChart(year));
         });
+        renderStatsChart(year);
     }
 
     function renderStatsChart(year) {
@@ -540,10 +604,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const ingresos = months.map(m => totalesMes(ym(year, m)).totalIngresos);
         const gastos = months.map(m => totalesMes(ym(year, m)).totalGastos);
         const cuotas = months.map(m => totalesMes(ym(year, m)).cuotasSocios);
+        const saldo = months.map(m => saldoVisibles[ym(year, m)] != null ? saldoVisibles[ym(year, m)] : 0);
+        const selected = series => document.querySelector(`#stats-section-${year} [data-chart-series="${series}"]`)?.checked;
+        const datasets = [
+            selected('ingresos') && { label: 'Ingresos', data: ingresos, backgroundColor: 'rgba(25,135,84,0.6)', borderColor: 'rgba(25,135,84,1)', borderWidth: 1 },
+            selected('gastos') && { label: 'Gastos', data: gastos, backgroundColor: 'rgba(220,53,69,0.6)', borderColor: 'rgba(220,53,69,1)', borderWidth: 1 },
+            selected('cuotas') && { label: 'Cuotas de socios', data: cuotas, backgroundColor: 'rgba(13,202,240,0.6)', borderColor: 'rgba(13,202,240,1)', borderWidth: 1 },
+            selected('saldo') && { label: 'Saldo disponible', data: saldo, type: 'line', borderColor: 'rgba(13,110,253,1)', backgroundColor: 'rgba(13,110,253,0.15)', borderWidth: 3, pointRadius: 3, tension: 0.25, fill: false }
+        ].filter(Boolean);
 
         if (statsCharts[year]) { statsCharts[year].destroy(); statsCharts[year] = null; }
 
-        if (ingresos.every(v => v === 0) && gastos.every(v => v === 0) && cuotas.every(v => v === 0)) {
+        if (datasets.length === 0 || datasets.every(dataset => dataset.data.every(value => value === 0))) {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = 'center';
@@ -558,11 +630,7 @@ document.addEventListener('DOMContentLoaded', function () {
             type: 'bar',
             data: {
                 labels,
-                datasets: [
-                    { label: 'Ingresos', data: ingresos, backgroundColor: 'rgba(25,135,84,0.6)', borderColor: 'rgba(25,135,84,1)', borderWidth: 1 },
-                    { label: 'Gastos', data: gastos, backgroundColor: 'rgba(220,53,69,0.6)', borderColor: 'rgba(220,53,69,1)', borderWidth: 1 },
-                    { label: 'Cuotas de socios', data: cuotas, backgroundColor: 'rgba(13,202,240,0.6)', borderColor: 'rgba(13,202,240,1)', borderWidth: 1 }
-                ]
+                datasets
             },
             options: {
                 responsive: true,
@@ -600,8 +668,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const esCuotas = campo === 'ingresosOrdinarios';
         const filas = filaCfg.filas || [];
         const total = filas.reduce((a, r) => a + (Number(r[montoCampo]) || 0), 0);
+        const totalSinCuotas = esCuotas
+            ? filas.reduce((a, r) => a + (!(r.cuotasSocios === true || r.cuotasSocios === 1 || r.cuotasSocios === 'true') ? (Number(r.cuantia) || 0) : 0), 0)
+            : 0;
+        const totalConCuotas = esCuotas ? total : 0;
 
         const colFactura = esGasto ? '<th class="text-center">¿Factura?</th>' : '';
+        const colExterno = '<th class="text-center" title="Externo (no afecta a cuentas)"><i class="fa-solid fa-arrow-right-from-bracket"></i></th>';
 
         const filasHtml = filas.map(r => {
             const enlaceFactura = facturaEnlace(r);
@@ -611,12 +684,16 @@ document.addEventListener('DOMContentLoaded', function () {
             const cuotasTd = esCuotas
                 ? `<td class="text-center">${r.cuotasSocios === true || r.cuotasSocios === 1 || r.cuotasSocios === 'true' ? '<i class="fa-solid fa-user text-primary" title="Cuota de socio"></i>' : '<span class="text-muted">—</span>'}</td>`
                 : '';
-            return `<tr>
-                <td>${escapeHtml(r.concepto)}</td>
+            const externoTd = esExterno(r)
+                ? '<td class="text-center"><i class="fa-solid fa-arrow-right-from-bracket text-warning" title="Externo (no afecta a cuentas)"></i></td>'
+                : '<td class="text-center"><span class="text-muted">—</span></td>';
+            return `<tr${esExterno(r) ? ' class="table-active"' : ''}>
+                <td>${escapeHtml(r.concepto)}${esExterno(r) ? ' <span class="badge bg-warning text-dark small">Externo</span>' : ''}</td>
                 <td>${formatFecha(r.fecha)}</td>
                 <td class="text-end">${fmtEur(Number(r[montoCampo]) || 0)}</td>
                 ${facturaTd}
                 ${cuotasTd}
+                ${externoTd}
                 <td class="text-center text-nowrap">
                     <button class="btn btn-sm btn-outline-secondary row-edit" data-key="${key}" data-campo="${campo}" data-id="${r.id}"><i class="fas fa-edit"></i></button>
                     <button class="btn btn-sm btn-outline-danger row-del" data-key="${key}" data-campo="${campo}" data-id="${r.id}"><i class="fas fa-trash"></i></button>
@@ -624,7 +701,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </tr>`;
         }).join('');
 
-        const placeholder = filas.length === 0 ? `<tr><td colspan="${esGasto ? 5 : (esCuotas ? 5 : 4)}" class="text-center text-muted py-2">Sin movimientos</td></tr>` : '';
+        const placeholder = filas.length === 0 ? `<tr><td colspan="${esGasto ? 6 : (esCuotas ? 6 : 5)}" class="text-center text-muted py-2">Sin movimientos</td></tr>` : '';
 
         const inputMonto = `<input type="number" step="0.01" min="0" name="monto" class="form-control form-control-sm" placeholder="${montoLabel}" required>`;
         const checkCuotas = campo === 'ingresosOrdinarios'
@@ -645,16 +722,27 @@ document.addEventListener('DOMContentLoaded', function () {
             <table class="table table-sm table-striped mb-2 tesoreria-table">
                 <thead>
                     <tr>
-                        <th>Concepto</th><th>Fecha</th><th class="text-end">${montoLabel}</th>${colFactura}${esCuotas ? '<th class="text-center"></th>' : ''}<th class="text-center">Acciones</th>
+                        <th>Concepto</th><th>Fecha</th><th class="text-end">${montoLabel}</th>${colFactura}${esCuotas ? '<th class="text-center"></th>' : ''}${colExterno}<th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>${filasHtml}${placeholder}</tbody>
                 <tfoot>
+                    ${esCuotas ? `
+                    <tr>
+                        <th colspan="2" class="text-end">Total ${meta.titulo.toLowerCase()} (sin cuotas)</th>
+                        <th class="text-end">${fmtEur(totalSinCuotas)}</th>
+                        <th colspan="3"></th>
+                    </tr>
+                    <tr>
+                        <th colspan="2" class="text-end">Total ${meta.titulo.toLowerCase()} (con cuotas)</th>
+                        <th class="text-end">${fmtEur(totalConCuotas)}</th>
+                        <th colspan="3"></th>
+                    </tr>` : `
                     <tr>
                         <th colspan="2" class="text-end">Total ${meta.titulo.toLowerCase()}</th>
                         <th class="text-end">${fmtEur(total)}</th>
-                        <th${esGasto || esCuotas ? ' colspan="2"' : ''}></th>
-                    </tr>
+                        <th colspan="${esGasto ? 3 : 2}"></th>
+                    </tr>`}
                 </tfoot>
             </table>`;
     }
@@ -770,8 +858,9 @@ document.addEventListener('DOMContentLoaded', function () {
             else form.remove();
         });
         pane.querySelectorAll('.add-evento-form').forEach(form => form.remove());
-        pane.querySelectorAll('.row-edit, .row-del, .save-saldo, .reset-saldo, .add-evento-section, .delete-evento-section').forEach(button => button.remove());
+pane.querySelectorAll('.row-edit, .row-del, .save-saldo, .reset-saldo, .save-efectivo, .reset-efectivo, .add-evento-section, .delete-evento-section').forEach(button => button.remove());
         pane.querySelectorAll('[id^="saldo-input-"]').forEach(input => input.disabled = true);
+        pane.querySelectorAll('[id^="efectivo-input-"]').forEach(input => input.disabled = true);
 
         pane.querySelectorAll('table').forEach(table => {
             const headerRow = table.tHead && table.tHead.rows[0];
@@ -819,11 +908,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         const saldoExplicito = doc.saldoDisponible != null && doc.saldoDisponible !== undefined && !isNaN(doc.saldoDisponible);
 
+        let efectivoVisible = efectivoVisibles[key] != null ? efectivoVisibles[key] : null;
+        let efectivoPrev = 0;
+        let efectivoError = false;
+        if (efectivoVisible === null) {
+            try { efectivoVisible = await computeEfectivoCalculado(key); }
+            catch (e) { console.error(e); efectivoError = true; efectivoVisible = efectivoVisibles[key] != null ? efectivoVisibles[key] : 0; }
+        }
+        if (efectivoVisible === null) efectivoVisible = 0;
+        const prevEf = prevYm(key);
+        if (prevEf) {
+            if (efectivoVisibles[prevEf] != null) efectivoPrev = efectivoVisibles[prevEf];
+            else {
+                try { efectivoPrev = await computeEfectivoCalculado(prevEf); }
+                catch (e) { console.error(e); efectivoError = true; efectivoPrev = 0; }
+            }
+        }
+        const efectivoExplicito = doc.efectivoEnMano != null && doc.efectivoEnMano !== undefined && !isNaN(doc.efectivoEnMano);
+
         const seccionesHtml = (doc.seccionesEvento || []).map(s => renderSeccionEvento(key, s)).join('')
             || '<div class="text-muted small py-2"><i class="fa-solid fa-circle-info me-1"></i>No hay secciones por evento. Crea una para registrar gastos/ingresos ligados a un evento.</div>';
 
         const card = (titulo, valor, clase) => `
-            <div class="col-6 col-lg-2">
+            <div class="col-6 col-lg-3">
                 <div class="card shadow-sm h-100 text-center">
                     <div class="card-body py-3">
                         <div class="text-muted small">${titulo}</div>
@@ -838,16 +945,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${card('Total gastos', fmtEur(t.totalGastos), 'text-danger')}
                 ${card('Balance mensual', fmtEur(t.balance), t.balance >= 0 ? 'text-success' : 'text-danger')}
                 ${card('Mes anterior', fmtEur(saldoPrev), 'text-secondary')}
-                <div class="col-12 col-lg-4">
-                    <div class="card shadow-sm h-100 saldo-card">
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm h-100 saldo-card saldo-destacado">
                         <div class="card-body py-3">
-                            <div class="text-muted small mb-1">Saldo disponible ${saldoExplicito ? '' : '<i class="fa-solid fa-circle-info ms-1 text-info" title="No fijado: se muestra el saldo autocalculado sobre el saldo del mes anterior"></i>'}</div>
+                            <div class="text-muted small mb-1"><i class="fa-solid fa-wallet me-1"></i>Saldo disponible ${saldoExplicito ? '' : '<i class="fa-solid fa-circle-info ms-1 text-info" title="No fijado: se muestra el saldo autocalculado sobre el saldo del mes anterior"></i>'}</div>
                             <div class="input-group input-group-sm">
                                 <input type="number" step="0.01" class="form-control" id="saldo-input-${key}" value="${saldoVisible}" placeholder="${fmtEur(saldoPrev)}">
                                 <button class="btn btn-outline-primary save-saldo" data-key="${key}"><i class="fa-solid fa-floppy-disk"></i></button>
                                 <button class="btn btn-outline-secondary reset-saldo" data-key="${key}" title="Borrar saldo manual y calcular automáticamente"><i class="fa-solid fa-rotate-left"></i></button>
                             </div>
                             ${saldoError ? '<div class="form-text text-warning"><i class="fa-solid fa-circle-exclamation me-1"></i>No se ha podido calcular, introdúzcalo manualmente.</div>' : '<div class="form-text">Si no hay saldo manual, se calcula con el saldo anterior y el balance del mes.</div>'}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm h-100 efectivo-card">
+                        <div class="card-body py-3">
+                            <div class="text-muted small mb-1">Efectivo en mano ${efectivoExplicito ? '' : '<i class="fa-solid fa-circle-info ms-1 text-warning" title="No fijado: se muestra el efectivo autocalculado (efectivo del mes anterior + en mano de ingresos − en mano de gastos)"></i>'}</div>
+                            <div class="input-group input-group-sm">
+                                <input type="number" step="0.01" class="form-control" id="efectivo-input-${key}" value="${efectivoVisible}" placeholder="${fmtEur(efectivoPrev)}">
+                                <button class="btn btn-outline-warning save-efectivo" data-key="${key}" title="Guardar efectivo manual"><i class="fa-solid fa-floppy-disk"></i></button>
+                                <button class="btn btn-outline-secondary reset-efectivo" data-key="${key}" title="Borrar efectivo manual y calcular automáticamente"><i class="fa-solid fa-rotate-left"></i></button>
+                            </div>
+                            ${efectivoError ? '<div class="form-text text-warning"><i class="fa-solid fa-circle-exclamation me-1"></i>No se ha podido calcular, introdúzcalo manualmente.</div>' : '<div class="form-text">Si no hay efectivo manual, se calcula con el efectivo anterior y los importes «en mano» del mes.</div>'}
                         </div>
                     </div>
                 </div>
@@ -912,7 +1034,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const key = activeMonthKey || ym(currentYear, new Date().getMonth() + 1);
             await getMesDoc(key, false);
             document.getElementById('no-data-banner').classList.toggle('d-none', monthHasData(monthDocs[key]));
-            if (totalYearsLoaded.has(currentYear)) renderTotalPane(currentYear);
+            if (totalYearsLoaded.has(currentYear)) {
+                const months = mesesDelAño(currentYear);
+                await precomputeSaldos(currentYear, months);
+                await precomputeEfectivo(currentYear, months);
+                renderTotalPane(currentYear);
+            }
             if (activeMonthKey && activeMonthKey.startsWith(`${currentYear}-`)) {
                 await renderMes(key, { light: true });
             }
@@ -1024,6 +1151,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const esGasto = opts.sub ? opts.sub === 'gastos' : LISTA_META[opts.campo].esGasto;
         const esCuotas = !opts.seccion && opts.campo === 'ingresosOrdinarios';
         const esEvento = !!opts.seccion;
+        const esOrdExt = !opts.seccion && (opts.campo === 'gastosOrdinarios' || opts.campo === 'ingresosOrdinarios' || opts.campo === 'gastosExtraordinarios' || opts.campo === 'ingresosExtraordinarios');
         editState = { key, opts, rowId, esGasto, esCuotas };
 
         document.getElementById('row-modal-title').textContent = esGasto ? 'Editar gasto' : 'Editar ingreso';
@@ -1044,6 +1172,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('row-enmano-container').style.display = esEvento ? 'block' : 'none';
         document.getElementById('row-factura-container').style.display = esGasto ? 'block' : 'none';
         document.getElementById('row-cuotas-container').style.display = esCuotas ? 'block' : 'none';
+        document.getElementById('row-externo-container').style.display = esOrdExt ? 'block' : 'none';
 
         if (esEvento) {
             const doc = monthDocs[key];
@@ -1055,6 +1184,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         document.getElementById('row-factura-enlace').value = facturaEnlace(r);
         document.getElementById('row-cuotas-socios').checked = esCuotas && (r.cuotasSocios === true || r.cuotasSocios === 1 || r.cuotasSocios === 'true');
+        document.getElementById('row-externo').checked = esOrdExt && esExterno(r);
         rowModal.show();
     }
 
@@ -1066,6 +1196,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!concepto) return showAlert('El concepto no puede estar vacío.', 'warning');
         const fecha = document.getElementById('row-fecha').value || new Date().toISOString().slice(0, 10);
         const monto = parseFloat(document.getElementById('row-monto').value) || 0;
+        const esOrdExt = !opts.seccion && (opts.campo === 'gastosOrdinarios' || opts.campo === 'ingresosOrdinarios' || opts.campo === 'gastosExtraordinarios' || opts.campo === 'ingresosExtraordinarios');
 
         const cambios = { concepto, fecha };
         if (opts.seccion) {
@@ -1086,10 +1217,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 cambios.coste = monto;
                 cambios.facturaEnlace = (document.getElementById('row-factura-enlace').value || '').trim();
                 cambios.factura = Boolean(cambios.facturaEnlace);
+                if (esOrdExt) cambios.externo = document.getElementById('row-externo').checked;
             }
             else {
                 cambios.cuantia = monto;
                 if (esCuotas) cambios.cuotasSocios = document.getElementById('row-cuotas-socios').checked;
+                if (esOrdExt) cambios.externo = document.getElementById('row-externo').checked;
             }
         }
 
@@ -1134,7 +1267,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    async function handleResetSaldo(key) {
+async function handleResetSaldo(key) {
         try {
             await updateMes(key, doc => { doc.saldoDisponible = null; });
             activeMonthKey = key;
@@ -1144,6 +1277,47 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {
             console.error(e);
             showAlert('No se pudo borrar el saldo manual.', 'danger');
+        }
+    }
+
+    async function handleSaveEfectivo(key, btn) {
+        const input = document.getElementById(`efectivo-input-${key}`);
+        if (!input) return;
+        const val = input.value;
+        let nuevo = null;
+        if (val !== '') {
+            nuevo = parseFloat(val);
+            if (isNaN(nuevo)) return showAlert('Introduce un valor numérico válido.', 'warning');
+        }
+        try {
+            const doc = monthDocs[key] || baseMes(key);
+            doc.efectivoEnMano = nuevo;
+            await db.collection('tesoreria').doc(key).set(doc);
+            invalidateTotalCacheForKey(key);
+            monthDocs[key] = doc;
+            efectivoVisibles = {};
+            if (nuevo === null) await computeEfectivoCalculado(key);
+            else efectivoVisibles[key] = nuevo;
+            activeMonthKey = key;
+            if (window.auditar) await window.auditar('tesoreria', 'editar', `Efectivo de ${key} ${nuevo === null ? 'restablecido (auto)' : 'fijado a ' + fmtEur(nuevo)}`, { mes: key, efectivoEnMano: nuevo });
+            showAlert('Efectivo guardado.', 'success');
+            await renderMes(key, { light: true });
+        } catch (e) {
+            console.error(e);
+            showAlert('Error al guardar el efectivo.', 'danger');
+        }
+    }
+
+    async function handleResetEfectivo(key) {
+        try {
+            await updateMes(key, doc => { doc.efectivoEnMano = null; });
+            activeMonthKey = key;
+            if (window.auditar) await window.auditar('tesoreria', 'editar', `Efectivo de ${key} restablecido a cálculo automático`, { mes: key, efectivoEnMano: null });
+            await renderMes(key);
+            showAlert('Efectivo manual borrado. Se ha recalculado automáticamente.', 'success');
+        } catch (e) {
+            console.error(e);
+            showAlert('No se pudo borrar el efectivo manual.', 'danger');
         }
     }
 
@@ -1338,6 +1512,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const resetSaldoBtn = e.target.closest('.reset-saldo');
             if (resetSaldoBtn) { handleResetSaldo(resetSaldoBtn.dataset.key); return; }
+
+            const efectivoBtn = e.target.closest('.save-efectivo');
+            if (efectivoBtn) { handleSaveEfectivo(efectivoBtn.dataset.key, efectivoBtn); return; }
+
+            const resetEfectivoBtn = e.target.closest('.reset-efectivo');
+            if (resetEfectivoBtn) { handleResetEfectivo(resetEfectivoBtn.dataset.key); return; }
 
             const addSecBtn = e.target.closest('.add-evento-section');
             if (addSecBtn) { handleAddEventoSection(addSecBtn.dataset.key); return; }
