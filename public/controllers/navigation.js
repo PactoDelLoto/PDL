@@ -104,11 +104,17 @@ async function populateNavbarLinks(isLoggedIn) {
             adminItems.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
             adminItems.push({ text: 'Solicitudes', href: '/solicitudes.html' });
             adminItems.push({ text: 'Auditoría', href: '/auditoria.html' });
+        }
+        if (isAdmin || isColaborador) {
             adminItems.push({ text: 'Tesorería', href: '/tesoreria.html' });
         }
 
         if (adminItems.length > 0) {
             links.push({ text: 'Administración', isDropdown: true, items: adminItems, isAdmin: true });
+        }
+
+        if (isSocio && !isAdmin && !isColaborador) {
+            links.push({ text: 'Asociación', isDropdown: true, items: [{ text: 'Tesorería', href: '/tesoreria.html' }] });
         }
     }
 
@@ -391,5 +397,4 @@ async function checkSolicitudCooldown(db, uid, tipo) {
     }
     return null;
 }
-
 

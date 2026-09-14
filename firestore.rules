@@ -167,7 +167,8 @@ match /solicitudes/{docId} {
 
 // TESORERÍA
 match /tesoreria/{docId} {
-  allow read, write: if isAdmin();
+  allow read: if isSocio() || isColaborador() || isAdmin();
+  allow write: if isAdmin();
 }
 
 }

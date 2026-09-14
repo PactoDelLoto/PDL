@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let eventoSectionModal, rowModal;
     let eventosLoadPromise = null;
     let totalYearsLoaded = new Set();
+    let readOnly = false;
     const TOTAL_CACHE_PREFIX = 'tesoreria-total-v1-';
 
     function totalCacheKey(year) {
@@ -167,6 +168,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Un cambio en un mes puede afectar los saldos automáticos de todos
         // los meses posteriores.
         saldoVisibles = {};
+        if (doc.saldoDisponible === null || doc.saldoDisponible === undefined) {
+            await computeSaldoCalculado(key);
+        }
     }
 
     // Saldo mostrado: explícito, o el del mes anterior (caminando hacia atrás)
@@ -756,6 +760,42 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>`;
     }
 
+    function applyReadOnlyMode(pane) {
+        if (!readOnly || !pane) return;
+
+        pane.insertAdjacentHTML('afterbegin', '<div class="alert alert-info py-2 mb-3"><i class="fa-solid fa-eye me-2"></i><strong>Modo consulta.</strong> Puedes revisar los datos de Tesorería, pero no modificarlos.</div>');
+        pane.querySelectorAll('.add-form').forEach(form => {
+            const formContainer = form.closest('.bg-light.border.rounded.p-2.mb-2');
+            if (formContainer) formContainer.remove();
+            else form.remove();
+        });
+        pane.querySelectorAll('.add-evento-form').forEach(form => form.remove());
+        pane.querySelectorAll('.row-edit, .row-del, .save-saldo, .reset-saldo, .add-evento-section, .delete-evento-section').forEach(button => button.remove());
+        pane.querySelectorAll('[id^="saldo-input-"]').forEach(input => input.disabled = true);
+
+        pane.querySelectorAll('table').forEach(table => {
+            const headerRow = table.tHead && table.tHead.rows[0];
+            if (!headerRow) return;
+            const actionIndex = Array.from(headerRow.cells).findIndex(cell => cell.textContent.trim() === 'Acciones');
+            if (actionIndex < 0) return;
+            headerRow.deleteCell(actionIndex);
+            Array.from(table.tBodies).forEach(body => {
+                Array.from(body.rows).forEach(row => {
+                    if (row.cells.length > actionIndex) row.deleteCell(actionIndex);
+                    else if (row.cells.length === 1 && row.cells[0].colSpan > actionIndex) row.cells[0].colSpan -= 1;
+                });
+            });
+            if (table.tFoot) {
+                Array.from(table.tFoot.rows).forEach(row => {
+                    const lastCell = row.cells[row.cells.length - 1];
+                    if (!lastCell) return;
+                    if (lastCell.colSpan > 1) lastCell.colSpan -= 1;
+                    else lastCell.remove();
+                });
+            }
+        });
+    }
+
     async function renderMes(key, options = {}) {
         const pane = document.getElementById('pane-mes-activo');
         if (!pane) return;
@@ -861,6 +901,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 Balance del mes (todos los tipos): <span class="${t.balance >= 0 ? 'text-success' : 'text-danger'}">${fmtEur(t.balance)}</span>
             </div>
         `;
+        applyReadOnlyMode(pane);
     }
 
     async function recargarVista() {
@@ -929,7 +970,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         try {
             await addFila(key, { campo: form.dataset.campo }, fila);
-            if (window.auditar) await window.auditar('tesoreria', 'crear', `Añadido ${meta.titulo.toLowerCase()}: "${concepto}" (${fmtEur(monto)})`);
+            if (window.auditar) await window.auditar('tesoreria', 'crear', `Añadido ${meta.titulo.toLowerCase()}: "${concepto}" (${fmtEur(monto)})`, { mes: key, tipo: meta.titulo, concepto, importe: monto });
             showAlert('Movimiento añadido.', 'success');
             await recargarVista();
         } catch (e) {
@@ -957,7 +998,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (esGasto) { fila.factura = false; fila.facturaEnlace = ''; }
         try {
             await addFila(key, { seccion, sub }, fila);
-            if (window.auditar) await window.auditar('tesoreria', 'crear', `Añadido ${esGasto ? 'gasto' : 'ingreso'} de evento: "${concepto}" (${fmtEur(cantidad)})`);
+            if (window.auditar) await window.auditar('tesoreria', 'crear', `Añadido ${esGasto ? 'gasto' : 'ingreso'} de evento: "${concepto}" (${fmtEur(cantidad)})`, { mes: key, seccion, tipo: esGasto ? 'gasto de evento' : 'ingreso de evento', concepto, importe: cantidad });
             showAlert('Movimiento añadido.', 'success');
             await recargarVista();
         } catch (e) {
@@ -982,13 +1023,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const esGasto = opts.sub ? opts.sub === 'gastos' : LISTA_META[opts.campo].esGasto;
         const esCuotas = !opts.seccion && opts.campo === 'ingresosOrdinarios';
+        const esEvento = !!opts.seccion;
         editState = { key, opts, rowId, esGasto, esCuotas };
 
         document.getElementById('row-modal-title').textContent = esGasto ? 'Editar gasto' : 'Editar ingreso';
         document.getElementById('row-concepto').value = r.concepto || '';
         document.getElementById('row-fecha').value = r.fecha || '';
-        document.getElementById('row-monto-label').textContent = esGasto ? 'Coste' : 'Cuantía';
-        const montoVal = esGasto ? r.coste : (r.cuantia != null ? r.cuantia : null);
+        document.getElementById('row-monto-label').textContent = esEvento ? 'Cantidad' : (esGasto ? 'Coste' : 'Cuantía');
+        const montoVal = esEvento ? r.cantidad : (esGasto ? r.coste : r.cuantia);
         document.getElementById('row-monto').value = montoVal != null ? montoVal : '';
         document.getElementById('row-key').value = key;
         document.getElementById('row-campo').value = opts.campo || '';
@@ -996,7 +1038,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('row-sub').value = opts.sub || '';
         document.getElementById('row-id').value = rowId;
 
-        const esEvento = !!opts.seccion;
         document.getElementById('row-actividad-container').style.display = esEvento ? 'block' : 'none';
         document.getElementById('row-extras-container').style.display = esEvento ? 'flex' : 'none';
         document.getElementById('row-numjug-container').style.display = esEvento ? 'block' : 'none';
@@ -1053,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         updFila(key, opts, rowId, cambios).then(async () => {
-            if (window.auditar) await window.auditar('tesoreria', 'editar', `Movimiento editado: "${concepto}"`);
+            if (window.auditar) await window.auditar('tesoreria', 'editar', `Movimiento editado: "${concepto}"`, { mes: key, movimientoId: rowId, concepto });
             showAlert('Movimiento actualizado.', 'success');
             rowModal.hide();
             await recargarVista();
@@ -1080,10 +1121,11 @@ document.addEventListener('DOMContentLoaded', function () {
             await db.collection('tesoreria').doc(key).set(doc);
             invalidateTotalCacheForKey(key);
             monthDocs[key] = doc;
-            if (nuevo === null) delete saldoVisibles[key];
+            saldoVisibles = {};
+            if (nuevo === null) await computeSaldoCalculado(key);
             else saldoVisibles[key] = nuevo;
             activeMonthKey = key;
-            if (window.auditar) await window.auditar('tesoreria', 'editar', `Saldo de ${key} ${nuevo === null ? 'restablecido (auto)' : 'fijado a ' + fmtEur(nuevo)}`);
+            if (window.auditar) await window.auditar('tesoreria', 'editar', `Saldo de ${key} ${nuevo === null ? 'restablecido (auto)' : 'fijado a ' + fmtEur(nuevo)}`, { mes: key, saldoDisponible: nuevo });
             showAlert('Saldo guardado.', 'success');
             await renderMes(key, { light: true });
         } catch (e) {
@@ -1096,7 +1138,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             await updateMes(key, doc => { doc.saldoDisponible = null; });
             activeMonthKey = key;
-            saldoVisibles = {};
+            if (window.auditar) await window.auditar('tesoreria', 'editar', `Saldo de ${key} restablecido a cálculo automático`, { mes: key, saldoDisponible: null });
             await renderMes(key);
             showAlert('Saldo manual borrado. Se ha recalculado automáticamente.', 'success');
         } catch (e) {
@@ -1147,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ingresos: []
                 });
             });
-            if (window.auditar) await window.auditar('tesoreria', 'crear', `Sección por evento "${ev ? ev.titulo : ''}" creada en ${key}`);
+            if (window.auditar) await window.auditar('tesoreria', 'crear', `Sección por evento "${nombre}" creada en ${key}`, { mes: key, eventoId: eventoId || null, nombreSeccion: nombre });
             showAlert('Sección de evento creada.', 'success');
             eventoSectionModal.hide();
             await recargarVista();
@@ -1166,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', function () {
             () => {
                 updateMes(key, d => { d.seccionesEvento = (d.seccionesEvento || []).filter(x => x.id !== seccionId); })
                     .then(async () => {
-                        if (window.auditar) await window.auditar('tesoreria', 'eliminar', 'Sección por evento eliminada');
+                        if (window.auditar) await window.auditar('tesoreria', 'eliminar', `Sección por evento eliminada en ${key}`, { mes: key, seccionId });
                         showAlert('Sección eliminada.', 'success');
                         return recargarVista();
                     })
@@ -1219,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         content.addEventListener('submit', function (e) {
+            if (readOnly) { e.preventDefault(); return; }
             const form = e.target.closest('.add-form');
             if (form) { e.preventDefault(); handleAddForm(form); return; }
             const fEv = e.target.closest('.add-evento-form');
@@ -1239,6 +1282,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 return;
             }
+
+            const factBtn = e.target.closest('.factura-btn');
+            if (factBtn) {
+                const url = factBtn.dataset.url || '';
+                try {
+                    const parsed = url ? new URL(url, window.location.origin) : null;
+                    if (parsed && ['http:', 'https:'].includes(parsed.protocol)) window.open(parsed.href, '_blank', 'noopener,noreferrer');
+                    else if (!url) showAlert('Esta factura no tiene un enlace. Entra en editar para añadirlo.', 'info');
+                    else showAlert('El enlace de la factura no es válido.', 'warning');
+                } catch (err) {
+                    showAlert('El enlace de la factura no es válido.', 'warning');
+                }
+                return;
+            }
+
+            if (readOnly) return;
 
             const editBtn = e.target.closest('.row-edit');
             if (editBtn) {
@@ -1262,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     `¿Eliminar este ${esGasto ? 'gasto' : 'ingreso'}?`,
                     () => {
                         delFila(key, opts, delBtn.dataset.id).then(async () => {
-                            if (window.auditar) await window.auditar('tesoreria', 'eliminar', 'Movimiento eliminado');
+                            if (window.auditar) await window.auditar('tesoreria', 'eliminar', `Movimiento eliminado en ${key}`, { mes: key, movimientoId: delBtn.dataset.id });
                             showAlert('Movimiento eliminado.', 'success');
                             return recargarVista();
                         }).catch(err => {
@@ -1271,20 +1330,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                     }
                 );
-                return;
-            }
-
-            const factBtn = e.target.closest('.factura-btn');
-            if (factBtn) {
-                const url = factBtn.dataset.url || '';
-                try {
-                    const parsed = url ? new URL(url, window.location.origin) : null;
-                    if (parsed && ['http:', 'https:'].includes(parsed.protocol)) window.open(parsed.href, '_blank', 'noopener,noreferrer');
-                    else if (!url) showAlert('Esta factura no tiene un enlace. Entra en editar para añadirlo.', 'info');
-                    else showAlert('El enlace de la factura no es válido.', 'warning');
-                } catch (err) {
-                    showAlert('El enlace de la factura no es válido.', 'warning');
-                }
                 return;
             }
 
@@ -1310,18 +1355,26 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         try {
-            const isAdmin = await window.isUserAdmin();
-            if (!isAdmin) {
-                accesoDenegado('Acceso denegado. Solo los administradores pueden ver esta sección.');
+            const [isAdmin, isSocio, isColaborador] = await Promise.all([
+                window.isUserAdmin(),
+                window.isUserSocio(),
+                window.isUserColaborador()
+            ]);
+            if (!isAdmin && !isSocio && !isColaborador) {
+                accesoDenegado('Acceso denegado. Solo los socios, colaboradores y administradores pueden ver esta sección.');
                 return;
             }
+            readOnly = !isAdmin;
         } catch (e) {
             accesoDenegado('Error comprobando permisos.');
             return;
         }
 
-        document.getElementById('row-form').addEventListener('submit', handleRowFormSubmit);
-        document.getElementById('confirm-evento-section-btn').addEventListener('click', confirmEventoSection);
+        if (!readOnly) {
+            document.getElementById('row-form').addEventListener('submit', handleRowFormSubmit);
+            document.getElementById('confirm-evento-section-btn').addEventListener('click', confirmEventoSection);
+        }
+        document.getElementById('refresh-tesoreria-btn')?.classList.toggle('d-none', readOnly);
 
         // Los eventos solo son necesarios al crear una secciÃ³n; no deben bloquear
         // la carga inicial de TesorerÃ­a.

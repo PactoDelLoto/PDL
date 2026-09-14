@@ -102,8 +102,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 {
                     data: 'section', orderable: true,
                     render: function (data) {
-                        const colors = { usuarios: 'bg-secondary', eventos: 'bg-primary', torneos: 'bg-success', inventario: 'bg-warning text-dark' };
-                        const labels = { usuarios: 'Usuarios', eventos: 'Eventos', torneos: 'Torneos', inventario: 'Inventario' };
+                        const colors = { usuarios: 'bg-secondary', eventos: 'bg-primary', torneos: 'bg-success', inventario: 'bg-warning text-dark', tesoreria: 'bg-info text-dark' };
+                        const labels = { usuarios: 'Usuarios', eventos: 'Eventos', torneos: 'Torneos', inventario: 'Inventario', tesoreria: 'Tesorería' };
                         const color = colors[data] || 'bg-secondary';
                         const label = labels[data] || data;
                         return `<span class="badge ${color} badge-section">${label}</span>`;
