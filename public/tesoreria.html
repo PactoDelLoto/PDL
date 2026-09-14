@@ -58,6 +58,35 @@
         .month-load-indicator.month-load-loaded {
             background-color: #198754;
         }
+
+        .month-select-loader {
+            display: inline-flex;
+            align-items: center;
+            gap: .18rem;
+            min-width: 1.4rem;
+            height: 1rem;
+        }
+
+        .month-select-loader span {
+            width: .32rem;
+            height: .32rem;
+            border-radius: 50%;
+            background: var(--bs-primary, #0d6efd);
+            animation: month-loader-bounce .9s ease-in-out infinite;
+        }
+
+        .month-select-loader span:nth-child(2) {
+            animation-delay: .15s;
+        }
+
+        .month-select-loader span:nth-child(3) {
+            animation-delay: .3s;
+        }
+
+        @keyframes month-loader-bounce {
+            0%, 80%, 100% { transform: scale(.65); opacity: .45; }
+            40% { transform: scale(1); opacity: 1; }
+        }
     </style>
     <script src="/jquery-3.7.1.min.js"></script>
 </head>
@@ -73,6 +102,7 @@
             <div class="d-flex align-items-center gap-2">
                 <label for="year-select" class="form-label mb-0 text-nowrap">Seleccionar año:</label>
                 <select id="year-select" class="form-select form-select-sm w-auto"></select>
+                <button type="button" id="refresh-tesoreria-btn" class="btn btn-sm btn-outline-primary" title="Actualizar datos de Tesorería"><i class="fa-solid fa-arrows-rotate me-1"></i>Actualizar tesorería</button>
             </div>
         </div>
 

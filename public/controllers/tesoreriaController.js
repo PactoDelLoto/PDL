@@ -24,6 +24,38 @@ document.addEventListener('DOMContentLoaded', function () {
     let eventoSectionModal, rowModal;
     let eventosLoadPromise = null;
     let totalYearsLoaded = new Set();
+    const TOTAL_CACHE_PREFIX = 'tesoreria-total-v1-';
+
+    function totalCacheKey(year) {
+        return `${TOTAL_CACHE_PREFIX}${year}`;
+    }
+
+    function readTotalCache(year) {
+        try {
+            const raw = localStorage.getItem(totalCacheKey(year));
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            console.warn('No se pudo leer la caché de Tesorería.', e);
+            return null;
+        }
+    }
+
+    function writeTotalCache(year, months) {
+        try {
+            const docs = {};
+            months.forEach(m => {
+                const key = ym(year, m);
+                if (key in monthDocs) docs[key] = monthDocs[key];
+            });
+            localStorage.setItem(totalCacheKey(year), JSON.stringify({ savedAt: Date.now(), docs }));
+        } catch (e) {
+            console.warn('No se pudo guardar la caché de Tesorería.', e);
+        }
+    }
+
+    function invalidateTotalCacheForKey(key) {
+        try { localStorage.removeItem(totalCacheKey(Number(key.split('-')[0]))); } catch (e) {}
+    }
 
     if (document.getElementById('evento-section-modal')) eventoSectionModal = new bootstrap.Modal(document.getElementById('evento-section-modal'));
     if (document.getElementById('row-modal')) rowModal = new bootstrap.Modal(document.getElementById('row-modal'));
@@ -99,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function getMesDoc(key, create = true, options = {}) {
-        if (!options.force && key in monthDocs && monthDocs[key]) return monthDocs[key];
+        if (!options.force && key in monthDocs && (monthDocs[key] || !create)) return monthDocs[key];
         const ref = db.collection('tesoreria').doc(key);
         let snap;
         try {
@@ -130,6 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!Array.isArray(doc.seccionesEvento)) doc.seccionesEvento = [];
         fn(doc);
         await db.collection('tesoreria').doc(key).set(doc);
+        invalidateTotalCacheForKey(key);
         monthDocs[key] = doc;
         // Un cambio en un mes puede afectar los saldos automáticos de todos
         // los meses posteriores.
@@ -295,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const defaultMonth = Math.min(new Date().getMonth() + 1, months.length);
         const defaultKey = ym(year, defaultMonth);
         const monthOptions = months.map(m => `<option value="${ym(year, m)}" ${m === defaultMonth ? 'selected' : ''}>${MESES[m - 1]}</option>`).join('');
-        tabsHtml += `<li class="nav-item d-flex align-items-center gap-2"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-mes-activo" type="button" role="tab" aria-selected="false"><i class="fa-solid fa-calendar-days me-1"></i>Mes</button><select id="month-select" class="form-select form-select-sm" aria-label="Seleccionar mes">${monthOptions}</select></li>`;
+        tabsHtml += `<li class="nav-item d-flex align-items-center gap-2"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-mes-activo" type="button" role="tab" aria-selected="false"><i class="fa-solid fa-calendar-days me-1"></i>Mes</button><select id="month-select" class="form-select form-select-sm" aria-label="Seleccionar mes">${monthOptions}</select><span id="month-select-spinner" class="month-select-loader d-none" role="status" aria-live="polite" aria-label="Cargando mes"><span></span><span></span><span></span></span></li>`;
         tabs.innerHTML = tabsHtml;
         const totalTab = tabs.querySelector(`#tab-total-${year}`);
         const monthTab = tabs.querySelector('#tab-mes-activo') || tabs.querySelector('[data-bs-target="#pane-mes-activo"]');
@@ -338,21 +371,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- Pestaña Total del año ----------
 
-    async function loadTotalYear(year) {
-        if (totalYearsLoaded.has(year)) return;
+    async function loadTotalYear(year, force = false) {
+        if (totalYearsLoaded.has(year) && !force) {
+            renderTotalPane(year);
+            return;
+        }
         const pane = document.getElementById(`pane-total-${year}`);
-        if (pane) pane.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando el total anual...</div>';
+        if (pane) pane.innerHTML = force ? '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Actualizando TesorerÃ­a...</div>' : '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando el total anual...</div>';
         /*
         const months = mesesDelAÃ±o(year);
         */
         const months = Array.from({ length: year === new Date().getFullYear() ? new Date().getMonth() + 1 : 12 }, (_, i) => i + 1);
         const currentKey = ym(new Date().getFullYear(), new Date().getMonth() + 1);
         try {
+            if (!force) {
+                const cached = readTotalCache(year);
+                if (cached && cached.docs) {
+                    Object.keys(cached.docs).forEach(key => { monthDocs[key] = cached.docs[key]; });
+                    await precomputeSaldos(year, months);
+                    totalYearsLoaded.add(year);
+                    renderTotalPane(year);
+                    return;
+                }
+            }
             await Promise.all(months.map(m => {
                 const key = ym(year, m);
                 return getMesDoc(key, false, { force: key === currentKey });
             }));
             await precomputeSaldos(year, months);
+            writeTotalCache(year, months);
             totalYearsLoaded.add(year);
             const hayDatos = months.some(m => monthHasData(monthDocs[ym(year, m)]));
             document.getElementById('no-data-banner').classList.toggle('d-none', hayDatos);
@@ -360,6 +407,24 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {
             console.error('Error cargando el total anual', e);
             if (pane) pane.innerHTML = '<div class="alert alert-danger mb-0">No se pudo cargar el total anual.</div>';
+        }
+    }
+
+    async function refreshTesoreria() {
+        const btn = document.getElementById('refresh-tesoreria-btn');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Actualizando...'; }
+        try {
+            localStorage.removeItem(totalCacheKey(currentYear));
+            totalYearsLoaded.delete(currentYear);
+            if (activeMonthKey) await getMesDoc(activeMonthKey, false, { force: true });
+            await loadTotalYear(currentYear, true);
+            if (activeMonthKey) await renderMes(activeMonthKey, { light: true });
+            showAlert('Tesorería actualizada.', 'success');
+        } catch (e) {
+            console.error('Error actualizando Tesorería', e);
+            showAlert('No se pudo actualizar Tesorería.', 'danger');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate me-1"></i>Actualizar tesorería'; }
         }
     }
 
@@ -1013,6 +1078,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const doc = monthDocs[key] || baseMes(key);
             doc.saldoDisponible = nuevo;
             await db.collection('tesoreria').doc(key).set(doc);
+            invalidateTotalCacheForKey(key);
             monthDocs[key] = doc;
             if (nuevo === null) delete saldoVisibles[key];
             else saldoVisibles[key] = nuevo;
@@ -1117,6 +1183,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function setupGlobalEvents() {
         const content = document.getElementById('treasury-tabs-content');
         const tabs = document.getElementById('treasury-tabs');
+        const refreshBtn = document.getElementById('refresh-tesoreria-btn');
+        if (refreshBtn) refreshBtn.addEventListener('click', refreshTesoreria);
 
         // Render perezoso: al abrir un mes que no está pintado, se pinta
         tabs.addEventListener('shown.bs.tab', function (e) {
@@ -1127,6 +1195,10 @@ document.addEventListener('DOMContentLoaded', function () {
         tabs.addEventListener('change', async function (e) {
             if (!e.target || e.target.id !== 'month-select') return;
             const key = e.target.value;
+            const monthSelect = e.target;
+            const monthSpinner = document.getElementById('month-select-spinner');
+            monthSelect.disabled = true;
+            if (monthSpinner) monthSpinner.classList.remove('d-none');
             activeMonthKey = key;
             const monthNumber = parseInt(key.split('-')[1], 10);
             const monthTab = tabs.querySelector('[data-bs-target="#pane-mes-activo"]');
@@ -1140,6 +1212,9 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (err) {
                 console.error('Error cargando el mes ' + key, err);
                 showAlert('No se pudo cargar el mes seleccionado.', 'danger');
+            } finally {
+                monthSelect.disabled = false;
+                if (monthSpinner) monthSpinner.classList.add('d-none');
             }
         });
 
