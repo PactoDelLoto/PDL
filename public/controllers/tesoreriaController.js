@@ -24,8 +24,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let statsCharts = {};               // año -> instancia Chart
     let eventoSectionModal, rowModal;
     let eventosLoadPromise = null;
-    let totalYearsLoaded = new Set();
+let totalYearsLoaded = new Set();
     let readOnly = false;
+    let totalsCache = {};               // 'YYYY-MM' -> resultado totalesMes (memoización)
+    let paneSigs = {};                  // año -> firma del total pintado (evita repintados)
     const TOTAL_CACHE_PREFIX = 'tesoreria-total-v1-';
 
     function totalCacheKey(year) {
@@ -42,21 +44,35 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function writeTotalCache(year, months) {
+    function writeTotalCache(year, months, saldos, efectivos) {
         try {
             const docs = {};
+            const yearSaldos = {};
+            const yearEfectivos = {};
             months.forEach(m => {
                 const key = ym(year, m);
                 if (key in monthDocs) docs[key] = monthDocs[key];
+                if (saldos && key in saldos) yearSaldos[key] = saldos[key];
+                if (efectivos && key in efectivos) yearEfectivos[key] = efectivos[key];
             });
-            localStorage.setItem(totalCacheKey(year), JSON.stringify({ savedAt: Date.now(), docs }));
+            const entry = { savedAt: Date.now(), docs };
+            if (Object.keys(yearSaldos).length) entry.saldos = yearSaldos;
+            if (Object.keys(yearEfectivos).length) entry.efectivos = yearEfectivos;
+            localStorage.setItem(totalCacheKey(year), JSON.stringify(entry));
         } catch (e) {
             console.warn('No se pudo guardar la caché de Tesorería.', e);
         }
     }
 
-    function invalidateTotalCacheForKey(key) {
-        try { localStorage.removeItem(totalCacheKey(Number(key.split('-')[0]))); } catch (e) {}
+    // Un cambio en un mes puede afectar a los saldos/efectivos de los meses
+    // posteriores e incluso a los años siguientes (vía el mes de diciembre).
+    // Invalidamos la caché persistida del año editado y de todos los años posteriores.
+    function invalidateTotalsFrom(year) {
+        const now = new Date().getFullYear();
+        for (let y = year; y <= now; y++) {
+            try { localStorage.removeItem(totalCacheKey(y)); } catch (e) {}
+            totalYearsLoaded.delete(y);
+        }
     }
 
     if (document.getElementById('evento-section-modal')) eventoSectionModal = new bootstrap.Modal(document.getElementById('evento-section-modal'));
@@ -139,6 +155,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function getMesDoc(key, create = true, options = {}) {
         if (!options.force && key in monthDocs && (monthDocs[key] || !create)) return monthDocs[key];
+        // Si no está en memoria, probamos primero la caché local del año antes
+        // de ir a la red (muy útil para el cálculo hacia atrás de saldos).
+        if (!options.force && !(key in monthDocs)) {
+            try {
+                const cached = readTotalCache(Number(key.split('-')[0]));
+                if (cached && cached.docs && key in cached.docs) {
+                    monthDocs[key] = cached.docs[key];
+                    delete totalsCache[key];
+                    if (cached.saldos && key in cached.saldos) saldoVisibles[key] = cached.saldos[key];
+                    if (cached.efectivos && key in cached.efectivos) efectivoVisibles[key] = cached.efectivos[key];
+                    return monthDocs[key];
+                }
+            } catch (e) {
+                console.warn('No se pudo leer la caché local de Tesorería.', e);
+            }
+        }
         const ref = db.collection('tesoreria').doc(key);
         let snap;
         try {
@@ -149,13 +181,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (snap.exists) {
             monthDocs[key] = snap.data();
+            delete totalsCache[key];
             return monthDocs[key];
         }
         if (!create) {
             monthDocs[key] = null;
+            delete totalsCache[key];
             return null;
         }
         monthDocs[key] = baseMes(key);
+        delete totalsCache[key];
         return monthDocs[key];
     }
 
@@ -169,18 +204,32 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!Array.isArray(doc.seccionesEvento)) doc.seccionesEvento = [];
         fn(doc);
         await db.collection('tesoreria').doc(key).set(doc);
-        invalidateTotalCacheForKey(key);
+        invalidateTotalsFrom(Number(key.split('-')[0]));
         monthDocs[key] = doc;
+        delete totalsCache[key];
         // Un cambio en un mes puede afectar los saldos automáticos de todos
-        // los meses posteriores.
-saldoVisibles = {};
-        if (doc.saldoDisponible === null || doc.saldoDisponible === undefined) {
-            await computeSaldoCalculado(key);
-        }
-        efectivoVisibles = {};
-        if (doc.efectivoEnMano === null || doc.efectivoEnMano === undefined) {
-            await computeEfectivoCalculado(key);
-        }
+        // los meses posteriores (mismo año y siguientes).
+        invalidateSaldosDesde(key);
+        await recomputeDesde(key);
+    }
+
+    // Borra de la caché en memoria los saldos/efectivos del mes editado en
+    // adelante (mismo año y años posteriores) para forzar su recálculo.
+    function invalidateSaldosDesde(key) {
+        const yearKey = Number(key.slice(0, 4));
+        Object.keys(saldoVisibles).forEach(k => {
+            if (Number(k.slice(0, 4)) >= yearKey && k >= key) delete saldoVisibles[k];
+        });
+        Object.keys(efectivoVisibles).forEach(k => {
+            if (Number(k.slice(0, 4)) >= yearKey && k >= key) delete efectivoVisibles[k];
+        });
+    }
+
+    async function recomputeDesde(key) {
+        const y = Number(key.slice(0, 4));
+        const rest = mesesDelAño(y).filter(m => ym(y, m) >= key);
+        await computeSaldoYear(y, rest, false);
+        await computeEfectivoYear(y, rest, false);
     }
 
     // Saldo mostrado: explícito, o el del mes anterior (caminando hacia atrás)
@@ -221,17 +270,34 @@ saldoVisibles = {};
         const prev = prevYm(key);
         const saldoAnterior = prev ? await computeSaldoCalculado(prev, visitados) : 0;
         const saldoCalculado = Math.round((saldoAnterior + totalesMes(key).balance) * 100) / 100;
-        if (!isFinite(saldoCalculado)) throw new Error('Saldo no numÃ©rico.');
+        if (!isFinite(saldoCalculado)) throw new Error('Saldo no numérico.');
         saldoVisibles[key] = saldoCalculado;
         return saldoCalculado;
     }
 
-    async function precomputeSaldos(year, months) {
-        saldoVisibles = {};
-        const keys = months.map(m => ym(year, m));
-        for (const k of keys) {
-            if (!(k in saldoVisibles)) await computeSaldoCalculado(k);
+    async function computeSaldoYear(year, months, force = true) {
+        const sorted = [...months].sort((a, b) => a - b);
+        if (force) sorted.forEach(m => delete saldoVisibles[ym(year, m)]);
+        let anterior = null;
+        for (const m of sorted) {
+            const k = ym(year, m);
+            if (k in saldoVisibles) { anterior = saldoVisibles[k]; continue; }
+            const doc = await getMesDoc(k, false);
+            if (doc && doc.saldoDisponible !== null && doc.saldoDisponible !== undefined && !isNaN(doc.saldoDisponible)) {
+                anterior = Number(doc.saldoDisponible);
+            } else {
+                if (anterior === null) {
+                    const prevK = prevYm(k);
+                    anterior = prevK ? await computeSaldoCalculado(prevK) : 0;
+                }
+                anterior = Math.round((anterior + totalesMes(k).balance) * 100) / 100;
+            }
+            saldoVisibles[k] = anterior;
         }
+    }
+
+    async function precomputeSaldos(year, months) {
+        await computeSaldoYear(year, months, true);
     }
 
     // Neto del mes de los importes "En mano" de los movimientos de evento:
@@ -265,17 +331,35 @@ saldoVisibles = {};
         return calculado;
     }
 
-    async function precomputeEfectivo(year, months) {
-        efectivoVisibles = {};
-        const keys = months.map(m => ym(year, m));
-        for (const k of keys) {
-            if (!(k in efectivoVisibles)) await computeEfectivoCalculado(k);
+    async function computeEfectivoYear(year, months, force = true) {
+        const sorted = [...months].sort((a, b) => a - b);
+        if (force) sorted.forEach(m => delete efectivoVisibles[ym(year, m)]);
+        let anterior = null;
+        for (const m of sorted) {
+            const k = ym(year, m);
+            if (k in efectivoVisibles) { anterior = efectivoVisibles[k]; continue; }
+            const doc = await getMesDoc(k, false);
+            if (doc && doc.efectivoEnMano !== null && doc.efectivoEnMano !== undefined && !isNaN(doc.efectivoEnMano)) {
+                anterior = Number(doc.efectivoEnMano);
+            } else {
+                if (anterior === null) {
+                    const prevK = prevYm(k);
+                    anterior = prevK ? await computeEfectivoCalculado(prevK) : 0;
+                }
+                anterior = Math.round((anterior + enManoMes(k)) * 100) / 100;
+            }
+            efectivoVisibles[k] = anterior;
         }
+    }
+
+    async function precomputeEfectivo(year, months) {
+        await computeEfectivoYear(year, months, true);
     }
 
     // ---------- Totales ----------
 
     function totalesMes(key) {
+        if (key in totalsCache) return totalsCache[key];
         const doc = monthDocs[key] || baseMes(key);
         const sum = (arr, campo) => (Array.isArray(arr) ? arr.reduce((a, r) => a + (!esExterno(r) ? (Number(r[campo]) || 0) : 0), 0) : 0);
         const gOrd = sum(doc.gastosOrdinarios, 'coste');
@@ -309,11 +393,13 @@ saldoVisibles = {};
         });
         const totalIngresos = iOrd + iExt + iEvt;
         const totalGastos = gOrd + gExt + gEvt;
-        return {
+        const resultado = {
             totalIngresos, totalGastos, balance: totalIngresos - totalGastos,
             gOrd, iOrd, gExt, iExt, gEvt, iEvt, cuotasSocios,
             movs, factSi, factNo, factSiImporte, factNoImporte
         };
+        totalsCache[key] = resultado;
+        return resultado;
     }
 
     // ---------- Inicialización ----------
@@ -379,6 +465,8 @@ saldoVisibles = {};
         renderedMonths = new Set();
         saldoVisibles = {};
         efectivoVisibles = {};
+        totalsCache = {};
+        paneSigs = {};
         Object.values(statsCharts).forEach(ch => { try { ch.destroy(); } catch (e) { } });
         statsCharts = {};
 
@@ -409,11 +497,57 @@ saldoVisibles = {};
         if (totalPane) totalPane.classList.remove('show', 'active');
         if (monthPane) monthPane.classList.add('show', 'active');
 
-        // Arranque ligero: solo se consulta y se pinta el mes seleccionado.
-        // El total anual se carga al abrir su pestaña, no bloquea la pantalla inicial.
+        // Arranque: usamos la caché local y, si falta algún mes del año,
+        // lo descargamos en paralelo. Con esto el cálculo de saldo/efectivo
+        // corre en memoria y la vista se pinta casi al instante.
         try {
-            activeMonthKey = defaultKey;
-            await getMesDoc(defaultKey, false, { force: defaultKey === ym(new Date().getFullYear(), new Date().getMonth() + 1) });
+            // 1. Poblar monthDocs y saldos/efectivos desde la caché local.
+            const cached = readTotalCache(year);
+            if (cached) {
+                if (cached.docs) Object.keys(cached.docs).forEach(k => { monthDocs[k] = cached.docs[k]; });
+                if (cached.saldos) Object.keys(cached.saldos).forEach(k => { saldoVisibles[k] = cached.saldos[k]; });
+                if (cached.efectivos) Object.keys(cached.efectivos).forEach(k => { efectivoVisibles[k] = cached.efectivos[k]; });
+            }
+
+            // Costura con el año anterior: el primer mes puede depender de él.
+            const firstKey = ym(year, months[0]);
+            const prevSeamKey = prevYm(firstKey);
+            let prevYearFetch = [];
+            let prevYear = null;
+            let prevYearMonths = null;
+            if (prevSeamKey) {
+                const pc = readTotalCache(Number(prevSeamKey.slice(0, 4)));
+                if (pc && pc.saldos && prevSeamKey in pc.saldos) saldoVisibles[prevSeamKey] = pc.saldos[prevSeamKey];
+                if (pc && pc.efectivos && prevSeamKey in pc.efectivos) efectivoVisibles[prevSeamKey] = pc.efectivos[prevSeamKey];
+                if (pc && pc.docs) Object.keys(pc.docs).forEach(k => { if (!(k in monthDocs)) monthDocs[k] = pc.docs[k]; });
+                if (!(prevSeamKey in saldoVisibles) || !(prevSeamKey in efectivoVisibles)) {
+                    prevYear = Number(prevSeamKey.slice(0, 4));
+                    prevYearMonths = Array.from({ length: 12 }, (_, i) => i + 1);
+                    prevYearFetch = prevYearMonths.filter(m => !(ym(prevYear, m) in monthDocs));
+                }
+            }
+
+            // 2. Descargar en paralelo los meses que falten (año y costura).
+            const currentRealKey = ym(new Date().getFullYear(), new Date().getMonth() + 1);
+            const missingKeys = months.filter(m => !(ym(year, m) in monthDocs)).map(m => ym(year, m));
+            if (prevYear !== null) missingKeys.push(...prevYearFetch.map(m => ym(prevYear, m)));
+            await Promise.all(missingKeys.map(key => getMesDoc(key, false)));
+            // El mes real en curso se consulta siempre de forma fresca.
+            await getMesDoc(defaultKey, false, { force: defaultKey === currentRealKey });
+
+            // 3. Precalcular saldos y efectivo (primero el año de la costura,
+            //    después el año visible) en memoria.
+            if (prevYear !== null && prevYearMonths) {
+                await precomputeSaldos(prevYear, prevYearMonths);
+                await precomputeEfectivo(prevYear, prevYearMonths);
+                writeTotalCache(prevYear, prevYearMonths, saldoVisibles, efectivoVisibles);
+            }
+            await precomputeSaldos(year, months);
+            await precomputeEfectivo(year, months);
+
+            // 4. Persistir la caché para la próxima visita.
+            writeTotalCache(year, months, saldoVisibles, efectivoVisibles);
+
             const currentDoc = monthDocs[defaultKey];
             document.getElementById('no-data-banner').classList.toggle('d-none', monthHasData(currentDoc));
             const totalPane = document.getElementById(`pane-total-${year}`);
@@ -437,31 +571,63 @@ saldoVisibles = {};
             return;
         }
         const pane = document.getElementById(`pane-total-${year}`);
-        if (pane) pane.innerHTML = force ? '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Actualizando TesorerÃ­a...</div>' : '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando el total anual...</div>';
+        if (pane) pane.innerHTML = force ? '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Actualizando Tesorería...</div>' : '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando el total anual...</div>';
         /*
-        const months = mesesDelAÃ±o(year);
+        const months = mesesDelAño(year);
         */
         const months = Array.from({ length: year === new Date().getFullYear() ? new Date().getMonth() + 1 : 12 }, (_, i) => i + 1);
         const currentKey = ym(new Date().getFullYear(), new Date().getMonth() + 1);
         try {
-            if (!force) {
-                const cached = readTotalCache(year);
-                if (cached && cached.docs) {
-                    Object.keys(cached.docs).forEach(key => { monthDocs[key] = cached.docs[key]; });
-                    await precomputeSaldos(year, months);
-                    await precomputeEfectivo(year, months);
-                    totalYearsLoaded.add(year);
-                    renderTotalPane(year);
-                    return;
+            const cached = !force ? readTotalCache(year) : null;
+            if (cached && cached.docs) {
+                Object.keys(cached.docs).forEach(key => { if (!(key in monthDocs)) monthDocs[key] = cached.docs[key]; });
+            }
+            if (cached && cached.docs && cached.saldos && cached.efectivos &&
+                months.every(m => (cached.saldos[ym(year, m)] !== undefined) && (cached.efectivos[ym(year, m)] !== undefined))) {
+                // Caché completa (docs + saldos + efectivos): todo en memoria.
+                Object.keys(cached.saldos).forEach(k => { saldoVisibles[k] = cached.saldos[k]; });
+                Object.keys(cached.efectivos).forEach(k => { efectivoVisibles[k] = cached.efectivos[k]; });
+                totalYearsLoaded.add(year);
+                renderTotalPane(year);
+                return;
+            }
+
+            // Es posible que falte la "costura" del primer mes (depende de la
+            // tabla del año anterior); la precargamos en paralelo si la tenemos.
+            const firstKey = ym(year, months[0]);
+            const prevSeamKey = prevYm(firstKey);
+            const needsPrevYear = prevSeamKey && !(prevSeamKey in saldoVisibles) && !(cached && cached.saldos && prevSeamKey in cached.saldos);
+            let prevYearMonths = null;
+            let prevYear = null;
+            if (needsPrevYear) {
+                prevYear = Number(prevSeamKey.slice(0, 4));
+                const prevCached = readTotalCache(prevYear);
+                if (prevCached && prevCached.docs) {
+                    Object.keys(prevCached.docs).forEach(k => { monthDocs[k] = prevCached.docs[k]; });
+                }
+                if (prevCached && prevCached.saldos) {
+                    Object.keys(prevCached.saldos).forEach(k => { if (!(k in saldoVisibles)) saldoVisibles[k] = prevCached.saldos[k]; });
+                }
+                delete totalsCache[prevSeamKey];
+                if (!(prevSeamKey in saldoVisibles) && !(prevCached && prevCached.saldos && prevSeamKey in prevCached.saldos)) {
+                    prevYearMonths = Array.from({ length: 12 }, (_, i) => i + 1);
                 }
             }
-            await Promise.all(months.map(m => {
-                const key = ym(year, m);
-                return getMesDoc(key, false, { force: key === currentKey });
-            }));
+
+            const fetchKeys = months.map(m => ym(year, m));
+            if (needsPrevYear && prevYearMonths) {
+                fetchKeys.push(...prevYearMonths.map(m => ym(prevYear, m)));
+            }
+            await Promise.all(fetchKeys.map(key => getMesDoc(key, false, { force: key === currentKey })));
+
+            if (needsPrevYear && prevYearMonths) {
+                await precomputeSaldos(prevYear, prevYearMonths);
+                await precomputeEfectivo(prevYear, prevYearMonths);
+                writeTotalCache(prevYear, prevYearMonths, saldoVisibles, efectivoVisibles);
+            }
             await precomputeSaldos(year, months);
             await precomputeEfectivo(year, months);
-            writeTotalCache(year, months);
+            writeTotalCache(year, months, saldoVisibles, efectivoVisibles);
             totalYearsLoaded.add(year);
             const hayDatos = months.some(m => monthHasData(monthDocs[ym(year, m)]));
             document.getElementById('no-data-banner').classList.toggle('d-none', hayDatos);
@@ -514,6 +680,12 @@ saldoVisibles = {};
         const balance = tIng - tGas;
         const sinDatos = tIng === 0 && tGas === 0 && movs === 0;
         const mesActual = new Date().getMonth() + 1;
+
+        // Si los datos no han cambiado desde el último pintado, no tocar el DOM
+        // (evita reconstruir tarjetas y la gráfica en cada recarga).
+        const sig = [year, tIng, tGas, tCuotas, movs, factSiN, factNoN, factSiI, factNoI, saldoFinal, efectivoFinal].join('|');
+        if (paneSigs[year] === sig) return;
+        paneSigs[year] = sig;
 
         const card = (titulo, valor, clase, icono) => `
             <div class="col-6 col-lg-3">
@@ -1249,14 +1421,15 @@ pane.querySelectorAll('.row-edit, .row-del, .save-saldo, .reset-saldo, .save-efe
         try {
             // El saldo puede ser el primer dato del mes: updateMes crea el
             // documento base aunque Firestore todavía no tenga ese mes.
-            const doc = monthDocs[key] || baseMes(key);
+const doc = monthDocs[key] || baseMes(key);
             doc.saldoDisponible = nuevo;
             await db.collection('tesoreria').doc(key).set(doc);
-            invalidateTotalCacheForKey(key);
+            invalidateTotalsFrom(Number(key.slice(0, 4)));
             monthDocs[key] = doc;
-            saldoVisibles = {};
-            if (nuevo === null) await computeSaldoCalculado(key);
-            else saldoVisibles[key] = nuevo;
+            delete totalsCache[key];
+            invalidateSaldosDesde(key);
+            await recomputeDesde(key);
+            if (nuevo !== null) saldoVisibles[key] = nuevo;
             activeMonthKey = key;
             if (window.auditar) await window.auditar('tesoreria', 'editar', `Saldo de ${key} ${nuevo === null ? 'restablecido (auto)' : 'fijado a ' + fmtEur(nuevo)}`, { mes: key, saldoDisponible: nuevo });
             showAlert('Saldo guardado.', 'success');
@@ -1293,11 +1466,12 @@ async function handleResetSaldo(key) {
             const doc = monthDocs[key] || baseMes(key);
             doc.efectivoEnMano = nuevo;
             await db.collection('tesoreria').doc(key).set(doc);
-            invalidateTotalCacheForKey(key);
+            invalidateTotalsFrom(Number(key.slice(0, 4)));
             monthDocs[key] = doc;
-            efectivoVisibles = {};
-            if (nuevo === null) await computeEfectivoCalculado(key);
-            else efectivoVisibles[key] = nuevo;
+            delete totalsCache[key];
+            invalidateSaldosDesde(key);
+            await recomputeDesde(key);
+            if (nuevo !== null) efectivoVisibles[key] = nuevo;
             activeMonthKey = key;
             if (window.auditar) await window.auditar('tesoreria', 'editar', `Efectivo de ${key} ${nuevo === null ? 'restablecido (auto)' : 'fijado a ' + fmtEur(nuevo)}`, { mes: key, efectivoEnMano: nuevo });
             showAlert('Efectivo guardado.', 'success');
