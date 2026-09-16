@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contraseñas - Pacto del Loto</title>
+
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        .pw-cell button {
+            line-height: 1;
+        }
+        .pw-masked {
+            font-family: monospace;
+            letter-spacing: 2px;
+        }
+        .tabla-contrasenas thead th {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        .tabla-contrasenas td {
+            vertical-align: middle;
+        }
+        #tablas-container .card-header .editable-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .google-badge {
+            background: rgba(15, 157, 88, 0.12);
+            color: #0f9d58;
+            border: 1px solid rgba(15, 157, 88, 0.35);
+        }
+        [data-theme="dark"] .google-badge {
+            background: rgba(15, 157, 88, 0.18);
+        }
+    </style>
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+
+<body>
+    <header></header>
+
+    <main id="contrasenas-main" class="container mt-5 pt-5 mb-5">
+        <div id="alert-container"></div>
+        <div class="row">
+            <div class="col">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <div>
+                        <h1 class="mb-1"><i class="fa-solid fa-key me-2"></i>Contraseñas</h1>
+                        <p class="text-muted small mb-0">Custodia de contraseñas compartidas de la asociación. Los datos se guardan cifrados de forma segura en Firestore.</p>
+                    </div>
+                    <button class="btn btn-primary" id="btn-tabla-add"><i class="fa-solid fa-plus me-1"></i>Nueva tabla</button>
+                </div>
+
+                <div id="tablas-container"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
+
+    <!-- Modal Añadir / Renombrar tabla -->
+    <div class="modal fade" id="tabla-modal" tabindex="-1" aria-labelledby="tablaModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tablaModalLabel">Nueva tabla</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="tabla-form">
+                    <div class="modal-body">
+                        <input type="hidden" id="tabla-id">
+                        <div class="mb-2">
+                            <label for="tabla-nombre" class="form-label">Nombre de la tabla</label>
+                            <input type="text" class="form-control" id="tabla-nombre" maxlength="60" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Añadir / Editar contraseña -->
+    <div class="modal fade" id="pw-modal" tabindex="-1" aria-labelledby="pwModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pwModalLabel">Nueva contraseña</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="pw-form">
+                    <div class="modal-body">
+                        <input type="hidden" id="pw-tabla-id">
+                        <input type="hidden" id="pw-index">
+                        <div class="mb-2">
+                            <label for="pw-nombre" class="form-label">Nombre <span class="text-muted fw-normal">(qué es esta contraseña)</span></label>
+                            <input type="text" class="form-control" id="pw-nombre" maxlength="80" placeholder="Ej: Cuenta de Instagram" required>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="pw-google">
+                            <label class="form-check-label" for="pw-google"><i class="fa-brands fa-google me-1"></i>Inicio de sesión con cuenta de Google</label>
+                        </div>
+                        <div id="pw-credenciales">
+                            <div class="mb-2">
+                                <label for="pw-usuario" class="form-label">Usuario <span class="text-muted fw-normal">(vacío = pactodellotocadiz@gmail.com)</span></label>
+                                <input type="text" class="form-control" id="pw-usuario" maxlength="120" placeholder="pactodellotocadiz@gmail.com">
+                            </div>
+                            <div class="mb-2">
+                                <label for="pw-clave" class="form-label">Contraseña</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="pw-clave" maxlength="200" autocomplete="new-password">
+                                    <button class="btn btn-outline-secondary" type="button" id="pw-eye"><i class="fa-solid fa-eye"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-2 d-none" id="pw-google-nota">
+                            <div class="alert alert-success py-2 small mb-0"><i class="fa-brands fa-google me-1"></i> Los campos de usuario y contraseña se sustituirán por "Inicio de sesión con cuenta de Google".</div>
+                        </div>
+                        <div class="mb-2">
+                            <label for="pw-enlace" class="form-label">Enlace <span class="text-muted fw-normal">(opcional)</span></label>
+                            <input type="text" class="form-control" id="pw-enlace" maxlength="300" placeholder="https://...">
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="pw-dospasos">
+                                <label class="form-check-label" for="pw-dospasos"><i class="fa-solid fa-shield-halved me-1"></i>Autenticación en dos pasos</label>
+                            </div>
+                        </div>
+                        <div class="text-muted small"><i class="fa-solid fa-circle-info me-1"></i>Al guardar se registra la fecha de última actualización (mes y año).</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación Genérico -->
+    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">Confirmar Acción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmation-modal-body-text">¿Estás seguro de que quieres realizar esta acción?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirm-action-btn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/js/utils.js"></script>
+
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/contrasenasController.js"></script>
+</body>
+
+</html>

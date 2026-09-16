@@ -32,6 +32,7 @@
     </header>
 
     <!-- Jumbotron de ventajas de hacerse socio -->
+    <div id="contenido-pagina">
     <section class="py-5 bg-light">
         <div class="container">
             <div class="text-center mb-5">
@@ -117,6 +118,7 @@
             </div>
         </div>
     </section>
+    </div>
 
     <footer class="footer mt-auto py-3 bg-dark">
         <!-- El footer se cargará aquí -->
@@ -133,75 +135,100 @@
     <script src="/controllers/firebase-config.js"></script>
     <script src="/controllers/authController.js"></script>
     <script src="/controllers/navigation.js"></script>
+    <script src="/js/contenidoRenderer.js"></script>
 
     <script>
-        firebase.auth().onAuthStateChanged(async function(user) {
+        function refreshCTA(user) {
             const ctaBtn = document.getElementById('hazte-socio-cta-btn');
             const infoBox = document.getElementById('hazte-socio-info');
-            if (user) {
-                let esSocio = false;
-                try {
-                    const doc = await firebase.firestore().collection('usuarios').doc(user.uid).get();
-                    if (doc.exists) esSocio = doc.data().isSocio === true;
-                } catch (e) {}
-                if (!esSocio && ctaBtn) {
-                    ctaBtn.href = '#';
-                    ctaBtn.innerHTML = '<i class="fa-solid fa-user-plus me-2"></i>¡Quiero ser socio!';
-                    ctaBtn.classList.remove('btn-primary');
-                    ctaBtn.classList.add('btn-success');
-                    ctaBtn.addEventListener('click', async function(e) {
-                        e.preventDefault();
-                        const db = firebase.firestore();
-                        try {
-                            const cooldown = await checkSolicitudCooldown(db, user.uid, 'ser_socio');
-                            if (cooldown) {
-                                showAlert('Ya enviaste una solicitud para ser socio el ' + cooldown.fecha + '. Debes esperar una semana desde esa fecha para enviar otra.', 'warning');
-                                return;
-                            }
-                        } catch (e) {}
-                        showConfirmationModal(
-                            'Solicitar ser socio',
-                            'Al enviar esta solicitud, el equipo evaluará tu petición para convertirte en socio. Podrás acceder a descuentos, actividades exclusivas y participar en la vida del club. Un administrador revisará tu caso y te responderá a la mayor brevedad.',
-                            async function() {
-                                try {
-                                    const doc = await db.collection('usuarios').doc(user.uid).get();
-                                    if (!doc.exists) return;
-                                    const data = doc.data();
-                                    const nombre = data.nombre || '';
-                                    const apellidos = data.apellidos || '';
-                                    await db.collection('solicitudes').add({
-                                        userId: user.uid,
-                                        userName: (nombre + ' ' + apellidos).trim(),
-                                        userEmail: user.email,
-                                        tipo: 'ser_socio',
-                                        mensaje: nombre + ' ' + apellidos + ' quiere ser socio.',
-                                        fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                                        leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
-                                        respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
-                                        leidoUser: false, leidoUserFecha: null,
-                                        status: 'pendiente',
-                                        conversacion: [{ rol: 'usuario', mensaje: nombre + ' ' + apellidos + ' quiere ser socio.', fecha: new Date() }]
-                                    });
-                                    if (window.auditar) window.auditar('solicitudes', 'crear', 'Solicitud de socio enviada', { tipo: 'ser_socio' });
-                                    showAlert('Solicitud enviada correctamente. El equipo se pondrá en contacto contigo.', 'success');
-                                } catch (err) {
-                                    console.error('Error al crear solicitud:', err);
-                                    showAlert('Error al enviar la solicitud.', 'danger');
-                                }
-                            }
-                        );
-                    });
-                    if (infoBox) infoBox.classList.remove('d-none');
-                } else if (esSocio && ctaBtn) {
-                    ctaBtn.href = '/perfil.html';
-                    ctaBtn.innerHTML = '<i class="fa-regular fa-user me-2"></i>Ir a mi perfil';
-                    ctaBtn.classList.remove('btn-primary');
-                    ctaBtn.classList.add('btn-outline-primary');
-                }
-            } else {
+            if (!ctaBtn) return;
+            if (!user) {
+                ctaBtn.href = '/registro.html';
+                ctaBtn.removeAttribute('data-cta-mode');
+                ctaBtn.innerHTML = '<i class="fa-solid fa-user-plus me-2"></i>¡Quiero registrarme!';
+                ctaBtn.classList.remove('btn-success', 'btn-outline-primary');
+                ctaBtn.classList.add('btn-primary');
                 if (infoBox) infoBox.classList.add('d-none');
+                return;
             }
+            firebase.firestore().collection('usuarios').doc(user.uid).get().then(doc => {
+                const esSocio = doc.exists && doc.data().isSocio === true;
+                if (!esSocio) {
+                    ctaBtn.removeAttribute('href');
+                    ctaBtn.setAttribute('data-cta-mode', 'solicitar');
+                    ctaBtn.innerHTML = '<i class="fa-solid fa-user-plus me-2"></i>¡Quiero ser socio!';
+                    ctaBtn.classList.remove('btn-primary', 'btn-outline-primary');
+                    ctaBtn.classList.add('btn-success');
+                    if (infoBox) infoBox.classList.remove('d-none');
+                } else {
+                    ctaBtn.href = '/perfil.html';
+                    ctaBtn.removeAttribute('data-cta-mode');
+                    ctaBtn.innerHTML = '<i class="fa-regular fa-user me-2"></i>Ir a mi perfil';
+                    ctaBtn.classList.remove('btn-primary', 'btn-success');
+                    ctaBtn.classList.add('btn-outline-primary');
+                    if (infoBox) infoBox.classList.add('d-none');
+                }
+            }).catch(function () {});
+        }
+
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('#hazte-socio-cta-btn');
+            if (!btn || btn.getAttribute('data-cta-mode') !== 'solicitar') return;
+            e.preventDefault();
+            const user = firebase.auth().currentUser;
+            if (!user) return;
+            const db = firebase.firestore();
+            db.collection('usuarios').doc(user.uid).get().then(doc => {
+                if (!doc.exists) return;
+                const data = doc.data();
+                const nombre = data.nombre || '';
+                const apellidos = data.apellidos || '';
+                (async function () {
+                    try {
+                        const cooldown = await checkSolicitudCooldown(db, user.uid, 'ser_socio');
+                        if (cooldown) {
+                            showAlert('Ya enviaste una solicitud para ser socio el ' + cooldown.fecha + '. Debes esperar una semana desde esa fecha para enviar otra.', 'warning');
+                            return;
+                        }
+                    } catch (e) {}
+                    showConfirmationModal(
+                        'Solicitar ser socio',
+                        'Al enviar esta solicitud, el equipo evaluará tu petición para convertirte en socio. Podrás acceder a descuentos, actividades exclusivas y participar en la vida del club. Un administrador revisará tu caso y te responderá a la mayor brevedad.',
+                        async function () {
+                            try {
+                                await db.collection('solicitudes').add({
+                                    userId: user.uid,
+                                    userName: (nombre + ' ' + apellidos).trim(),
+                                    userEmail: user.email,
+                                    tipo: 'ser_socio',
+                                    mensaje: nombre + ' ' + apellidos + ' quiere ser socio.',
+                                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                                    leidoAdmin: false, leidoAdminPor: null, leidoAdminFecha: null,
+                                    respuestaAdmin: null, respondidoAdminPor: null, respondidoAdminFecha: null,
+                                    leidoUser: false, leidoUserFecha: null,
+                                    status: 'pendiente',
+                                    conversacion: [{ rol: 'usuario', mensaje: nombre + ' ' + apellidos + ' quiere ser socio.', fecha: new Date() }]
+                                });
+                                if (window.auditar) window.auditar('solicitudes', 'crear', 'Solicitud de socio enviada', { tipo: 'ser_socio' });
+                                showAlert('Solicitud enviada correctamente. El equipo se pondrá en contacto contigo.', 'success');
+                            } catch (err) {
+                                console.error('Error al crear solicitud:', err);
+                                showAlert('Error al enviar la solicitud.', 'danger');
+                            }
+                        }
+                    );
+                })();
+            }).catch(function () {});
         });
+
+        firebase.auth().onAuthStateChanged(refreshCTA);
+        if (window.contenidoRenderer) {
+            contenidoRenderer.alRenderizar(function () {
+                const u = firebase.auth().currentUser;
+                if (u) refreshCTA(u);
+            });
+            contenidoRenderer.cargarPagina('contenido-pagina', 'hazteSocio');
+        }
     </script>
 
 </body>

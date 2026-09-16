@@ -22,6 +22,21 @@ if (typeof window.showConfirmationModal !== 'function') {
     };
 }
 
+// Esperar a que Firebase esté inicializado antes de usarlo (evita app/no-app)
+function ensureFirebaseReady(cb, attempts) {
+    attempts = attempts || 0;
+    try {
+        if (window.firebase && (firebase.apps && firebase.apps.length > 0)) return cb();
+    } catch (e) {
+        // ignore
+    }
+    if (attempts > 50) {
+        console.error('Firebase no se inicializó después de esperar.');
+        return;
+    }
+    setTimeout(() => ensureFirebaseReady(cb, attempts + 1), 100);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const navbarContainer = document.querySelector('header');
     const footerContainer = document.querySelector('footer');
@@ -31,19 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => response.text())
         .then(html => {
             navbarContainer.innerHTML = html;
-            // Esperar a que Firebase esté inicializado antes de usarlo (evita app/no-app)
-            const ensureFirebaseReady = (cb, attempts = 0) => {
-                try {
-                    if (window.firebase && (firebase.apps && firebase.apps.length > 0)) return cb();
-                } catch (e) {
-                    // ignore
-                }
-                if (attempts > 50) {
-                    console.error('Firebase no se inicializó después de esperar.');
-                    return;
-                }
-                setTimeout(() => ensureFirebaseReady(cb, attempts + 1), 100);
-            };
             ensureFirebaseReady(setupAuthUI);
         })
         .catch(error => console.error('Error al cargar el navbar:', error));
@@ -66,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => response.text())
         .then(html => {
             footerContainer.innerHTML = html;
-            populateFooterLinks();
+            ensureFirebaseReady(populateFooterLinks);
         })
         .catch(error => console.error('Error al cargar el footer:', error));
 });
@@ -101,7 +103,15 @@ async function populateNavbarLinks(isLoggedIn) {
             adminItems.push({ text: 'Inventario', href: '/inventario.html' });
         }
         if (isAdmin) {
-            adminItems.push({ text: 'Lista de Usuarios', href: '/listaUsuarios.html' });
+            adminItems.push({
+                text: 'Panel de control',
+                isSubDropdown: true,
+                items: [
+                    { text: 'Control de contenido', href: '/panel.html' },
+                    { text: 'Lista de usuarios', href: '/listaUsuarios.html' },
+                    { text: 'Contraseñas', href: '/contrasenas.html' }
+                ]
+            });
             adminItems.push({ text: 'Solicitudes', href: '/solicitudes.html' });
             adminItems.push({ text: 'Auditoría', href: '/auditoria.html' });
         }
@@ -179,13 +189,23 @@ async function populateNavbarLinks(isLoggedIn) {
     }
 }
 
-function populateFooterLinks() {
+async function populateFooterLinks() {
+    let cfg = null;
+    try {
+        const snap = await firebase.firestore().collection('contenido').doc('config').get();
+        if (snap.exists) cfg = snap.data();
+    } catch (e) {
+        // Se usa el fallback estático
+    }
     const links = [
         { text: 'Aviso legal', href: '/aviso-legal.html' },
         { text: 'Política de privacidad', href: '/privacidad.html' },
         { text: 'Contacto', href: '/contacto.html' },
-        { text: 'Instagram', href: 'https://www.instagram.com/pacto_del_loto/', isExternal: true },
+        { text: 'Instagram', href: (cfg && cfg.instagramUrl) || 'https://www.instagram.com/pacto_del_loto/', isExternal: true },
     ];
+    if (cfg && cfg.emailContacto) {
+        links.push({ text: 'Email', href: 'mailto:' + cfg.emailContacto });
+    }
 
     const footerList = document.getElementById('footer-links');
     if (footerList) {

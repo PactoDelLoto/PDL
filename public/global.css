@@ -66,6 +66,16 @@ footer, .bg-dark {
       max-height: 90vh;
       min-height: 350px;
       overflow: hidden;
+      background: #343a40;
+    }
+    /* Las imágenes del carrusel se ocultan hasta que el JS termina de cargar
+       el contenido; mientras tanto se ve el fondo gris */
+    #carouselExampleIndicators .carousel-inner {
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    #carouselExampleIndicators.carrusel-listo .carousel-inner {
+      opacity: 1;
     }
     #carouselExampleIndicators .carousel-item img {
       height: 90vh;
@@ -582,6 +592,72 @@ footer, .bg-dark {
         font-size: 0.875rem;
         padding: 0.375rem 0.5rem;
       }
+    }
+
+    /* ---- Contenido dinámico (Panel de control) ---- */
+    .din-hero {
+      min-height: 50vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      text-align: center;
+      background-color: #2c2c54;
+      color: #f5f6fa;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .din-hero-claro {
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    .din-hero .din-hero-icon {
+      font-size: 3.5rem;
+      margin-bottom: 1rem;
+      color: #ffd700;
+      filter: drop-shadow(0 0 10px #ffd70088);
+    }
+    .din-hero-claro .din-hero-icon {
+      color: #6c63ff;
+      filter: none;
+    }
+    .din-sec {
+      padding: 3.5rem 0;
+    }
+    .din-sec a.card-link-wrapper:hover .card {
+      transform: translateY(-4px);
+      box-shadow: 0 0 20px rgba(0, 51, 105, 0.4);
+    }
+    .din-tarjetas-col > * {
+      display: flex;
+    }
+
+    /* Carrusel con mensaje fijo (el cartelito se queda, solo el texto hace fade) */
+    .din-caption {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #f5f6fa;
+      pointer-events: none;
+      padding: 1rem;
+    }
+    .din-caption .caption-box {
+      opacity: 1;
+      transition: none;
+    }
+    .din-caption .caption-texto {
+      transition: opacity 0.35s ease;
+      opacity: 1;
+    }
+    .din-caption.din-caption-fade .caption-texto {
+      opacity: 0;
     }
 
 

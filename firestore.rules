@@ -171,5 +171,17 @@ match /tesoreria/{docId} {
   allow write: if isAdmin();
 }
 
+// CONTENIDO EDITABLE (Panel de control)
+match /contenido/{docId} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
+
+// CONTRASEÑAS
+match /contrasenas/{docId} {
+  allow read: if isAdmin();
+  allow write: if isAdmin();
+}
+
 }
 }

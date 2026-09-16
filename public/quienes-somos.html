@@ -67,6 +67,7 @@
     </header>
 
     <!-- Hero creativo -->
+    <div id="contenido-pagina">
     <section class="about-hero">
         <div class="container text-center overlay-content">
             <i class="fa-solid fa-dragon fa-4x icon-glow mb-3"></i>
@@ -101,6 +102,7 @@
             </div>
         </div>
     </section>
+    </div>
 
     <footer class="footer mt-auto py-3 bg-dark">
         <!-- El footer se cargará aquí -->
@@ -116,6 +118,13 @@
     <script src="/controllers/firebase-config.js"></script>
     <script src="/controllers/authController.js"></script>
     <script src="/controllers/navigation.js"></script>
+    <script src="/js/contenidoRenderer.js"></script>
+
+    <script>
+        if (window.contenidoRenderer) {
+            contenidoRenderer.cargarPagina('contenido-pagina', 'quienesSomos');
+        }
+    </script>
 
 </body>
 </html>

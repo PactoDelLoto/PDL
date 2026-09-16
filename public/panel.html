@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de contenido - Pacto del Loto</title>
+
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        .section-card .card-header .badge {
+            font-size: 0.7rem;
+        }
+        .sublist-item {
+            background: #f8f9fa;
+        }
+        [data-theme="dark"] .sublist-item {
+            background: #202038;
+        }
+        .panel-preview-img {
+            width: 80px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .slide-oculto {
+            opacity: 0.6;
+        }
+        .slide-oculto .card-header {
+            background: #f8f9fa;
+        }
+        [data-theme="dark"] .slide-oculto .card-header {
+            background: #202038;
+        }
+    </style>
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+
+<body>
+    <header></header>
+
+    <main id="panel-main" class="container mt-5 pt-5 mb-5">
+        <div id="alert-container"></div>
+        <div class="row">
+            <div class="col">
+                <h1 class="mb-1"><i class="fa-solid fa-sliders me-2"></i>Control de contenido</h1>
+                <p class="text-muted small mb-4">Gestiona los textos, las secciones de las páginas y las imágenes del carrusel (siempre por enlace).</p>
+
+                <ul class="nav nav-tabs mb-3" id="panel-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-quienesSomos" type="button" role="tab">
+                            <i class="fa-solid fa-dragon me-1"></i>Quiénes somos
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-hazteSocio" type="button" role="tab">
+                            <i class="fa-solid fa-user-plus me-1"></i>Hazte socio
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-home" type="button" role="tab">
+                            <i class="fa-solid fa-images me-1"></i>Inicio (carrusel)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-config" type="button" role="tab">
+                            <i class="fa-solid fa-gear me-1"></i>Opciones generales
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="pane-quienesSomos" role="tabpanel">
+                        <div class="d-flex justify-content-end gap-2 mb-3">
+                            <button class="btn btn-success btn-sm" data-save="quienesSomos"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
+                            <button class="btn btn-outline-secondary btn-sm" data-restore="quienesSomos"><i class="fa-solid fa-rotate-left me-1"></i>Restaurar por defecto</button>
+                        </div>
+                        <div id="editor-quienesSomos"></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="pane-hazteSocio" role="tabpanel">
+                        <div class="d-flex justify-content-end gap-2 mb-3">
+                            <button class="btn btn-success btn-sm" data-save="hazteSocio"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
+                            <button class="btn btn-outline-secondary btn-sm" data-restore="hazteSocio"><i class="fa-solid fa-rotate-left me-1"></i>Restaurar por defecto</button>
+                        </div>
+                        <div id="editor-hazteSocio"></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="pane-home" role="tabpanel">
+                        <div class="d-flex justify-content-end gap-2 mb-3">
+                            <button class="btn btn-success btn-sm" data-save="home"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
+                            <button class="btn btn-outline-secondary btn-sm" data-restore="home"><i class="fa-solid fa-rotate-left me-1"></i>Restaurar por defecto</button>
+                        </div>
+                        <div id="editor-home"></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="pane-config" role="tabpanel">
+                        <div class="d-flex justify-content-end gap-2 mb-3">
+                            <button class="btn btn-success btn-sm" data-save="config"><i class="fa-solid fa-floppy-disk me-1"></i>Guardar</button>
+                            <button class="btn btn-outline-secondary btn-sm" data-restore="config"><i class="fa-solid fa-rotate-left me-1"></i>Restaurar por defecto</button>
+                        </div>
+                        <div id="editor-config"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
+
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/js/utils.js"></script>
+
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/js/contenidoRenderer.js"></script>
+    <script src="/controllers/panelController.js"></script>
+</body>
+
+</html>
