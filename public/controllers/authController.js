@@ -12,12 +12,21 @@ window.isUserAdmin = function() {
         }
 
         const userRef = db.collection('usuarios').doc(user.uid);
-        userRef.get().then(doc => {
+        userRef.get().then(async doc => {
             if (doc.exists && doc.data().isAdmin === true) {
                 resolve(true);
-            } else {
-                resolve(false);
+                return;
             }
+            // También es administrador quien tenga el cargo 'superadmin'
+            try {
+                const cargoSnap = await db.collection('cargos').doc('superadmin').get();
+                const ids = cargoSnap.exists ? cargoSnap.data().usuarioIds : null;
+                if (Array.isArray(ids) && ids.includes(user.uid)) {
+                    resolve(true);
+                    return;
+                }
+            } catch (e) { /* no es superadmin */ }
+            resolve(false);
         }).catch(error => {
             console.error("Error al verificar el estado de administrador:", error);
             resolve(false); // Resolve to false on error to prevent unauthorized access

@@ -20,10 +20,52 @@ function isColaborador() {
     get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isColaborador == true;
 }
 
+// Verifica si el usuario tiene asignado un cargo (colección 'cargos')
+function tieneCargo(cargoId) {
+  return request.auth != null &&
+    exists(/databases/$(database)/documents/cargos/$(cargoId)) &&
+    'usuarioIds' in get(/databases/$(database)/documents/cargos/$(cargoId)).data &&
+    request.auth.uid in get(/databases/$(database)/documents/cargos/$(cargoId)).data.usuarioIds;
+}
+
+// El "Perfil superadmin" es el cargo 'cargos/superadmin'.
+// Se consulta DIRECTAMENTE en 'cargos/superadmin' en lugar de un espejo, para
+// que la gestión de cargos funcione aunque no exista 'config/superadmin'.
+// OJO: get()/exists() fallan sobre documentos inexistentes y NO pueden leer el
+// MISMO documento que se está escribiendo; por eso, al escribir el propio
+// 'cargos/superadmin' se valida con isAdmin() (ver regla de cargos).
+function esSuperAdmin() {
+  return request.auth != null &&
+    exists(/databases/$(database)/documents/cargos/superadmin) &&
+    'usuarioIds' in get(/databases/$(database)/documents/cargos/superadmin).data &&
+    request.auth.uid in get(/databases/$(database)/documents/cargos/superadmin).data.usuarioIds;
+}
+
+// Admin "flag" o cargo superadmin: acceso administrativo general
+function puedeAdministrar() {
+  return isAdmin() || esSuperAdmin();
+}
+
+// CARGOS (asignaciones)
+match /cargos/{cargoId} {
+  allow read: if request.auth != null;
+  // 'cargos/superadmin' no puede leerse con get() durante su propia escritura,
+  // así que lo gestionan los admins (isAdmin). El resto de cargos solo puede
+  // gestionarlos quien figure en 'cargos/superadmin' (esSuperAdmin).
+  allow write: if cargoId == 'superadmin' ? isAdmin() : esSuperAdmin();
+}
+
+// CONFIG: 'config/superadmin' es un espejo informativo que sincroniza el panel
+// (opcional; las reglas de cargo ya no dependen de él).
+match /config/{configId} {
+  allow read: if request.auth != null;
+  allow write: if configId == 'superadmin' && esSuperAdmin();
+}
+
 // USUARIOS
 match /usuarios/{userId} {
   allow read: if request.auth != null;
-  allow write: if request.auth.uid == userId || isAdmin();
+  allow write: if request.auth.uid == userId || puedeAdministrar();
 }
 
 // CATEGORÍAS DE INVENTARIO
@@ -35,7 +77,7 @@ match /categoriasInventario/{docId} {
 // EVENTOS
 match /eventos/{docId} {
   allow read: if true;
-  allow write: if isAdmin();
+  allow write: if puedeAdministrar();
 }
 
 // INVENTARIO
@@ -46,8 +88,8 @@ match /inventario/{docId} {
 
 // PRÉSTAMOS
 match /prestamos/{docId} {
-  allow read: if isSocio() || isAdmin();
-  allow write: if isSocio() || isAdmin();
+  allow read: if isSocio() || puedeAdministrar();
+  allow write: if isSocio() || puedeAdministrar();
 }
 
 // INCIDENCIAS
@@ -62,7 +104,7 @@ match /incidencias/{docId} {
 match /subeventos/{docId} {
 
   allow read: if true;
-  allow write: if isAdmin() || isColaborador();
+  allow write: if puedeAdministrar() || isColaborador();
 
   // Permitir actualizar únicamente plazasOcupadas
   allow update: if
@@ -83,7 +125,7 @@ match /{path=**}/inscripciones/{inscripcionId} {
     (
       resource.data.userId == request.auth.uid ||
       resource.data.correo == request.auth.token.email ||
-      isAdmin() ||
+      puedeAdministrar() ||
       isColaborador()
     );
 
@@ -105,12 +147,12 @@ match /{path=**}/inscripciones/{inscripcionId} {
     );
 
   // Solo administradores o colaboradores pueden modificar
-  allow update: if isAdmin() || isColaborador();
+  allow update: if puedeAdministrar() || isColaborador();
   // El usuario propietario puede borrar su propia inscripción (cancelar); admin/colab pueden borrar cualquiera
   allow delete: if request.auth != null &&
     (
       resource.data.userId == request.auth.uid ||
-      isAdmin() ||
+      puedeAdministrar() ||
       isColaborador()
     );
 }
@@ -118,69 +160,69 @@ match /{path=**}/inscripciones/{inscripcionId} {
 // TIPOS DE ACTIVIDADES
 match /tipoSubevento/{docId} {
   allow read: if true;
-  allow write: if isAdmin();
+  allow write: if puedeAdministrar();
 }
 
 // TORNEOS
 match /torneos/{docId} {
-  allow read: if isSocio() || isAdmin();
-  allow write: if isAdmin() || isColaborador();
+  allow read: if isSocio() || puedeAdministrar();
+  allow write: if puedeAdministrar() || isColaborador();
 }
 
 // LIGAS
 match /ligas/{docId} {
   allow read: if true;
-  allow write: if isAdmin() || isColaborador();
+  allow write: if puedeAdministrar() || isColaborador();
 }
 
 // CONTACTOS
 match /contactos/{docId} {
   allow create: if request.auth != null;
-  allow read: if isAdmin();
-  allow update: if isAdmin();
-  allow delete: if isAdmin();
+  allow read: if puedeAdministrar();
+  allow update: if puedeAdministrar();
+  allow delete: if puedeAdministrar();
 }
 
 // SUGERENCIAS
 match /sugerencias/{docId} {
-  allow create: if isSocio() || isAdmin();
-  allow read: if isAdmin();
-  allow update: if isAdmin();
-  allow delete: if isAdmin();
+  allow create: if isSocio() || puedeAdministrar();
+  allow read: if puedeAdministrar();
+  allow update: if puedeAdministrar();
+  allow delete: if puedeAdministrar();
 }
 
 // AUDITORÍA
 match /auditoria/{docId} {
   allow create: if request.auth != null;
-  allow read: if isAdmin();
+  allow read: if puedeAdministrar();
 }
 
 // SOLICITUDES
 match /solicitudes/{docId} {
   allow create: if request.auth != null;
   allow read: if request.auth != null &&
-    (resource.data.userId == request.auth.uid || isAdmin());
+    (resource.data.userId == request.auth.uid || puedeAdministrar());
   allow update: if request.auth != null &&
-    (resource.data.userId == request.auth.uid || isAdmin());
-  allow delete: if isAdmin();
+    (resource.data.userId == request.auth.uid || puedeAdministrar());
+  allow delete: if puedeAdministrar();
 }
 
 // TESORERÍA
 match /tesoreria/{docId} {
-  allow read: if isSocio() || isColaborador() || isAdmin();
-  allow write: if isAdmin();
+  allow read: if isSocio() || isColaborador() || puedeAdministrar() || tieneCargo('tesorero');
+  allow write: if tieneCargo('tesorero') || esSuperAdmin();
 }
 
 // CONTENIDO EDITABLE (Panel de control)
 match /contenido/{docId} {
   allow read: if true;
-  allow write: if isAdmin();
+  allow write: if puedeAdministrar();
 }
 
 // CONTRASEÑAS
 match /contrasenas/{docId} {
-  allow read: if isAdmin();
-  allow write: if isAdmin();
+  allow read: if puedeAdministrar();
+  allow write: if puedeAdministrar();
 }
 
 }

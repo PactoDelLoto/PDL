@@ -38,7 +38,15 @@ window.isUserAdmin = async () => {
     if (!user) return false;
 
     const userData = await getUserData(user.uid);
-    return userData ? userData.isAdmin === true : false;
+    if (userData && userData.isAdmin === true) return true;
+
+    // También es administrador quien tenga el cargo 'superadmin'
+    try {
+        const cargoSnap = await db.collection('cargos').doc('superadmin').get();
+        const ids = cargoSnap.exists ? cargoSnap.data().usuarioIds : null;
+        if (Array.isArray(ids) && ids.includes(user.uid)) return true;
+    } catch (e) { /* no es superadmin */ }
+    return false;
 };
 
 /**

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargos - Pacto del Loto</title>
+
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        .cargo-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+        .cargo-usuario {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid var(--bs-border-color, #dee2e6);
+            border-radius: 0.5rem;
+            margin-bottom: 0.35rem;
+            background: rgba(0, 0, 0, 0.02);
+        }
+        [data-theme="dark"] .cargo-usuario {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .permiso-tag {
+            font-size: 0.7rem;
+        }
+    </style>
+    <script src="/jquery-3.7.1.min.js"></script>
+</head>
+
+<body>
+    <header></header>
+
+    <main id="cargos-main" class="container mt-5 pt-5 mb-5">
+        <div id="alert-container"></div>
+        <div class="row">
+            <div class="col">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <div>
+                        <h1 class="mb-1"><i class="fa-solid fa-user-shield me-2"></i>Cargos de la asociación</h1>
+                        <p class="text-muted small mb-0">
+                            Un cargo es un puesto que otorga un distintivo y permisos sobre módulos de la web.
+                            Una persona puede tener varios cargos.
+                        </p>
+                    </div>
+                </div>
+
+                <div id="cargos-container"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
+
+    <!-- Modal de Confirmación Genérico -->
+    <div class="modal fade" id="confirmation-modal" tabindex="-1" aria-labelledby="confirmationModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">Confirmar Acción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmation-modal-body-text">¿Estás seguro de que quieres realizar esta acción?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirm-action-btn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/js/utils.js"></script>
+
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/js/cargos.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/cargosController.js"></script>
+</body>
+
+</html>

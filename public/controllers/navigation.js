@@ -85,6 +85,11 @@ async function populateNavbarLinks(isLoggedIn) {
         const isSocio = await window.isUserSocio();
         const isColaborador = await window.isUserColaborador();
 
+        // Cargos de la asociación (si el módulo está cargado)
+        if (typeof window.C !== 'undefined') { try { await window.C.listo(); } catch (e) {} }
+        const esTesorero = typeof window.C !== 'undefined' && window.C.cargado && window.C.esTesorero();
+        const esSuperAdmin = typeof window.C !== 'undefined' && window.C.cargado && window.C.esSuperAdmin();
+
         const adminItems = [];
 
         if (isAdmin || isColaborador) {
@@ -102,20 +107,21 @@ async function populateNavbarLinks(isLoggedIn) {
         if (isColaborador) {
             adminItems.push({ text: 'Inventario', href: '/inventario.html' });
         }
-        if (isAdmin) {
+        if (isAdmin || esSuperAdmin) {
             adminItems.push({
                 text: 'Panel de control',
                 isSubDropdown: true,
                 items: [
                     { text: 'Control de contenido', href: '/panel.html' },
                     { text: 'Lista de usuarios', href: '/listaUsuarios.html' },
-                    { text: 'Contraseñas', href: '/contrasenas.html' }
+                    { text: 'Contraseñas', href: '/contrasenas.html' },
+                    ...(esSuperAdmin ? [{ text: 'Cargos', href: '/cargos.html' }] : [])
                 ]
             });
             adminItems.push({ text: 'Solicitudes', href: '/solicitudes.html' });
             adminItems.push({ text: 'Auditoría', href: '/auditoria.html' });
         }
-        if (isAdmin || isColaborador) {
+        if (isAdmin || isColaborador || esTesorero) {
             adminItems.push({ text: 'Tesorería', href: '/tesoreria.html' });
         }
 
@@ -277,14 +283,34 @@ function setupAuthUI() {
                 }
             } catch (e) {}
 
+            // Badges de cargos de la asociación (cargar antes para saber si es superadmin)
+            try {
+                if (typeof window.C !== 'undefined' && !window.C.cargado) await window.C.listo();
+            } catch (e) {}
+
             let roleBadgeHtml = '';
-            if (isAdmin) {
+            const esSuperAdmin = typeof window.C !== 'undefined' && window.C.cargado && window.C.esSuperAdmin();
+            if (esSuperAdmin) {
+                roleBadgeHtml = '';
+            } else if (isAdmin) {
                 roleBadgeHtml = '<span class="badge bg-primary ms-1" style="font-size:0.6rem">Admin</span>';
             } else if (isColaborador) {
                 roleBadgeHtml = '<span class="badge bg-info ms-1" style="font-size:0.6rem">Colab</span>';
             } else if (isSocio) {
                 roleBadgeHtml = '<span class="badge bg-success ms-1" style="font-size:0.6rem">Socio</span>';
             }
+
+            // Badges de cargos de la asociación
+            try {
+                if (typeof window.C !== 'undefined') {
+                    (window.C.misCargos || []).forEach(id => {
+                        const def = window.C.DEFINICIONES[id];
+                        if (!def) return;
+                        const etiqueta = id === 'superadmin' ? 'Superadmin' : def.nombre;
+                        roleBadgeHtml += `<span class="badge bg-${def.color} ms-1" style="font-size:0.6rem">${etiqueta}</span>`;
+                    });
+                }
+            } catch (e) {}
 
             let bubbleHtml = '';
             let tooltipText = '';
