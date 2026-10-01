@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporizadores - Pacto del Loto</title>
+
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        /* Selector de color */
+        #color-picker .color-swatch {
+            position: relative;
+            cursor: pointer;
+        }
+
+        #color-picker .color-swatch input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #color-picker .swatch-inner {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .35rem .5rem;
+            border: 2px solid var(--border-color, #dee2e6);
+            border-radius: .5rem;
+            font-size: .8rem;
+            user-select: none;
+            transition: border-color .15s ease;
+        }
+
+        #color-picker .color-swatch input:checked+.swatch-inner {
+            border-color: #2c2c54;
+            box-shadow: 0 0 0 .15rem rgba(44, 44, 84, .2);
+        }
+
+        [data-theme="dark"] #color-picker .color-swatch input:checked+.swatch-inner {
+            border-color: var(--accent-color);
+            box-shadow: none;
+        }
+
+        .color-chip {
+            flex: 0 0 auto;
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: .3rem;
+            border: 1px solid rgba(128, 128, 128, .5);
+        }
+    </style>
+</head>
+
+<body>
+    <header></header>
+
+    <main class="container mt-5 pt-5 mb-5">
+        <div id="alert-container"></div>
+        <div class="row">
+            <div class="col">
+                <h1 class="mb-1"><i class="fa-solid fa-stopwatch me-2"></i>Temporizadores</h1>
+                <p class="text-muted small mb-4">Crea un temporizador que se abrirá en una ventana independiente, sin
+                    barras del navegador. No se guarda nada, solo sirve mientras la ventana esté abierta.</p>
+
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <form id="temporizador-form" autocomplete="off">
+                            <div class="mb-3">
+                                <label class="form-label" for="tmp-nombre">Nombre</label>
+                                <input type="text" class="form-control form-control-sm" id="tmp-nombre" maxlength="60"
+                                    placeholder="Nombre de torneo" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <span class="form-label d-block">Tiempo</span>
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <input type="number" class="form-control form-control-sm text-center" id="tmp-horas"
+                                            min="0" max="99" step="1" value="0" aria-label="Horas">
+                                    </div>
+                                    <div class="col-4">
+                                        <input type="number" class="form-control form-control-sm text-center" id="tmp-minutos"
+                                            min="0" max="59" step="1" value="50" aria-label="Minutos">
+                                    </div>
+                                    <div class="col-4">
+                                        <input type="number" class="form-control form-control-sm text-center" id="tmp-segundos"
+                                            min="0" max="59" step="1" value="0" aria-label="Segundos">
+                                    </div>
+                                </div>
+                                <div class="form-text">Horas · Minutos · Segundos</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <span class="form-label d-block">Color</span>
+                                <div class="row g-2" id="color-picker"></div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fa-solid fa-play me-1"></i>Generar temporizador
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-dark"></footer>
+
+    <script src="/bootstrap-5.0.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="/js/cargos.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/js/utils.js"></script>
+
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/navigation.js"></script>
+    <script src="/controllers/temporizadoresController.js"></script>
+</body>
+
+</html>

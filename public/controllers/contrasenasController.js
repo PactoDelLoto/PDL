@@ -33,6 +33,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return abs(it.fechaUltimaActualizacion);
     }
 
+    // Los admins no-superadmin solo pueden añadir contraseñas; el resto solo superadmins
+    function esSuperAdmin() {
+        return typeof window.C !== 'undefined' && window.C.cargado && window.C.esSuperAdmin();
+    }
+
     // ---------- Render ----------
     function entryRowHtml(tablaId, it, idx) {
         const google = it.inicioGoogle === true;
@@ -53,6 +58,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const enlaceCell = abs(it.enlace)
             ? `<a href="${escAttr(it.enlace)}" target="_blank" rel="noopener noreferrer" title="${escAttr(it.enlace)}"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>${esc(enlaceText)}</a>`
             : `<span class="text-muted">—</span>`;
+        const accionesCell = esSuperAdmin()
+            ? `<td class="text-nowrap">
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-primary" data-entry-edit title="Editar"><i class="fa-solid fa-pen"></i></button>
+                    <button type="button" class="btn btn-outline-danger" data-entry-del title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            </td>`
+            : '';
         return `<tr data-idx="${idx}" data-pw="${escAttr(abs(it.contrasena))}">
             <td class="fw-bold">${esc(it.nombre) || '<span class="text-muted">—</span>'}</td>
             <td>${usuarioCell}</td>
@@ -60,30 +73,29 @@ document.addEventListener('DOMContentLoaded', function () {
             <td>${dosPasosBadge}</td>
             <td>${enlaceCell}</td>
             <td class="small text-muted">${esc(valorFecha(it)) || '<span class="text-muted">—</span>'}</td>
-            <td class="text-nowrap">
-                <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-outline-primary" data-entry-edit title="Editar"><i class="fa-solid fa-pen"></i></button>
-                    <button type="button" class="btn btn-outline-danger" data-entry-del title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
-                </div>
-            </td>
+            ${accionesCell}
         </tr>`;
     }
 
     function renderTablas() {
         const cont = document.getElementById('tablas-container');
         if (!cont) return;
+        const superAdmin = esSuperAdmin();
+        const colSpan = superAdmin ? 7 : 6;
+        const accionesTh = superAdmin ? '<th class="text-end">Acciones</th>' : '';
         cont.innerHTML = tablas.map((t) => {
             const items = t.items || [];
+            const accionesHeaderHtml = superAdmin ? `<div class="ms-auto btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary" data-tabla-edit="${escAttr(t.id)}" title="Renombrar"><i class="fa-solid fa-pen"></i></button>
+                        ${t.base === true ? '' : `<button type="button" class="btn btn-outline-danger" data-tabla-del="${escAttr(t.id)}" title="Eliminar tabla"><i class="fa-solid fa-trash-can"></i></button>`}
+                    </div>` : '';
             return `
             <div class="card shadow-sm mb-4" data-tabla-id="${escAttr(t.id)}">
                 <div class="card-header py-3 d-flex flex-wrap align-items-center gap-2">
                     <i class="fa-solid fa-key me-1 text-muted"></i>
                     <span class="editable-title">${esc(t.nombre)}</span>
                     ${t.base === true ? '<span class="badge bg-secondary small">Base</span>' : ''}
-                    <div class="ms-auto btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-secondary" data-tabla-edit="${escAttr(t.id)}" title="Renombrar"><i class="fa-solid fa-pen"></i></button>
-                        ${t.base === true ? '' : `<button type="button" class="btn btn-outline-danger" data-tabla-del="${escAttr(t.id)}" title="Eliminar tabla"><i class="fa-solid fa-trash-can"></i></button>`}
-                    </div>
+                    ${accionesHeaderHtml}
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -96,12 +108,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                     <th>2FA</th>
                                     <th>Enlace</th>
                                     <th>Última actualización</th>
-                                    <th class="text-end">Acciones</th>
+                                    ${accionesTh}
                                 </tr>
                             </thead>
                             <tbody>
                                 ${items.map((it, i) => entryRowHtml(t.id, it, i)).join('')}
-                                ${items.length ? '' : '<tr><td colspan="7" class="text-center text-muted py-3">No hay contraseñas en esta tabla todavía.</td></tr>'}
+                                ${items.length ? '' : `<tr><td colspan="${colSpan}" class="text-center text-muted py-3">No hay contraseñas en esta tabla todavía.</td></tr>`}
                             </tbody>
                         </table>
                     </div>
@@ -185,11 +197,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- Eventos ----------
     document.getElementById('btn-tabla-add').addEventListener('click', function () {
+        if (!esSuperAdmin()) return;
         abrirTablaModal(null);
     });
 
     document.getElementById('tabla-form').addEventListener('submit', async function (e) {
         e.preventDefault();
+        if (!esSuperAdmin()) return;
         const id = document.getElementById('tabla-id').value;
         const nombre = document.getElementById('tabla-nombre').value.trim();
         if (!nombre) return;
@@ -314,6 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const entryEdit = e.target.closest('[data-entry-edit]');
         if (entryEdit) {
+            if (!esSuperAdmin()) return;
             const tr = entryEdit.closest('tr');
             const idx = Number(tr.dataset.idx);
             const t = tablas.find(x => x.id === tr.closest('.card').dataset.tablaId);
@@ -323,6 +338,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const entryDel = e.target.closest('[data-entry-del]');
         if (entryDel) {
+            if (!esSuperAdmin()) return;
             const tr = entryDel.closest('tr');
             const idx = Number(tr.dataset.idx);
             const t = tablas.find(x => x.id === tr.closest('.card').dataset.tablaId);
@@ -348,6 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const tablaEdit = e.target.closest('[data-tabla-edit]');
         if (tablaEdit) {
+            if (!esSuperAdmin()) return;
             const t = tablas.find(x => x.id === tablaEdit.getAttribute('data-tabla-edit'));
             if (t) abrirTablaModal(t);
             return;
@@ -355,6 +372,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const tablaDel = e.target.closest('[data-tabla-del]');
         if (tablaDel) {
+            if (!esSuperAdmin()) return;
             const t = tablas.find(x => x.id === tablaDel.getAttribute('data-tabla-del'));
             if (!t) return;
             showConfirmationModal(
@@ -390,6 +408,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (inited) return;
         inited = true;
+        try {
+            if (typeof window.C !== 'undefined' && window.C.listo) await window.C.listo();
+        } catch (e) { /* los permisos quedan en false */ }
+        const btnNuevaTabla = document.getElementById('btn-tabla-add');
+        if (btnNuevaTabla) btnNuevaTabla.style.display = esSuperAdmin() ? '' : 'none';
         try {
             await cargarTablas();
         } catch (err) {

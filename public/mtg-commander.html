@@ -319,8 +319,7 @@
                             </thead>
                             <tbody id="tabla-clasificacion-liga">
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">Selecciona una liga para ver su
-                                        Clasificación</td>
+                                    <td colspan="4" class="text-center text-muted py-4">Selecciona una liga para ver su Clasificación</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -345,21 +344,27 @@
                 </div>
                 <form id="form-merge-points">
                     <div class="modal-body">
-                        <p class="text-muted">Selecciona un código de liga de invitado y un usuario registrado para
-                            transferir los puntos acumulados por el invitado a la cuenta del usuario.</p>
+                        <p class="text-muted">Selecciona el invitado de origen y el perfil de destino (usuario registrado u otro invitado) para sumarles los puntos acumulados. Se conserva siempre el perfil seleccionado como destino.</p>
                         <div class="mb-3">
-                            <label for="select-merge-league-code" class="form-label">Código de Liga de Invitado</label>
+                            <label for="select-merge-league-code" class="form-label">Código de Liga de Invitado (origen)</label>
                             <select class="form-select" id="select-merge-league-code" required>
                                 <option value="">-- Selecciona un código de invitado --</option>
                             </select>
                             <div class="form-text">Solo se muestran códigos de invitado de la liga activa.</div>
                         </div>
                         <div class="mb-3">
-                            <label for="select-merge-user" class="form-label">Usuario Registrado</label>
+                            <label for="select-merge-tipo" class="form-label">Fusionar con</label>
+                            <select class="form-select" id="select-merge-tipo">
+                                <option value="usuario">Usuario registrado</option>
+                                <option value="invitado">Invitado (No socio)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="select-merge-user" class="form-label" id="select-merge-destino-label">Usuario Registrado</label>
                             <select class="form-select" id="select-merge-user" required>
                                 <option value="">-- Selecciona un usuario --</option>
                             </select>
-                            <div class="form-text">Los puntos del invitado se añadirán a este usuario.</div>
+                            <div class="form-text" id="select-merge-destino-text">Los puntos del invitado se añadirán a este usuario.</div>
                         </div>
                     </div>
                     <div class="modal-footer">

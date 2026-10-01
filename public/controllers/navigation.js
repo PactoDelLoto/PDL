@@ -107,6 +107,9 @@ async function populateNavbarLinks(isLoggedIn) {
         if (isColaborador) {
             adminItems.push({ text: 'Inventario', href: '/inventario.html' });
         }
+        if (isAdmin || isColaborador) {
+            adminItems.push({ text: 'Temporizadores', href: '/temporizadores.html' });
+        }
         if (isAdmin || esSuperAdmin) {
             adminItems.push({
                 text: 'Panel de control',

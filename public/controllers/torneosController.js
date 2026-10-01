@@ -39,10 +39,14 @@ window.initializeTorneosController = function (canManage) {
 
     const selectMergeLeagueCode = document.getElementById('select-merge-league-code');
     const selectMergeUser = document.getElementById('select-merge-user');
+    const selectMergeTipo = document.getElementById('select-merge-tipo');
 
     // Inicialización del controlador
     async function init() {
         showLoadingSpinner();
+        try {
+            if (typeof window.C !== 'undefined' && window.C.listo) await window.C.listo();
+        } catch (e) { /* los permisos quedan en false */ }
         await loadInitialData();
         setupEventListeners();
     }
@@ -210,11 +214,15 @@ window.initializeTorneosController = function (canManage) {
         btnEliminarLiga.disabled = !selectLigaActiva.value;
     }
 
+    function esSuperAdmin() {
+        return typeof window.C !== 'undefined' && window.C.cargado && window.C.esSuperAdmin();
+    }
+
     function renderLigaClasificacionPlaceholder(message) {
         const tbody = document.getElementById('tabla-clasificacion-liga');
         if (!tbody) return;
-
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">${message}</td></tr>`;
+        const colSpan = esSuperAdmin() ? 5 : 4;
+        tbody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center text-muted py-4">${message}</td></tr>`;
     }
 
     function handleLigaActivaChange() {
@@ -358,6 +366,16 @@ window.initializeTorneosController = function (canManage) {
         const tbody = document.getElementById('tabla-clasificacion-liga');
         if (!tbody) return;
 
+        const esAdmin = esSuperAdmin();
+        asegurarControlesDesfusion(tbody, esAdmin);
+        const theadRow = tbody.closest('table')?.querySelector('thead tr');
+        const thAcciones = theadRow ? theadRow.querySelector('.th-acciones-clasif') : null;
+        if (theadRow && esAdmin && !thAcciones) {
+            theadRow.insertAdjacentHTML('beforeend', '<th class="text-end th-acciones-clasif">Acciones</th>');
+        } else if (theadRow && !esAdmin && thAcciones) {
+            thAcciones.remove();
+        }
+
         if (!ligaId) {
             renderLigaClasificacionPlaceholder('Selecciona una liga para ver su clasificacion');
             return;
@@ -365,7 +383,7 @@ window.initializeTorneosController = function (canManage) {
 
         const liga = ligasCache.find(l => l.id === ligaId);
         if (!liga || !liga.clasificacion || Object.keys(liga.clasificacion).length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No hay jugadores registrados en esta liga todavía.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${esAdmin ? 5 : 4}" class="text-center text-muted py-4">No hay jugadores registrados en esta liga todavía.</td></tr>`;
             return;
         }
 
@@ -374,10 +392,21 @@ window.initializeTorneosController = function (canManage) {
             id: key,
             nombre: data.nombre,
             puntos: data.puntos,
-            mergedFromGuest: data.mergedFromGuest || false
+            mergedFromGuest: data.mergedFromGuest || false,
+            mergedSources: data.mergedSources || []
         })).sort((a, b) => b.puntos - a.puntos);
 
-        tbody.innerHTML = clasifArray.map((row, index) => `
+        tbody.innerHTML = clasifArray.map((row, index) => {
+            const esInvitado = row.id.startsWith('invitado_');
+            const fusionado = esInvitado && (row.mergedFromGuest || (row.mergedSources && row.mergedSources.length));
+            const botonDesfusion = (esAdmin && fusionado)
+                ? `<button class="btn btn-sm btn-outline-warning btn-desfusionar" data-id="${row.id}" title="Desfusionar (separar perfiles fusionados para volver a fusionar con rastro)"><i class="fa-solid fa-rotate-left"></i></button>`
+                : '';
+            const botonPuntos = esAdmin
+                ? `<button class="btn btn-sm btn-outline-primary btn-editar-puntos ms-1" data-id="${row.id}" title="Editar puntuación"><i class="fa-solid fa-pen"></i></button>`
+                : '';
+            const celdaAcciones = esAdmin ? `<td class="text-center">${botonDesfusion}${botonPuntos}</td>` : '';
+            return `
             <tr>
                 <td class="fw-bold">${index + 1}</td>
                 <td>
@@ -385,11 +414,13 @@ window.initializeTorneosController = function (canManage) {
                     ${row.mergedFromGuest ? ` <i class="fas fa-user-check text-success ms-1" title="Puntos fusionados de invitado"></i>` : ''}
                 </td>
                 <td class="text-center">
-                    ${row.id.startsWith('invitado_') ? `<span class="badge bg-${row.mergedFromGuest ? 'primary' : 'secondary'}">${row.id.split('_')[1]}</span>` : `<span class="badge bg-primary">Socio</span>`}
+                    ${esInvitado ? `<span class="badge bg-${row.mergedFromGuest ? 'primary' : 'secondary'}">${row.id.split('_')[1]}</span>` : `<span class="badge bg-primary">Socio</span>`}
                 </td>
                 <td class="text-center fw-bold">${row.puntos}</td>
+                ${celdaAcciones}
             </tr>
-        `).join('');
+        `;
+        }).join('');
     }
 
     // --- VISTA DE GESTIÓN DE UN TORNEO ---
@@ -1501,13 +1532,24 @@ window.initializeTorneosController = function (canManage) {
 
         // Cargar clasificación actual de la liga para detectar fusiones
         let mergedMap = {};
+        let clasificacion = {};
+        let invitadosActivos = [];
+        let jugadoresOcultos = [];
         try {
             const ligaDoc = await db.collection('ligas').doc(selectedTournament.ligaId).get();
             if (ligaDoc.exists) {
-                const clasificacion = ligaDoc.data().clasificacion || {};
+                const ligaData = ligaDoc.data();
+                clasificacion = ligaData.clasificacion || {};
+                jugadoresOcultos = Array.isArray(ligaData.jugadoresOcultos) ? ligaData.jugadoresOcultos : [];
                 for (const [key, entry] of Object.entries(clasificacion)) {
                     if (key.startsWith('invitado_') && entry.userId) {
-                        mergedMap[key] = entry.userId;
+                        mergedMap[key] = { type: 'user', id: entry.userId };
+                    }
+                    if (key.startsWith('invitado_') && entry.mergedSources && entry.mergedSources.length) {
+                        entry.mergedSources.forEach(src => { mergedMap[src] = { type: 'invitado', id: key }; });
+                    }
+                    if (key.startsWith('invitado_') && !entry.mergedFromGuest && !entry.userId) {
+                        invitadosActivos.push({ key, nombre: (entry.nombre || '').trim().toLowerCase().replace(/\s+/g, ' '), puntos: entry.puntos || 0 });
                     }
                 }
             }
@@ -1529,20 +1571,34 @@ window.initializeTorneosController = function (canManage) {
 
                 // Si es invitado fusionado a un usuario registrado, mostrar el perfil registrado
                 if (j.id.startsWith('invitado_') && mergedMap[j.id]) {
-                    const userId = mergedMap[j.id];
-                    if (!seen.has(userId)) {
-                        seen.add(userId);
-                        const user = usuariosCache.find(u => u.id === userId);
-                        if (user) {
+                    const m = mergedMap[j.id];
+                    if (m.type === 'user') {
+                        const userId = m.id;
+                        if (!seen.has(userId)) {
+                            seen.add(userId);
+                            const user = usuariosCache.find(u => u.id === userId);
+                            if (user) {
+                                _jugadoresPrevios.push({
+                                    id: userId,
+                                    nombre: `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.correo,
+                                    leagueCode: j.id.split('_')[1]
+                                });
+                            } else {
+                                // Usuario no encontrado en cache, mostrar entrada original
+                                seen.add(j.id);
+                                _jugadoresPrevios.push({ ...j });
+                            }
+                        }
+                    } else {
+                        const destinoId = m.id;
+                        if (!seen.has(destinoId)) {
+                            seen.add(destinoId);
+                            const dest = clasificacion[destinoId];
                             _jugadoresPrevios.push({
-                                id: userId,
-                                nombre: `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.correo,
-                                leagueCode: j.id.split('_')[1]
+                                id: destinoId,
+                                nombre: dest ? dest.nombre : j.nombre,
+                                leagueCode: destinoId.split('_')[1]
                             });
-                        } else {
-                            // Usuario no encontrado en cache, mostrar entrada original
-                            seen.add(j.id);
-                            _jugadoresPrevios.push({ ...j });
                         }
                     }
                     return;
@@ -1550,11 +1606,32 @@ window.initializeTorneosController = function (canManage) {
 
                 if (!seen.has(j.id)) {
                     seen.add(j.id);
+                    if (j.id.startsWith('invitado_') && !clasificacion[j.id]) {
+                        const jNorm = (j.nombre || '').trim().toLowerCase().replace(/\s+/g, ' ');
+                        const match = invitadosActivos
+                            .filter(g => g.nombre === jNorm && g.key !== j.id)
+                            .sort((a, b) => b.puntos - a.puntos)[0];
+                        if (match) {
+                            if (!seen.has(match.key)) {
+                                seen.add(match.key);
+                                _jugadoresPrevios.push({
+                                    id: match.key,
+                                    nombre: (clasificacion[match.key] || {}).nombre || j.nombre,
+                                    leagueCode: match.key.split('_')[1]
+                                });
+                            }
+                            return;
+                        }
+                    }
                     _jugadoresPrevios.push({ ...j });
                 }
             });
         });
 
+        if (jugadoresOcultos.length) {
+            const ocultos = new Set(jugadoresOcultos);
+            _jugadoresPrevios = _jugadoresPrevios.filter(j => !ocultos.has(j.id));
+        }
         renderJugadoresPrevios();
     }
 
@@ -1587,6 +1664,9 @@ window.initializeTorneosController = function (canManage) {
             const badge = j.id.startsWith('invitado_')
                 ? `<span class="badge bg-secondary">Invitado</span>`
                 : `<span class="badge bg-primary">Registrado</span>`;
+            const botonBorrar = (esSuperAdmin() && j.id.startsWith('invitado_'))
+                ? `<button class="btn btn-sm btn-outline-danger btn-eliminar-previo ms-1" data-id="${j.id}" title="Eliminar del historial y de la clasificación (no se borra de los torneos)"><i class="fa-solid fa-trash"></i></button>`
+                : '';
             return `
                 <tr>
                     <td>${start + i + 1}</td>
@@ -1595,7 +1675,7 @@ window.initializeTorneosController = function (canManage) {
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-success btn-add-previo" data-id="${j.id}" data-nombre="${j.nombre.replace(/"/g, '&quot;')}" data-leaguecode="${j.leagueCode || ''}">
                             <i class="fa-solid fa-plus"></i> Añadir
-                        </button>
+                        </button>${botonBorrar}
                     </td>
                 </tr>
             `;
@@ -1985,6 +2065,8 @@ window.initializeTorneosController = function (canManage) {
 
         if (document.getElementById('btn-open-merge-modal')) {
             document.getElementById('btn-open-merge-modal').addEventListener('click', openMergePointsModal);
+            if (selectMergeTipo) selectMergeTipo.addEventListener('change', populateMergeUserDropdown);
+            if (selectMergeLeagueCode) selectMergeLeagueCode.addEventListener('change', populateMergeUserDropdown);
         }
 
         const btnAgregarInvitado = document.getElementById('btn-agregar-invitado-lista');
@@ -2004,6 +2086,20 @@ window.initializeTorneosController = function (canManage) {
         document.addEventListener('click', (e) => {
             const target = e.target.closest('button');
             if (!target) return;
+
+            // Desfusionar perfil (separar invitados fusionados)
+            if (target.classList.contains('btn-desfusionar')) {
+                handleDesfusionar(target.dataset.id);
+            }
+            if (target.classList.contains('btn-desfusion-forzada')) {
+                abrirDesfusionForzada();
+            }
+            if (target.classList.contains('btn-editar-puntos')) {
+                abrirEditarPuntos(target.dataset.id);
+            }
+            if (target.classList.contains('btn-eliminar-previo')) {
+                handleEliminarPrevio(target.dataset.id);
+            }
 
             // Eliminar jugador temporal en el modal
             if (target.classList.contains('btn-quitar-jugador-temp')) {
@@ -2142,6 +2238,33 @@ window.initializeTorneosController = function (canManage) {
 
     function populateMergeUserDropdown() {
         if (!selectMergeUser) return;
+        const tipo = selectMergeTipo ? selectMergeTipo.value : 'usuario';
+        const destinoLabel = document.getElementById('select-merge-destino-label');
+        const destinoText = document.getElementById('select-merge-destino-text');
+
+        if (tipo === 'invitado') {
+            const liga = ligasCache.find(l => l.id === selectLigaActiva.value);
+            if (destinoLabel) destinoLabel.textContent = 'Invitado destino (No socio)';
+            if (destinoText) destinoText.textContent = 'Los puntos del invitado de origen se sumarán a este invitado. Se conserva este perfil (elige el que esté más arriba en la clasificación).';
+            const selected = selectMergeLeagueCode ? selectMergeLeagueCode.value : '';
+            const destinos = (liga && liga.clasificacion)
+                ? Object.entries(liga.clasificacion)
+                    .filter(([id, data]) => id.startsWith('invitado_') && id !== selected && !data.mergedFromGuest && !data.userId)
+                    .sort((a, b) => (b[1].puntos || 0) - (a[1].puntos || 0))
+                    .map(([id, data]) => `<option value="${id}">${data.nombre} — ${data.puntos || 0} pts</option>`)
+                : [];
+            selectMergeUser.innerHTML = `<option value="">-- Selecciona un invitado --</option>` +
+                destinos.join('');
+            initSelect2(selectMergeUser, {
+                dropdownParent: $('#merge-points-modal'),
+                placeholder: '-- Escribe para buscar un invitado --',
+                allowClear: false
+            });
+            return;
+        }
+
+        if (destinoLabel) destinoLabel.textContent = 'Usuario Registrado';
+        if (destinoText) destinoText.textContent = 'Los puntos del invitado se añadirán a este usuario.';
         const sortedUsers = [...usuariosCache].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
         selectMergeUser.innerHTML = `<option value="">-- Selecciona un usuario --</option>` +
             sortedUsers.map(u => `<option value="${u.id}">${u.nombre} ${u.apellidos || ''} (${u.correo})</option>`).join('');
@@ -2175,6 +2298,8 @@ window.initializeTorneosController = function (canManage) {
             placeholder: '-- Escribe para buscar un código --',
             allowClear: false
         });
+
+        populateMergeUserDropdown();
     }
 
     function openMergePointsModal() {
@@ -2183,7 +2308,9 @@ window.initializeTorneosController = function (canManage) {
             if (window.showAlert) window.showAlert("Por favor, selecciona una liga primero.", "warning");
             return;
         }
+        if (selectMergeTipo) selectMergeTipo.value = 'usuario';
         populateMergeLeagueCodeDropdown(ligaId);
+        populateMergeUserDropdown();
         mergePointsModal.show();
     }
 
@@ -2191,10 +2318,16 @@ window.initializeTorneosController = function (canManage) {
         e.preventDefault();
         const ligaId = selectLigaActiva.value;
         const invitedPlayerId = selectMergeLeagueCode.value;
-        const registeredUserId = selectMergeUser.value;
+        const destinoId = selectMergeUser.value;
+        const tipo = selectMergeTipo ? selectMergeTipo.value : 'usuario';
 
-        if (!ligaId || !invitedPlayerId || !registeredUserId) {
-            if (window.showAlert) window.showAlert("Por favor, selecciona un código de invitado y un usuario.", "warning");
+        if (!ligaId || !invitedPlayerId || !destinoId) {
+            if (window.showAlert) window.showAlert("Por favor, selecciona un código de invitado y un destino.", "warning");
+            return;
+        }
+
+        if (invitedPlayerId === destinoId) {
+            if (window.showAlert) window.showAlert("El invitado de origen y el destino no pueden ser el mismo.", "warning");
             return;
         }
 
@@ -2204,13 +2337,20 @@ window.initializeTorneosController = function (canManage) {
             return;
         }
 
-        const registeredUser = usuariosCache.find(u => u.id === registeredUserId);
-        if (!registeredUser) {
-            if (window.showAlert) window.showAlert("Usuario registrado no encontrado.", "danger");
-            return;
+        let destinoNombre;
+        if (tipo === 'invitado') {
+            const dest = liga.clasificacion && liga.clasificacion[destinoId];
+            destinoNombre = dest ? `${dest.nombre} (Código: ${destinoId.split('_')[1]})` : destinoId;
+        } else {
+            const registeredUser = usuariosCache.find(u => u.id === destinoId);
+            if (!registeredUser) {
+                if (window.showAlert) window.showAlert("Usuario registrado no encontrado.", "danger");
+                return;
+            }
+            destinoNombre = `${registeredUser.nombre} ${registeredUser.apellidos || ''}`.trim();
         }
 
-        if (!confirm(`¿Estás seguro de fusionar los puntos del invitado "${liga.clasificacion[invitedPlayerId].nombre}" (Código: ${invitedPlayerId.split('_')[1]}) con el usuario "${registeredUser.nombre} ${registeredUser.apellidos}"?`)) {
+        if (!confirm(`¿Estás seguro de fusionar los puntos del invitado "${liga.clasificacion[invitedPlayerId].nombre}" (Código: ${invitedPlayerId.split('_')[1]}) con "${destinoNombre}"? Se conservará el perfil de destino.`)) {
             return;
         }
 
@@ -2223,22 +2363,35 @@ window.initializeTorneosController = function (canManage) {
 
                 const clasificacion = ligaDoc.data().clasificacion || {};
                 const invitedPlayerEntry = clasificacion[invitedPlayerId];
-                const registeredUserEntry = clasificacion[registeredUserId];
+                const destinoEntry = clasificacion[destinoId];
 
                 if (!invitedPlayerEntry) throw new Error("El código de invitado no existe en la clasificación de esta liga.");
 
-                if (registeredUserEntry) {
-                    invitedPlayerEntry.puntos += registeredUserEntry.puntos;
-                    delete clasificacion[registeredUserId];
+                if (tipo === 'invitado') {
+                    if (!destinoEntry) throw new Error("El invitado de destino no existe en la clasificación de esta liga.");
+                    destinoEntry.puntos = (destinoEntry.puntos || 0) + (invitedPlayerEntry.puntos || 0);
+                    destinoEntry.mergedSources = destinoEntry.mergedSources || [];
+                    if (invitedPlayerEntry.mergedSources) {
+                        invitedPlayerEntry.mergedSources.forEach(s => { if (!destinoEntry.mergedSources.includes(s)) destinoEntry.mergedSources.push(s); });
+                    }
+                    if (!destinoEntry.mergedSources.includes(invitedPlayerId)) destinoEntry.mergedSources.push(invitedPlayerId);
+                    delete clasificacion[invitedPlayerId];
+                    transaction.update(ligaRef, { clasificacion });
+                } else {
+                    if (destinoEntry) {
+                        invitedPlayerEntry.puntos = (invitedPlayerEntry.puntos || 0) + (destinoEntry.puntos || 0);
+                        delete clasificacion[destinoId];
+                    }
+
+                    const registeredUser = usuariosCache.find(u => u.id === destinoId);
+                    invitedPlayerEntry.nombre = `${registeredUser.nombre} ${registeredUser.apellidos || ''}`.trim();
+                    invitedPlayerEntry.userId = destinoId;
+                    invitedPlayerEntry.email = registeredUser.correo;
+                    invitedPlayerEntry.mergedFromGuest = true;
+
+                    clasificacion[invitedPlayerId] = invitedPlayerEntry;
+                    transaction.update(ligaRef, { clasificacion });
                 }
-
-                invitedPlayerEntry.nombre = `${registeredUser.nombre} ${registeredUser.apellidos || ''}`.trim();
-                invitedPlayerEntry.userId = registeredUserId;
-                invitedPlayerEntry.email = registeredUser.correo;
-                invitedPlayerEntry.mergedFromGuest = true;
-
-                clasificacion[invitedPlayerId] = invitedPlayerEntry;
-                transaction.update(ligaRef, { clasificacion });
             });
 
             if (window.showAlert) window.showAlert("Puntos fusionados con éxito. La clasificación se actualizará.", "success");
@@ -2247,6 +2400,282 @@ window.initializeTorneosController = function (canManage) {
         } catch (error) {
             console.error("Error al fusionar puntos:", error);
             if (window.showAlert) window.showAlert(`Error al fusionar puntos: ${error.message}`, "danger");
+        }
+    }
+
+    // Desfusionar un perfil de invitado: restaura los códigos de invitado absorbidos
+    // para poder volver a fusionarlo con el flujo nuevo (que guarda el rastro).
+    function nombreOriginalInvitado(ligaId, codigoInvitado) {
+        for (const t of torneosCache) {
+            if (t.ligaId !== ligaId) continue;
+            const j = (t.jugadores || []).find(x => x.id === codigoInvitado && x.nombre);
+            if (j) return j.nombre;
+        }
+        return null;
+    }
+
+    async function handleEliminarPrevio(playerId) {
+        if (!esSuperAdmin()) { if (window.showAlert) window.showAlert('Solo el superadmin puede eliminar perfiles.', 'danger'); return; }
+        if (!playerId || !playerId.startsWith('invitado_')) return;
+        const ligaId = selectedTournament && selectedTournament.ligaId;
+        if (!ligaId) { if (window.showAlert) window.showAlert('Este torneo no pertenece a una liga.', 'warning'); return; }
+        if (!confirm('¿Eliminar este perfil invitado del historial de jugadores anteriores y de la clasificación de la liga? No se borrará de los torneos.')) return;
+
+        let ocultosFinal = null;
+        try {
+            await db.runTransaction(async t => {
+                const ligaRef = db.collection('ligas').doc(ligaId);
+                const ligaDoc = await t.get(ligaRef);
+                if (!ligaDoc.exists) throw new Error('Liga no encontrada');
+                const data = ligaDoc.data();
+                const clasificacion = { ...(data.clasificacion || {}) };
+                delete clasificacion[playerId];
+                const ocultos = Array.isArray(data.jugadoresOcultos) ? data.jugadoresOcultos.slice() : [];
+                if (!ocultos.includes(playerId)) ocultos.push(playerId);
+                ocultosFinal = ocultos;
+                t.update(ligaRef, { clasificacion, jugadoresOcultos: ocultos });
+            });
+            const liga = ligasCache.find(l => l.id === ligaId);
+            if (liga) {
+                const clas = { ...(liga.clasificacion || {}) };
+                delete clas[playerId];
+                liga.clasificacion = clas;
+                liga.jugadoresOcultos = ocultosFinal || [];
+            }
+            loadLigaClasificacion(ligaId);
+            await loadJugadoresPrevios();
+            if (window.showAlert) window.showAlert('Perfil invitado eliminado del historial y de la clasificación.', 'success');
+        } catch (e) {
+            if (window.showAlert) window.showAlert('Error: ' + e.message, 'danger');
+        }
+    }
+
+    function abrirEditarPuntos(playerId) {
+        if (!esSuperAdmin()) { if (window.showAlert) window.showAlert('Solo el superadmin puede editar puntuaciones.', 'danger'); return; }
+        const ligaId = selectLigaActiva?.value;
+        if (!ligaId) { if (window.showAlert) window.showAlert('Selecciona una liga primero.', 'warning'); return; }
+        const liga = ligasCache.find(l => l.id === ligaId);
+        const entry = liga && liga.clasificacion ? liga.clasificacion[playerId] : null;
+        if (!entry) { if (window.showAlert) window.showAlert('Perfil no encontrado.', 'danger'); return; }
+
+        let modalEl = document.getElementById('modal-editar-puntos');
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.className = 'modal fade';
+            modalEl.id = 'modal-editar-puntos';
+            modalEl.tabIndex = -1;
+            modalEl.innerHTML = `<div class="modal-dialog"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-pen text-primary me-2"></i>Editar puntuación</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body"><p class="mb-2">Perfil: <strong id="ep-nombre"></strong></p><label class="form-label fw-bold">Puntos totales</label><input type="text" inputmode="decimal" class="form-control" id="ep-puntos"></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="ep-guardar">Guardar</button></div>
+            </div></div>`;
+            document.body.appendChild(modalEl);
+            modalEl.querySelector('#ep-guardar').addEventListener('click', guardarEditarPuntos);
+        }
+        modalEl.dataset.playerId = playerId;
+        modalEl.dataset.ligaId = ligaId;
+        modalEl.querySelector('#ep-nombre').textContent = entry.nombre || playerId;
+        modalEl.querySelector('#ep-puntos').value = entry.puntos || 0;
+        (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl)).show();
+    }
+
+    async function guardarEditarPuntos() {
+        if (!esSuperAdmin()) { if (window.showAlert) window.showAlert('Solo el superadmin puede editar puntuaciones.', 'danger'); return; }
+        const modalEl = document.getElementById('modal-editar-puntos');
+        if (!modalEl) return;
+        const playerId = modalEl.dataset.playerId;
+        const ligaId = modalEl.dataset.ligaId;
+        const val = parseFloat(String(modalEl.querySelector('#ep-puntos').value).replace(',', '.').trim());
+        if (isNaN(val)) { if (window.showAlert) window.showAlert('Introduce un número válido.', 'warning'); return; }
+
+        try {
+            await db.runTransaction(async t => {
+                const ligaRef = db.collection('ligas').doc(ligaId);
+                const ligaDoc = await t.get(ligaRef);
+                if (!ligaDoc.exists) throw new Error('Liga no encontrada');
+                const clasificacion = { ...(ligaDoc.data().clasificacion || {}) };
+                if (!clasificacion[playerId]) throw new Error('Perfil no encontrado');
+                clasificacion[playerId].puntos = val;
+                t.update(ligaRef, { clasificacion });
+            });
+            const liga = ligasCache.find(l => l.id === ligaId);
+            if (liga && liga.clasificacion && liga.clasificacion[playerId]) liga.clasificacion[playerId].puntos = val;
+            loadLigaClasificacion(ligaId);
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+            if (window.showAlert) window.showAlert('Puntuación actualizada.', 'success');
+        } catch (e) {
+            if (window.showAlert) window.showAlert('Error: ' + e.message, 'danger');
+        }
+    }
+
+    async function handleDesfusionar(invitadoId) {
+        if (!esSuperAdmin()) { if (window.showAlert) window.showAlert('Solo el superadmin puede desfusionar.', 'danger'); return; }
+        const ligaId = selectLigaActiva?.value;
+        if (!ligaId) {
+            if (window.showAlert) window.showAlert("Selecciona una liga primero.", "warning");
+            return;
+        }
+        const liga = ligasCache.find(l => l.id === ligaId);
+        const entry = liga && liga.clasificacion ? liga.clasificacion[invitadoId] : null;
+        if (!entry) return;
+        const nominado = entry.mergedFromGuest ? 'fusionado a un socio' : 'que absorbió otros perfiles de invitado';
+        const resto = entry.mergedFromGuest
+            ? 'Se recuperará el perfil de invitado independiente (nombre y puntos originales) para poder volver a fusionarlo.'
+            : `Se restaurarán los ${(entry.mergedSources || []).length} perfiles de invitado que absorbieron en la clasificación, dejando el actual como invitado independiente. Así podrás volver a fusionarlo con el flujo nuevo.`;
+        if (!window.confirm(`¿Desfusionar "${entry.nombre}" (Código: ${invitadoId.split('_')[1]})? Está ${nominado}. ${resto}`)) return;
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const ligaRef = db.collection('ligas').doc(ligaId);
+                const ligaDoc = await transaction.get(ligaRef);
+                if (!ligaDoc.exists) throw new Error("La liga no existe.");
+                const clasif = { ...(ligaDoc.data().clasificacion || {}) };
+                const e = clasif[invitadoId];
+                if (!e) throw new Error("Perfil no encontrado.");
+
+                const fuentes = Array.isArray(e.mergedSources) ? e.mergedSources.slice() : [];
+                if (e.mergedFromGuest) {
+                    const nombreGuest = nombreOriginalInvitado(ligaId, invitadoId);
+                    delete e.mergedFromGuest;
+                    delete e.userId;
+                    delete e.email;
+                    if (nombreGuest) e.nombre = nombreGuest;
+                }
+                if (fuentes.length) {
+                    const nombreBase = nombreOriginalInvitado(ligaId, invitadoId) || e.nombre;
+                    fuentes.forEach(src => {
+                        if (clasif[src]) return;
+                        clasif[src] = { nombre: nombreOriginalInvitado(ligaId, src) || nombreBase, puntos: 0 };
+                    });
+                    delete e.mergedSources;
+                }
+                transaction.update(ligaRef, { clasificacion: clasif });
+            });
+
+            if (window.showAlert) window.showAlert("Perfil desfusionado. Vuelve a fusionarlo con la segunda opción (destino) para guardar el rastro.", "success");
+            await loadInitialData();
+            loadLigaClasificacion(ligaId);
+        } catch (error) {
+            console.error("Error al desfusionar:", error);
+            if (window.showAlert) window.showAlert(`Error al desfusionar: ${error.message}`, "danger");
+        }
+    }
+
+    function asegurarControlesDesfusion(tbody, esAdmin) {
+        const table = tbody ? tbody.closest('table') : null;
+        let toolbar = document.getElementById('toolbar-desfusion-forzada');
+        if (esAdmin) {
+            if (!toolbar && table) {
+                toolbar = document.createElement('div');
+                toolbar.id = 'toolbar-desfusion-forzada';
+                toolbar.className = 'mt-3 text-end';
+                toolbar.innerHTML = '<button class="btn btn-sm btn-outline-danger btn-desfusion-forzada"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Desfusionar forzado</button>';
+                (table.parentNode || table).insertAdjacentElement('afterend', toolbar);
+            }
+        } else if (toolbar) {
+            toolbar.remove();
+        }
+    }
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : s;
+        return d.innerHTML;
+    }
+
+    let _dffJugadores = [];
+
+    function renderListaDesfusionForzada() {
+        const cont = document.getElementById('dff-lista');
+        if (!cont) return;
+        const q = (document.getElementById('dff-search')?.value || '').trim().toLowerCase();
+        const list = _dffJugadores.filter(j => !q || (j.nombre || '').toLowerCase().includes(q) || j.id.toLowerCase().includes(q));
+        cont.innerHTML = list.length
+            ? list.map(j => {
+                const code = j.id.startsWith('invitado_') ? `Código ${j.id.split('_')[1]}` : 'Socio';
+                return `<div class="form-check"><input class="form-check-input dff-check" type="checkbox" value="${j.id}" id="dff-chk-${j.id}"><label class="form-check-label" for="dff-chk-${j.id}">${escapeHtml(j.nombre)} <span class="text-muted small">(${code})</span></label></div>`;
+            }).join('')
+            : '<div class="text-muted small">Sin jugadores</div>';
+    }
+
+    function abrirDesfusionForzada() {
+        if (!esSuperAdmin()) { if (window.showAlert) window.showAlert('Solo el superadmin puede desfusionar.', 'danger'); return; }
+        const ligaId = selectLigaActiva?.value;
+        if (!ligaId) { if (window.showAlert) window.showAlert('Selecciona una liga primero.', 'warning'); return; }
+        const liga = ligasCache.find(l => l.id === ligaId);
+        if (!liga || !liga.clasificacion || !Object.keys(liga.clasificacion).length) { if (window.showAlert) window.showAlert('La liga no tiene jugadores.', 'warning'); return; }
+
+        let modalEl = document.getElementById('modal-desfusion-forzada');
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.className = 'modal fade';
+            modalEl.id = 'modal-desfusion-forzada';
+            modalEl.tabIndex = -1;
+            modalEl.innerHTML = `<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-wand-magic-sparkles text-danger me-2"></i>Desfusionar forzado</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="mb-3"><label class="form-label fw-bold">Perfil fusionado a eliminar</label><select class="form-select" id="dff-target"></select><div class="form-text">Se eliminará de la clasificación y se volverán a añadir los jugadores marcados abajo.</div></div>
+                    <div class="mb-2"><label class="form-label fw-bold">Jugadores de las jornadas</label><input type="text" class="form-control form-control-sm mb-2" id="dff-search" placeholder="Buscar jugador..."><div class="border rounded p-2" style="max-height: 260px; overflow-y: auto;" id="dff-lista"></div></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-danger" id="dff-confirmar">Desfusionar</button></div>
+            </div></div>`;
+            document.body.appendChild(modalEl);
+            modalEl.querySelector('#dff-search').addEventListener('input', renderListaDesfusionForzada);
+            modalEl.querySelector('#dff-confirmar').addEventListener('click', confirmarDesfusionForzada);
+        }
+
+        const entradas = Object.entries(liga.clasificacion).map(([id, v]) => ({
+            id, nombre: v.nombre || id,
+            fusionado: !!(v.mergedFromGuest || (v.mergedSources && v.mergedSources.length)),
+            esInvitado: id.startsWith('invitado_')
+        })).sort((a, b) => (b.fusionado - a.fusionado) || (b.esInvitado - a.esInvitado));
+        modalEl.querySelector('#dff-target').innerHTML = entradas.map(e => `<option value="${e.id}">${escapeHtml(e.nombre)} — ${e.esInvitado ? 'Invitado (Código ' + e.id.split('_')[1] + ')' : 'Socio'}${e.fusionado ? ' · FUSIONADO' : ''}</option>`).join('');
+
+        const vistos = new Set();
+        _dffJugadores = [];
+        torneosCache.filter(t => t.ligaId === ligaId).forEach(t => {
+            (t.jugadores || []).forEach(j => {
+                if (!j || !j.id || vistos.has(j.id)) return;
+                vistos.add(j.id);
+                _dffJugadores.push({ id: j.id, nombre: j.nombre || j.id });
+            });
+        });
+        _dffJugadores.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+        renderListaDesfusionForzada();
+
+        (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl)).show();
+    }
+
+    async function confirmarDesfusionForzada() {
+        if (!esSuperAdmin()) { if (window.showAlert) window.showAlert('Solo el superadmin puede desfusionar.', 'danger'); return; }
+        const ligaId = selectLigaActiva?.value;
+        const targetId = document.getElementById('dff-target')?.value;
+        const seleccion = Array.from(document.querySelectorAll('#dff-lista .dff-check:checked')).map(c => c.value);
+        if (!targetId) { if (window.showAlert) window.showAlert('Selecciona el perfil a desfusionar.', 'warning'); return; }
+        if (!seleccion.length) { if (window.showAlert) window.showAlert('Marca al menos un jugador.', 'warning'); return; }
+        const nombreDe = id => (_dffJugadores.find(j => j.id === id)?.nombre) || id;
+        if (!window.confirm(`¿Eliminar "${nombreDe(targetId)}" de la clasificación y volver a añadir ${seleccion.length} jugador(es)?`)) return;
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const ligaRef = db.collection('ligas').doc(ligaId);
+                const ligaDoc = await transaction.get(ligaRef);
+                if (!ligaDoc.exists) throw new Error('Liga no encontrada');
+                const clasif = { ...(ligaDoc.data().clasificacion || {}) };
+                delete clasif[targetId];
+                seleccion.forEach(id => {
+                    if (id === targetId) return;
+                    if (!clasif[id]) clasif[id] = { nombre: nombreDe(id), puntos: 0 };
+                });
+                transaction.update(ligaRef, { clasificacion: clasif });
+            });
+            bootstrap.Modal.getInstance(document.getElementById('modal-desfusion-forzada'))?.hide();
+            await loadInitialData();
+            loadLigaClasificacion(ligaId);
+            if (window.showAlert) window.showAlert('Desfusión forzada realizada.', 'success');
+        } catch (error) {
+            console.error('Error al desfusionar forzado:', error);
+            if (window.showAlert) window.showAlert('Error: ' + error.message, 'danger');
         }
     }
 

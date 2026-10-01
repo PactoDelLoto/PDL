@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporizador - Pacto del Loto</title>
+
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+
+    <link rel="icon" type="image/png" href="/media/img/logo.ico" />
+    <link href="/bootstrap-5.0.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/global.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        .temporizador-main {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            padding: 1.5rem 1rem;
+        }
+
+        .temporizador-nombre {
+            flex: 0 0 auto;
+            color: var(--tmp-color);
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            overflow-wrap: anywhere;
+        }
+
+        /* Caja que reparte el espacio libre: la cifra se escala para llenarla */
+        .temporizador-caja {
+            flex: 1 1 0;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .temporizador-cifra {
+            display: inline-block;
+            white-space: nowrap;
+            color: var(--tmp-color);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            font-size: 10vw;
+        }
+
+        .temporizador-controles {
+            flex: 0 0 auto;
+        }
+
+        .temporizador-btn {
+            background: transparent;
+            border: 1px solid var(--tmp-color);
+            color: var(--tmp-color);
+        }
+
+        .temporizador-btn:hover,
+        .temporizador-btn:focus {
+            background: var(--tmp-color);
+            border-color: var(--tmp-color);
+            color: var(--tmp-on);
+        }
+
+        .temporizador-btn:disabled {
+            opacity: .45;
+        }
+
+        @keyframes tmp-pulso {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .temporizador-fin .temporizador-cifra {
+            animation: tmp-pulso 1s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .temporizador-fin .temporizador-cifra {
+                animation: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="temporizador-main">
+        <div id="alert-container"></div>
+        <h1 class="temporizador-nombre text-center mb-2" id="tmp-nombre">Temporizador</h1>
+        <div class="temporizador-caja">
+            <div class="temporizador-cifra" id="tmp-cifra">00:00</div>
+        </div>
+        <div class="d-flex flex-wrap justify-content-center gap-2 temporizador-controles">
+            <button type="button" class="btn temporizador-btn" data-accion="toggle">
+                <i class="fa-solid fa-play me-1"></i><span>Iniciar</span>
+            </button>
+            <button type="button" class="btn temporizador-btn" data-accion="reiniciar">
+                <i class="fa-solid fa-rotate-right me-1"></i>Reiniciar
+            </button>
+            <button type="button" class="btn temporizador-btn" data-accion="menos">
+                <i class="fa-solid fa-minus me-1"></i>1 min
+            </button>
+            <button type="button" class="btn temporizador-btn" data-accion="mas">
+                <i class="fa-solid fa-plus me-1"></i>1 min
+            </button>
+        </div>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="/js/utils.js"></script>
+
+    <script src="/controllers/firebase-config.js"></script>
+    <script src="/controllers/authController.js"></script>
+    <script src="/controllers/temporizadorController.js"></script>
+</body>
+
+</html>

@@ -495,20 +495,27 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted">Selecciona un código de liga de invitado y un usuario registrado para transferir los puntos acumulados por el invitado a la cuenta del usuario.</p>
+                    <p class="text-muted">Selecciona el invitado de origen y el perfil de destino (usuario registrado u otro invitado) para sumarles los puntos acumulados. Se conserva siempre el perfil seleccionado como destino.</p>
                     <div class="mb-3">
-                        <label for="select-invitado-fusion-modern" class="form-label">Código de Liga de Invitado</label>
+                        <label for="select-invitado-fusion-modern" class="form-label">Código de Liga de Invitado (origen)</label>
                         <select class="form-select" id="select-invitado-fusion-modern" required>
                             <option value="">-- Selecciona un código de invitado --</option>
                         </select>
                         <div class="form-text">Solo se muestran códigos de invitado de la liga activa.</div>
                     </div>
                     <div class="mb-3">
-                        <label for="select-usuario-fusion-modern" class="form-label">Usuario Registrado</label>
+                        <label for="select-fusion-tipo-modern" class="form-label">Fusionar con</label>
+                        <select class="form-select" id="select-fusion-tipo-modern">
+                            <option value="usuario">Usuario registrado</option>
+                            <option value="invitado">Invitado (No socio)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="select-usuario-fusion-modern" class="form-label" id="select-fusion-destino-label-modern">Usuario Registrado</label>
                         <select class="form-select" id="select-usuario-fusion-modern" required>
                             <option value="">-- Selecciona un usuario --</option>
                         </select>
-                        <div class="form-text">Los puntos del invitado se añadirán a este usuario.</div>
+                        <div class="form-text" id="select-fusion-destino-text-modern">Los puntos del invitado se añadirán a este usuario.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
