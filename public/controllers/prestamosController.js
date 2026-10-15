@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State
     let currentUser = null;
+    let userEsSuperAdmin = false; // Borrar préstamos del historial es exclusivo del superadmin
     let userCache = {}; // Cache for user names to reduce DB reads
     let statsChart = null;
     let statsDateFilter = {
@@ -23,12 +24,21 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- INITIALIZATION ---
+    // Colaboradores, administradores y superadmins gestionan los préstamos
+    // (prestar, devolver y anular devoluciones). Los artículos y las incidencias
+    // no se tocan aquí: eso es solo de administradores.
     auth.onAuthStateChanged(async user => {
         if (user) {
             currentUser = user;
-            const isColaborador = await window.isUserColaborador();
-            if (isColaborador) {
+            try {
+                if (typeof window.C !== 'undefined' && window.C.listo) await window.C.listo();
+            } catch (e) { /* sin cargos: el botón no se muestra */ }
+            userEsSuperAdmin = typeof window.C !== 'undefined' && window.C.cargado && window.C.esSuperAdmin();
+            const puedeUsar = (await window.isUserAdmin()) || (await window.isUserColaborador());
+            if (puedeUsar) {
                 initializePrestamosPage();
+            } else {
+                document.querySelector('main').innerHTML = '<div class="alert alert-danger">Acceso denegado.</div>';
             }
         }
     });
@@ -200,6 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         $(document).on('change', '#stats-min-loans-filter', () => renderPrestamosStatsTable());
         $('#tabla-prestamos-activos tbody').on('click', '.btn-devolver', handleDevolucion);
         $('#tabla-prestamos-historial tbody').on('click', '.btn-cancelar-devolucion', handleCancelarDevolucion);
+        $('#tabla-prestamos-historial tbody').on('click', '.btn-eliminar-prestamo', handleEliminarPrestamo);
     }
 
     // --- ACTION HANDLERS (with transactions) ---
@@ -335,6 +346,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function handleEliminarPrestamo(e) {
+        const prestamoId = $(e.currentTarget).data('id');
+        if (!userEsSuperAdmin) {
+            showAlert('Solo los superadmins pueden eliminar préstamos.', 'danger');
+            return;
+        }
+
+        showConfirmationModal(
+            'Eliminar Préstamo',
+            '¿Eliminar este préstamo del historial? Solo se borra el registro; el stock del artículo NO se modifica.',
+            async () => {
+                try {
+                    const doc = await db.collection('prestamos').doc(prestamoId).get();
+                    if (!doc.exists) {
+                        showAlert('El préstamo ya no existe.', 'info');
+                        return;
+                    }
+                    if (doc.data().Estado !== 'Devuelto') {
+                        showAlert('Solo se pueden eliminar préstamos ya devueltos.', 'danger');
+                        return;
+                    }
+                    await doc.ref.delete();
+                    if (window.auditar) window.auditar('inventario', 'eliminar', `Préstamo eliminado (${prestamoId})`);
+                    showAlert('Préstamo eliminado.', 'success');
+                    loadHistorialPrestamos();
+                    loadPrestamosActivos();
+                    document.dispatchEvent(new CustomEvent('inventarioActualizado'));
+                } catch (error) {
+                    console.error('Error al eliminar el préstamo:', error);
+                    showAlert('Error al eliminar el préstamo.', 'danger');
+                }
+            }
+        );
+    }
+
     // --- TABLE RENDERING ---
 
     async function loadPrestamosActivos() {
@@ -405,7 +451,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         p.fechaHoraDevolucion ? p.fechaHoraDevolucion.toDate().toLocaleString() : 'N/A',
                         '<span class="badge bg-success">Devuelto</span>',
                         await getUserName(p.IdUsuarioResponsable),
-                        `<button class="btn btn-warning btn-sm btn-cancelar-devolucion" data-id="${doc.id}">Anular</button>`
+                        '<div class="d-flex justify-content-center gap-1 text-nowrap">'
+                        + `<button class="btn btn-warning btn-sm btn-cancelar-devolucion" data-id="${doc.id}">Anular</button>`
+                        + (userEsSuperAdmin ? `<button class="btn btn-danger btn-sm btn-eliminar-prestamo" data-id="${doc.id}" title="Eliminar el registro del préstamo"><i class="fas fa-trash"></i></button>` : '')
+                        + '</div>'
                     ]
                 };
             }));

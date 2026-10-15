@@ -32,7 +32,6 @@ let verDesactivados = false;
 const filterEstadoPagoContainer = document.getElementById('filter-estado-pago-container');
 const filterEstadoPagoBtn = document.getElementById('filter-estado-pago-btn');
 const filterEstadoPagoMenu = document.getElementById('filter-estado-pago-menu');
-const btnActualizarCuentas = document.getElementById('btn-actualizar-cuentas');
 const btnExportarCsv = document.getElementById('btn-exportar-csv');
 
 function calcularMesesDeuda(pagadoHasta) {
@@ -55,6 +54,18 @@ function getEstadoDeuda(pagadoHasta) {
     if (meses === 1) return 'debe1';
     if (meses === 2) return 'debe2';
     return 'debe3';
+}
+
+// Valor numérico para ordenar la columna "Al corriente":
+// 0 = al corriente, 1..3 = debe 1/2/3 meses, 4 = socio sin datos, 5 = no socio.
+function getOrdenAlCorriente(row) {
+    if (row.alCorriente) return 0;
+    if (!row.isSocio) return 5;
+    const estado = getEstadoDeuda(row.pagadoHasta);
+    if (estado === 'debe1') return 1;
+    if (estado === 'debe2') return 2;
+    if (estado === 'debe3') return 3;
+    return 4;
 }
 
 function normalizarFecha(timestamp) {
@@ -100,8 +111,11 @@ function initializeUsersTable() {
                 responsivePriority: 2
             },
             {
-                data: null, orderable: false, searchable: false, className: 'text-center',
+                data: null, orderable: true, type: 'num', searchable: false, className: 'text-center',
                 render: function (data, type, row) {
+                    if (type === 'sort' || type === 'type' || type === 'filter') {
+                        return getOrdenAlCorriente(row);
+                    }
                     if (row.alCorriente) {
                         return '<span class="badge bg-success" data-bs-toggle="tooltip" title="Al corriente de pago"><i class="fa-solid fa-check"></i></span>';
                     }
@@ -207,15 +221,20 @@ function initializeUsersTable() {
         if (rolVal === 'socio' && !rowData.isSocio) return false;
         if (rolVal === 'noSocio' && rowData.isSocio) return false;
         const estadoPagoVal = filterEstadoPagoVal;
-        if (estadoPagoVal) {
+        if (estadoPagoVal === 'alCorriente') {
+            if (!rowData.alCorriente) return false;
+        } else if (estadoPagoVal) {
             const estado = getEstadoDeuda(rowData.pagadoHasta);
             if (estado !== estadoPagoVal) return false;
         }
         return true;
     });
 
-    loadUsersIntoTable();
     setupUserActionHandlers();
+
+    // Las cuentas se recalculan solas al entrar (no hay botón que pulsar) y esta
+    // función deja la tabla pintada al terminar.
+    recalcularCuentas();
 }
 
 function loadUsersIntoTable() {
@@ -315,7 +334,7 @@ function setupUserActionHandlers() {
         }
         try {
             await db.collection('usuarios').doc(userId).update({ pagadoHasta: fecha });
-            loadUsersIntoTable();
+            await recalcularCuentas();
         } catch (error) {
             showAlert('Error al actualizar la fecha de pago.', 'danger');
         }
@@ -347,11 +366,6 @@ function setupUserActionHandlers() {
     // Estado inicial del filtro estado de pago
     if (filterEstadoPagoContainer && filterRol) {
         filterEstadoPagoContainer.classList.toggle('d-none', filterRol.value !== 'socio');
-    }
-
-    // Botón Actualizar Cuentas
-    if (btnActualizarCuentas) {
-        btnActualizarCuentas.addEventListener('click', handleActualizarCuentas);
     }
 
     // Botón Exportar CSV
@@ -439,13 +453,18 @@ function setupUserActionHandlers() {
     });
 }
 
-async function handleActualizarCuentas() {
+// Recalcula "al corriente" y el rol de socio de todos los usuarios a partir
+// de su campo "pagado hasta". Se ejecuta sola al entrar en la página y tras
+// cada cambio de ese campo, así que ya no hace falta ningún botón manual.
+// Devuelve cuántas cuentas han cambiado (-1 si hubo error).
+
+async function recalcularCuentas() {
     const db = firebase.firestore();
+    const MAX_POR_LOTE = 400;   // Firestore admite 500 escrituras por batch
 
     try {
         const snapshot = await db.collection('usuarios').get();
-        const batch = db.batch();
-        let count = 0;
+        const updates = [];
 
         snapshot.forEach(doc => {
             const data = doc.data();
@@ -477,22 +496,29 @@ async function handleActualizarCuentas() {
                 }
             }
             if (Object.keys(updateData).length > 0) {
-                batch.update(db.collection('usuarios').doc(doc.id), updateData);
-                count++;
+                updates.push({ ref: db.collection('usuarios').doc(doc.id), data: updateData });
             }
         });
 
-        if (count > 0) {
+        for (let i = 0; i < updates.length; i += MAX_POR_LOTE) {
+            const batch = db.batch();
+            updates.slice(i, i + MAX_POR_LOTE).forEach(u => batch.update(u.ref, u.data));
             await batch.commit();
-            showAlert(`${count} cuenta(s) actualizada(s).`, 'success');
+        }
+
+        if (updates.length > 0) {
+            showAlert(`${updates.length} cuenta(s) actualizada(s).`, 'success');
         } else {
             showAlert('Todas las cuentas ya están al día.', 'info');
         }
 
         loadUsersIntoTable();
+        return updates.length;
     } catch (error) {
         console.error('Error al actualizar cuentas:', error);
         showAlert('Error al actualizar las cuentas.', 'danger');
+        loadUsersIntoTable();
+        return -1;
     }
 }
 

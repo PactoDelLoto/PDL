@@ -67,6 +67,63 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // --- LÓGICA DEL IBAN PARA SOCIOS ---
+    const quieroSocioCheckbox = document.getElementById('quiero-ser-socio');
+    const ibanBox = document.getElementById('iban-box');
+    const ibanCopied = document.getElementById('iban-copied');
+    const IBAN = 'ES74 0128 0730 9401 0009 0895';
+    let ibanCopiedTimer = null;
+
+    if (quieroSocioCheckbox && ibanBox) {
+        quieroSocioCheckbox.addEventListener('change', () => {
+            ibanBox.classList.toggle('d-none', !quieroSocioCheckbox.checked);
+            if (!quieroSocioCheckbox.checked && ibanCopied) {
+                ibanCopied.classList.add('d-none');
+            }
+        });
+    }
+
+    function copyIban() {
+        const value = IBAN.replace(/\s/g, '');
+        const onSuccess = () => {
+            if (ibanCopied) {
+                ibanCopied.classList.remove('d-none');
+                clearTimeout(ibanCopiedTimer);
+                ibanCopiedTimer = setTimeout(() => ibanCopied.classList.add('d-none'), 2500);
+            }
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value).then(onSuccess).catch(fallbackCopy);
+        } else {
+            fallbackCopy();
+        }
+
+        function fallbackCopy() {
+            const temp = document.createElement('textarea');
+            temp.value = value;
+            temp.style.position = 'fixed';
+            temp.style.opacity = '0';
+            document.body.appendChild(temp);
+            temp.select();
+            try {
+                document.execCommand('copy');
+                onSuccess();
+            } catch (e) { }
+            document.body.removeChild(temp);
+        }
+    }
+
+    if (ibanBox) {
+        ibanBox.addEventListener('click', copyIban);
+        ibanBox.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                copyIban();
+            }
+        });
+    }
+
     // --- GESTIÓN DEL ENVÍO DEL FORMULARIO ---
     if (form) {
         form.addEventListener('submit', function (event) {

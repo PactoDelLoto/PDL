@@ -11,7 +11,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let inventarioTable, infoHistorialTable, categoriasTable, incidenciasTable;
 
     // User permissions
-    let userCanWrite = false;
+    // userPuedeGestionar: artículos y categorías (crear/editar/eliminar) y
+    //                     resolver/eliminar incidencias -> admin y superadmin.
+    // userPuedeUsar:      entrar en la página, crear incidencias y llevar los
+    //                     préstamos (prestar, devolver, anular) -> colaborador,
+    //                     admin y superadmin.
+    let userPuedeGestionar = false;
+    let userPuedeUsar = false;
 
     // Data cache
     let currentItemHistory = [];
@@ -90,10 +96,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         data: null,
                         render: function (data, type, row) {
                             let buttons = '';
-                            if (row.estado === 'abierta' && userCanWrite) {
+                            if (row.estado === 'abierta' && userPuedeGestionar) {
                                 buttons += `<button class="btn btn-sm btn-success resolve-incidencia-btn" data-id="${row.id}" title="Marcar como resuelta"><i class="fas fa-check"></i></button> `;
                             }
-                            if (userCanWrite) {
+                            if (userPuedeGestionar) {
                                 buttons += `<button class="btn btn-sm btn-danger delete-incidencia-btn" data-id="${row.id}" title="Eliminar incidencia"><i class="fas fa-trash"></i></button>`;
                             }
                             return buttons;
@@ -109,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function handleCreateIncidencia(e) {
         e.preventDefault();
+        if (!userPuedeUsar) return showAlert('No tienes permiso para crear incidencias.', 'danger');
         const articulosSelect = document.getElementById('incidencia-articulos');
         const descripcion = document.getElementById('incidencia-descripcion').value.trim();
         const selectedOptions = Array.from(articulosSelect.selectedOptions);
@@ -156,6 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function handleResolveIncidencia(incidenciaId) {
+        if (!userPuedeGestionar) return showAlert('Solo los administradores pueden resolver incidencias.', 'danger');
         showConfirmationModal('Resolver Incidencia', '¿Marcar esta incidencia como resuelta?', async () => {
             try {
                 await db.collection('incidencias').doc(incidenciaId).update({
@@ -176,6 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function handleDeleteIncidencia(incidenciaId) {
+        if (!userPuedeGestionar) return showAlert('Solo los administradores pueden eliminar incidencias.', 'danger');
         showConfirmationModal('Eliminar Incidencia', '¿Eliminar esta incidencia permanentemente?', async () => {
             try {
                 await db.collection('incidencias').doc(incidenciaId).delete();
@@ -215,12 +224,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 const badgeText = inc.estado === 'resuelta' ? 'Resuelta' : 'Abierta';
 
                 let actions = '';
-                if (inc.estado === 'abierta' && userCanWrite) {
+                if (inc.estado === 'abierta' && userPuedeGestionar) {
                     actions = `
                         <button class="btn btn-sm btn-success btn-resolve-item-incidencia" data-id="${doc.id}" title="Resolver"><i class="fas fa-check"></i></button>
                         <button class="btn btn-sm btn-danger btn-delete-item-incidencia" data-id="${doc.id}" title="Eliminar"><i class="fas fa-trash"></i></button>
                     `;
-                } else if (userCanWrite) {
+                } else if (userPuedeGestionar) {
                     actions = `<button class="btn btn-sm btn-danger btn-delete-item-incidencia" data-id="${doc.id}" title="Eliminar"><i class="fas fa-trash"></i></button>`;
                 }
 
@@ -323,8 +332,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
 auth.onAuthStateChanged(async user => {
         if (user) {
-            userCanWrite = await window.isUserColaborador();
-            if (userCanWrite) {
+            // Entra quien sea colaborador, admin o superadmin. La gestión del
+            // inventario (artículos, categorías e incidencias) es solo de
+            // administradores; el resto ve el inventario y trabaja con
+            // incidencias y préstamos.
+            const esAdmin = await window.isUserAdmin();
+            userPuedeGestionar = esAdmin;
+            userPuedeUsar = esAdmin || await window.isUserColaborador();
+            if (userPuedeUsar) {
                 initializeInventarioPage();
             } else {
                 document.querySelector('main').innerHTML = '<div class="alert alert-danger">Acceso denegado.</div>';
@@ -339,7 +354,7 @@ auth.onAuthStateChanged(async user => {
     function initializeInventarioPage() {
         const addItemBtn = document.getElementById('add-item-btn');
         const categoryFormContainer = document.querySelector('#categorias-section .card-body > .card');
-        if (userCanWrite) {
+        if (userPuedeGestionar) {
             addItemBtn.style.display = 'block';
             if (categoryFormContainer) categoryFormContainer.style.display = 'block';
         } else {
@@ -399,7 +414,7 @@ auth.onAuthStateChanged(async user => {
                         data: 'id',
                         render: (data, type, row) => {
                             let buttons = '';
-                            if (userCanWrite) {
+                            if (userPuedeGestionar) {
                                 buttons += `<button class="btn btn-sm btn-primary edit-btn" data-id="${data}" title="Editar"><i class="fas fa-edit"></i></button> `;
                                 buttons += `<button class="btn btn-sm btn-danger delete-btn" data-id="${data}" title="Eliminar"><i class="fas fa-trash"></i></button> `;
                             }
@@ -477,7 +492,7 @@ auth.onAuthStateChanged(async user => {
                         {
                             data: null,
                             render: function (data, type, row) {
-                                if (userCanWrite) {
+                                if (userPuedeGestionar) {
                                     return `<button class="btn btn-sm btn-danger delete-category-btn" data-id="${row.docId}" data-name="${row.nombreCategoria}" title="Eliminar Categoria"><i class="fas fa-trash"></i></button>`;
                                 }
                                 return '';
@@ -522,7 +537,7 @@ auth.onAuthStateChanged(async user => {
             handleDeleteIncidencia(this.dataset.id);
         });
 
-        if (userCanWrite) {
+        if (userPuedeGestionar) {
             const itemForm = document.getElementById('item-form');
             const categoryForm = document.getElementById('form-add-category');
 
@@ -584,6 +599,7 @@ auth.onAuthStateChanged(async user => {
 
     async function handleItemFormSubmit(e) {
         e.preventDefault();
+        if (!userPuedeGestionar) return showAlert('Solo los administradores pueden modificar artículos.', 'danger');
         const categoriaSelect = document.getElementById('item-category');
         const itemId = $('#item-id').val();
         const itemData = {
@@ -595,7 +611,7 @@ auth.onAuthStateChanged(async user => {
         };
 
         // Handle forzarPrestamo switch
-        if (itemId && userCanWrite) {
+        if (itemId && userPuedeGestionar) {
             itemData.forzarPrestamo = document.getElementById('forzar-prestamo-switch').checked;
         }
 
@@ -619,6 +635,7 @@ auth.onAuthStateChanged(async user => {
 
     async function handleAddCategory(e) {
         e.preventDefault();
+        if (!userPuedeGestionar) return showAlert('Solo los administradores pueden crear categorías.', 'danger');
         const newCategoryInput = document.getElementById('new-category-name');
         const newCategoryName = newCategoryInput.value.trim();
         if (!newCategoryName) {
@@ -663,6 +680,7 @@ auth.onAuthStateChanged(async user => {
     }
 
     async function handleDeleteCategory(docId, categoryName) {
+        if (!userPuedeGestionar) return showAlert('Solo los administradores pueden eliminar categorías.', 'danger');
         const inventorySnapshot = await db.collection('inventario').where('idCategoria', '==', docId).get();
 
         if (!inventorySnapshot.empty) {

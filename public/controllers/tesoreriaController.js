@@ -133,7 +133,11 @@ let totalYearsLoaded = new Set();
 
     function monthHasData(d) {
         if (!d) return false;
-        if (d.saldoDisponible !== null && d.saldoDisponible !== undefined) return true;
+        if (d.saldoDisponible !== null && d.saldoDisponible !== undefined) return true;
+
+        // Un mes con efectivo en mano tambien cuenta como mes con datos.
+
+        if (d.efectivoEnMano !== null && d.efectivoEnMano !== undefined) return true;
         return CAMPOS_LISTA.some(c => Array.isArray(d[c]) && d[c].length > 0)
             || (Array.isArray(d.seccionesEvento) && d.seccionesEvento.length > 0);
     }
@@ -547,9 +551,15 @@ let totalYearsLoaded = new Set();
 
             // 4. Persistir la caché para la próxima visita.
             writeTotalCache(year, months, saldoVisibles, efectivoVisibles);
-
-            const currentDoc = monthDocs[defaultKey];
-            document.getElementById('no-data-banner').classList.toggle('d-none', monthHasData(currentDoc));
+            // El aviso es del AÑO, no del mes: basta con que cualquier mes tenga
+
+            // datos. Mirar solo el mes en curso lo hacía saltar cada vez que
+
+            // empezaba un mes nuevo todavía sin movimientos.
+
+            const hayDatosAnio = months.some(m => monthHasData(monthDocs[ym(year, m)]));
+
+            document.getElementById('no-data-banner').classList.toggle('d-none', hayDatosAnio);
             const totalPane = document.getElementById(`pane-total-${year}`);
             if (totalPane) totalPane.innerHTML = '<div class="text-center text-muted py-4"><i class="fa-solid fa-chart-pie me-2"></i>Abre esta pestaña para cargar el total anual.</div>';
             await renderMes(defaultKey, { light: true });
@@ -571,6 +581,8 @@ let totalYearsLoaded = new Set();
             return;
         }
         const pane = document.getElementById(`pane-total-${year}`);
+        paneSigs[year] = null;
+
         if (pane) pane.innerHTML = force ? '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Actualizando Tesorería...</div>' : '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando el total anual...</div>';
         /*
         const months = mesesDelAño(year);
@@ -640,7 +652,25 @@ let totalYearsLoaded = new Set();
 
     async function refreshTesoreria() {
         const btn = document.getElementById('refresh-tesoreria-btn');
-        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Actualizando...'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Actualizando...'; }
+
+        // Si alguna lectura contra Firestore se queda colgada, el boton no debe
+
+        // quedarse bloqueado: al vencer el plazo se reactiva y se avisa.
+
+        const watchdog = setTimeout(() => {
+
+            if (btn && btn.disabled) {
+
+                btn.disabled = false;
+
+                btn.innerHTML = '<i class="fa-solid fa-arrows-rotate me-1"></i>Actualizar tesorería';
+
+                showAlert('La actualización está tardando demasiado. Revisa tu conexión.', 'warning');
+
+            }
+
+        }, 20000);
         try {
             localStorage.removeItem(totalCacheKey(currentYear));
             totalYearsLoaded.delete(currentYear);
@@ -652,6 +682,8 @@ let totalYearsLoaded = new Set();
             console.error('Error actualizando Tesorería', e);
             showAlert('No se pudo actualizar Tesorería.', 'danger');
         } finally {
+            clearTimeout(watchdog);
+
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate me-1"></i>Actualizar tesorería'; }
         }
     }
@@ -748,14 +780,16 @@ let totalYearsLoaded = new Set();
             } else {
                 const avgIng = tIng / (months.length || 1);
                 const avgGas = tGas / (months.length || 1);
-                let html = fact('Mes que más ingresa', `${MESES[mesMaxIng.mes - 1]} (${fmtEur(mesMaxIng.valor)})`);
-                html += fact('Mes que más gasta', `${MESES[mesMaxGas.mes - 1]} (${fmtEur(mesMaxGas.valor)})`);
-                html += fact('Mejor balance mensual', `${MESES[mesMejor.mes - 1]} (${fmtEur(mesMejor.valor)})`);
-                html += fact('Peor balance mensual', `${MESES[mesPeor.mes - 1]} (${fmtEur(mesPeor.valor)})`);
+                const mesDe = (best) => best ? `${MESES[best.mes - 1]} (${fmtEur(best.valor)})` : '—';
+
+                let html = fact('Mes que más ingresa', mesDe(mesMaxIng));
+                html += fact('Mes que más gasta', mesDe(mesMaxGas));
+                html += fact('Mejor balance mensual', mesDe(mesMejor));
+                html += fact('Peor balance mensual', mesDe(mesPeor));
                 html += fact('Promedio ingresos/mes', fmtEur(avgIng));
                 html += fact('Promedio gastos/mes', fmtEur(avgGas));
                 html += fact('Ingresos medios de cuotas/mes', fmtEur(tCuotas / (months.length || 1)));
-                html += fact('Mes con más cuotas', `${MESES[mesMaxCuotas.mes - 1]} (${fmtEur(mesMaxCuotas.valor)})`);
+                html += fact('Mes con más cuotas', mesDe(mesMaxCuotas));
                 html += fact('Nº de movimientos', movs);
                 html += fact('Saldo con que cierra el año', fmtEur(saldoFinal));
                 factsEl.innerHTML = html;
@@ -1205,7 +1239,7 @@ pane.querySelectorAll('.row-edit, .row-del, .save-saldo, .reset-saldo, .save-efe
             const months = mesesDelAño(currentYear);
             const key = activeMonthKey || ym(currentYear, new Date().getMonth() + 1);
             await getMesDoc(key, false);
-            document.getElementById('no-data-banner').classList.toggle('d-none', monthHasData(monthDocs[key]));
+            document.getElementById('no-data-banner').classList.toggle('d-none', mesesDelAño(currentYear).some(m => monthHasData(monthDocs[ym(currentYear, m)])));
             if (totalYearsLoaded.has(currentYear)) {
                 const months = mesesDelAño(currentYear);
                 await precomputeSaldos(currentYear, months);

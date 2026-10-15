@@ -69,9 +69,10 @@ match /usuarios/{userId} {
 }
 
 // CATEGORÍAS DE INVENTARIO
+// Colaboradores y admins/superadmins las ven; solo admins/superadmins las gestionan.
 match /categoriasInventario/{docId} {
-  allow read: if isColaborador();
-  allow write: if isColaborador();
+  allow read: if isColaborador() || puedeAdministrar();
+  allow write: if puedeAdministrar();
 }
 
 // EVENTOS
@@ -81,23 +82,35 @@ match /eventos/{docId} {
 }
 
 // INVENTARIO
+// Colaboradores y admins/superadmins lo ven. Solo admins/superadmins crean,
+// editan o borran artículos; el colaborador únicamente mueve el stock al
+// prestar o devolver (campo 'cantidadRestante').
 match /inventario/{docId} {
-  allow read: if isColaborador();
-  allow write: if isColaborador();
+  allow read: if isColaborador() || puedeAdministrar();
+  allow create, delete: if puedeAdministrar();
+  allow update: if puedeAdministrar()
+    || (isColaborador()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cantidadRestante']));
 }
 
 // PRÉSTAMOS
+// Prestar, devolver y anular devoluciones lo puede hacer cualquier colaborador,
+// socio, admin o superadmin. Borrar el registro es solo del superadmin y solo
+// de préstamos ya devueltos (un pendiente sigue descontando stock).
 match /prestamos/{docId} {
-  allow read: if isSocio() || puedeAdministrar();
-  allow write: if isSocio() || puedeAdministrar();
+  allow read: if isSocio() || isColaborador() || puedeAdministrar();
+  allow create, update: if isSocio() || isColaborador() || puedeAdministrar();
+  allow delete: if esSuperAdmin() && resource.data.Estado == 'Devuelto';
 }
 
 // INCIDENCIAS
+// Colaboradores y admins/superadmins las ven y las crean. Resolver o eliminar
+// una incidencia es solo de admins/superadmins.
 match /incidencias/{docId} {
-  allow read: if isColaborador();
-  allow create: if isColaborador();
-  allow update: if isColaborador();
-  allow delete: if isColaborador();
+  allow read: if isColaborador() || puedeAdministrar();
+  allow create: if isColaborador() || puedeAdministrar();
+  allow update: if puedeAdministrar();
+  allow delete: if puedeAdministrar();
 }
 
 // SUBEVENTOS

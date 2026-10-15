@@ -104,7 +104,7 @@ async function populateNavbarLinks(isLoggedIn) {
                 ]
             });
         }
-        if (isColaborador) {
+        if (isAdmin || isColaborador) {
             adminItems.push({ text: 'Inventario', href: '/inventario.html' });
         }
         if (isAdmin || isColaborador) {

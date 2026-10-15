@@ -67,6 +67,69 @@
             background-color: #357ae8;
             color: white;
         }
+
+        .iban-box {
+            background-color: #e7f1ff;
+            border: 1px dashed #0d6efd;
+            border-radius: .5rem;
+            padding: .75rem .9rem;
+            cursor: pointer;
+            transition: background-color .2s ease, border-color .2s ease;
+            user-select: none;
+        }
+
+        .iban-box:hover,
+        .iban-box:focus {
+            background-color: #d6e8ff;
+            border-color: #0a58ca;
+            outline: none;
+        }
+
+        .iban-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+            flex-wrap: wrap;
+        }
+
+        .iban-text {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: .05rem;
+            color: #0d6efd;
+            background: transparent;
+            padding: 0;
+        }
+
+        .iban-copy-hint {
+            font-size: .8rem;
+            color: #0d6efd;
+            white-space: nowrap;
+        }
+
+        .iban-copied {
+            margin-top: .4rem;
+            font-size: .85rem;
+            font-weight: 600;
+            color: #198754;
+        }
+
+        [data-theme="dark"] .iban-box {
+            background-color: rgba(13, 110, 253, .12);
+            border-color: #3d7ffd;
+        }
+
+        [data-theme="dark"] .iban-box:hover,
+        [data-theme="dark"] .iban-box:focus {
+            background-color: rgba(13, 110, 253, .22);
+            border-color: #6ea8fe;
+        }
+
+        [data-theme="dark"] .iban-text,
+        [data-theme="dark"] .iban-copy-hint {
+            color: #6ea8fe;
+        }
     </style>
 
     <!-- Script para cargar componentes comunes -->
@@ -142,6 +205,20 @@
                                         <a href="/contacto.html" class="alert-link">contáctanos</a>.
                                         <p>Si seleccionas esta opción te llegará la respuesta a la sección mis mensajes.
                                         </p>
+                                    </div>
+                                    <div id="iban-box" class="iban-box d-none mt-2" role="button" tabindex="0"
+                                        title="Clic para copiar el IBAN">
+                                        <div class="small text-muted mb-1">
+                                            <i class="fa-solid fa-building-columns me-1"></i>
+                                            Realiza la cuota por transferencia a:
+                                        </div>
+                                        <div class="iban-line">
+                                            <code id="iban-text" class="iban-text">ES74 0128 0730 9401 0009 0895</code>
+                                            <span class="iban-copy-hint"><i class="fa-regular fa-copy me-1"></i>Copiar</span>
+                                        </div>
+                                        <div id="iban-copied" class="iban-copied d-none">
+                                            <i class="fa-solid fa-check me-1"></i>IBAN copiado al portapapeles
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="auth-error" class="alert alert-danger d-none" role="alert"></div>

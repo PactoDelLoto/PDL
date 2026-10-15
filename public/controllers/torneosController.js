@@ -794,7 +794,7 @@ window.initializeTorneosController = function (canManage) {
                     return `
                         <div class="d-flex justify-content-between align-items-center py-2 px-3 border-bottom bg-white">
                             <span>${nombre} ${placementBadge}</span>
-                            <span class="fw-bold">${totalMesa > 0 ? totalMesa + ' pts' : '-'}</span>
+                            <span class="fw-bold">${totalMesa !== 0 ? totalMesa + ' pts' : '-'}</span>
                         </div>
                     `;
                 }).join('');
@@ -842,16 +842,21 @@ window.initializeTorneosController = function (canManage) {
             return;
         }
 
-        tbody.innerHTML = standings.map((player, index) => `
+        tbody.innerHTML = standings.map((player, index) => {
+            const extra = Number(player.puntosExtra) || 0;
+            const extraClass = extra < 0 ? 'text-danger' : 'text-success';
+            const extraText = extra > 0 ? `+${extra.toFixed(1)}` : extra.toFixed(1);
+            return `
             <tr${player.dropped ? ' class="table-secondary"' : ''} style="${player.dropped ? 'opacity:0.6;' : ''}">
                 <td class="fw-bold">${index + 1}</td>
                 <td>${player.nombre} ${player.dropped ? '<span class="badge bg-danger ms-1">retirado</span>' : ''}</td>
                 <td class="text-center">${Number(player.puntosMesa).toFixed(1)}</td>
-                <td class="text-center text-success">+${Number(player.puntosExtra).toFixed(1)}</td>
+                <td class="text-center ${extraClass}">${extraText}</td>
                 <td class="fw-bold text-center text-primary">${Number(player.puntos).toFixed(1)}</td>
                 <td class="text-center text-muted small" title="Buchholz (desempate): suma de puntos de tus rivales">${Number(player.buchholz || 0).toFixed(1)}</td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
         poblarSelectOmitirTop();
     }
 
@@ -955,6 +960,17 @@ window.initializeTorneosController = function (canManage) {
         });
     }
 
+    // Puntos por posición según el tamaño de la mesa.
+    // Mesa de 4: 1º=4, 2º=3, 3º=2, 4º=1
+    // Mesa de 3: 1º=4, 2º=2.5, 3º=1
+    function pointsForPlacement(placement, size) {
+        if (size === 3) {
+            return { 1: 4, 2: 2.5, 3: 1 }[placement] || 1;
+        }
+        const score = 5 - placement;
+        return score < 1 ? 1 : score;
+    }
+
     // Abre modal para meter resultados de una mesa
     function openMesaResultsModal(rondaNum, mesaNum) {
         const ronda = selectedTournament.rondas.find(r => r.numero === parseInt(rondaNum));
@@ -994,7 +1010,7 @@ window.initializeTorneosController = function (canManage) {
                             <option value="" disabled ${actualPlacement === '' ? 'selected' : ''}>-- Posición --</option>
                             ${options}
                         </select>
-                        <input type="number" class="form-control input-extra-points" data-id="${jId}" value="${actualExtra}" step="0.5" style="width: 70px;">
+                        <input type="number" class="form-control input-extra-points" data-id="${jId}" value="${actualExtra}" step="0.1" inputmode="decimal" style="width: 70px;" title="Puntos extra: admite 1 decimal y valores negativos">
                     </div>
                 </div>
             `;
@@ -1039,12 +1055,10 @@ window.initializeTorneosController = function (canManage) {
             const placement = parseInt(select.value);
 
             const extraInput = form.querySelector(`.input-extra-points[data-id="${jId}"]`);
-            puntosAdicionales[jId] = parseFloat(extraInput.value) || 0;
+            const extraVal = parseFloat(extraInput.value);
+            puntosAdicionales[jId] = Number.isFinite(extraVal) ? Math.round(extraVal * 10) / 10 : 0;
 
-            // Puntos: 1º=4, 2º=3, 3º=2, 4º=1 (o 3º=2 en mesa de 3)
-            let score = 5 - placement;
-            if (score < 1) score = 1;
-            mesa.resultados[jId] = score;
+            mesa.resultados[jId] = pointsForPlacement(placement, size);
         });
 
         mesa.puntosAdicionales = puntosAdicionales;
