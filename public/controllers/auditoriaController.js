@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
             data: [],
             columns: [
                 {
-                    data: 'timestamp', orderable: true,
+                    data: 'timestamp', orderable: false,
                     render: function (data) {
                         if (!data || !data.toDate) return '-';
                         return data.toDate().toLocaleString('es-ES');
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 { data: 'description', orderable: false }
             ],
-            order: [[0, 'desc']]
+            order: []
         });
     }
 

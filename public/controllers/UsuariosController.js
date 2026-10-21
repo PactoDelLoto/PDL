@@ -74,6 +74,21 @@ function normalizarFecha(timestamp) {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+// Nombre completo para los mensajes de auditoría (nombre + apellidos).
+function nombreCompletoUsuario(userData) {
+    const nombre = `${userData.nombre || ''} ${userData.apellidos || ''}`.trim();
+    return nombre || userData.correo || userData.id || 'usuario desconocido';
+}
+
+// Datos identificativos extra (correo, DNI, teléfono) para detallar la auditoría.
+function datosExtraUsuario(userData) {
+    const partes = [];
+    if (userData.correo) partes.push(userData.correo);
+    if (userData.dni) partes.push(`DNI ${userData.dni}`);
+    if (userData.telefono) partes.push(`tel. ${userData.telefono}`);
+    return partes.length ? ` (${partes.join(', ')})` : '';
+}
+
 function initializeUsersTable() {
     usersTable = $('#usuarios-table').DataTable({
         language: {
@@ -158,6 +173,7 @@ function initializeUsersTable() {
                 render: function (data, type, row) {
                     const isMe = row.id === firebase.auth().currentUser.uid;
                     const meBadge = isMe ? '<span class="badge bg-info me-1" style="font-size:0.6rem">Tú</span>' : '';
+                    const nombreCompleto = nombreCompletoUsuario(row);
 
                     if (verDesactivados) {
                         return `<div class="d-flex align-items-center justify-content-center gap-1">
@@ -168,7 +184,7 @@ function initializeUsersTable() {
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end" style="min-width:160px;font-size:0.85rem">
                                     <li><button class="dropdown-item edit-user-btn" data-id="${row.id}"><i class="fa-solid fa-pen me-2"></i>Editar</button></li>
-                                    <li><button class="dropdown-item text-success reactivate-user-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid fa-rotate-left me-2"></i>Reactivar</button></li>
+                                    <li><button class="dropdown-item text-success reactivate-user-btn" data-id="${row.id}" data-name="${nombreCompleto}" data-correo="${row.correo || ''}" data-dni="${row.dni || ''}" data-telefono="${row.telefono || ''}"><i class="fa-solid fa-rotate-left me-2"></i>Reactivar</button></li>
                                 </ul>
                             </div>
                         </div>`;
@@ -190,12 +206,12 @@ function initializeUsersTable() {
                                 <i class="fa-solid fa-gear"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" style="min-width:160px;font-size:0.85rem">
-                                <li><button class="dropdown-item toggle-socio-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid ${socioIcon} me-2"></i>${socioText}</button></li>
-                                <li><button class="dropdown-item toggle-colaborador-btn" data-id="${row.id}" data-name="${row.nombre}" ${!row.isSocio ? 'disabled' : ''}><i class="fa-solid ${colabIcon} me-2"></i>${colabText}</button></li>
-                                <li><button class="dropdown-item toggle-admin-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid ${adminIcon} me-2"></i>${adminText}</button></li>
+                                <li><button class="dropdown-item toggle-socio-btn" data-id="${row.id}" data-name="${nombreCompleto}"><i class="fa-solid ${socioIcon} me-2"></i>${socioText}</button></li>
+                                <li><button class="dropdown-item toggle-colaborador-btn" data-id="${row.id}" data-name="${nombreCompleto}" ${!row.isSocio ? 'disabled' : ''}><i class="fa-solid ${colabIcon} me-2"></i>${colabText}</button></li>
+                                <li><button class="dropdown-item toggle-admin-btn" data-id="${row.id}" data-name="${nombreCompleto}"><i class="fa-solid ${adminIcon} me-2"></i>${adminText}</button></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><button class="dropdown-item edit-user-btn" data-id="${row.id}"><i class="fa-solid fa-pen me-2"></i>Editar</button></li>
-                                <li><button class="dropdown-item text-danger deactivate-user-btn" data-id="${row.id}" data-name="${row.nombre}"><i class="fa-solid fa-ban me-2"></i>Desactivar</button></li>
+                                <li><button class="dropdown-item text-danger deactivate-user-btn" data-id="${row.id}" data-name="${nombreCompleto}" data-correo="${row.correo || ''}" data-dni="${row.dni || ''}" data-telefono="${row.telefono || ''}"><i class="fa-solid fa-ban me-2"></i>Desactivar</button></li>
                             </ul>
                         </div>
                     </div>`;
@@ -285,14 +301,16 @@ function setupUserActionHandlers() {
     tbody.on('click', '.deactivate-user-btn', function () {
         const userId = $(this).data('id');
         const userName = $(this).data('name');
+        const datos = { correo: $(this).data('correo') || '', dni: $(this).data('dni') || '', telefono: $(this).data('telefono') || '' };
+        const extraTxt = datosExtraUsuario(datos);
 
         showConfirmationModal(
             'Desactivar Usuario',
-            `¿Estás seguro de que quieres desactivar a ${userName}? El usuario no podrá acceder a la web hasta que sea reactivado.`,
+            `¿Estás seguro de que quieres desactivar a ${userName}${extraTxt}? El usuario no podrá acceder a la web hasta que sea reactivado.`,
             async () => {
                 try {
                     await db.collection('usuarios').doc(userId).update({ desactivado: true });
-                    if (window.auditar) window.auditar('usuarios', 'desactivar', `Usuario "${userName}" desactivado`);
+                    if (window.auditar) window.auditar('usuarios', 'desactivar', `Usuario "${userName}"${extraTxt} desactivado`, { uid: userId, correo: datos.correo || null, dni: datos.dni || null });
                     showAlert(`Usuario ${userName} desactivado con éxito.`, 'success');
                     loadUsersIntoTable();
                 } catch (error) {
@@ -305,14 +323,16 @@ function setupUserActionHandlers() {
     tbody.on('click', '.reactivate-user-btn', function () {
         const userId = $(this).data('id');
         const userName = $(this).data('name');
+        const datos = { correo: $(this).data('correo') || '', dni: $(this).data('dni') || '', telefono: $(this).data('telefono') || '' };
+        const extraTxt = datosExtraUsuario(datos);
 
         showConfirmationModal(
             'Reactivar Usuario',
-            `¿Estás seguro de que quieres reactivar a ${userName}? El usuario podrá volver a acceder a la web.`,
+            `¿Estás seguro de que quieres reactivar a ${userName}${extraTxt}? El usuario podrá volver a acceder a la web.`,
             async () => {
                 try {
                     await db.collection('usuarios').doc(userId).update({ desactivado: false });
-                    if (window.auditar) window.auditar('usuarios', 'reactivar', `Usuario "${userName}" reactivado`);
+                    if (window.auditar) window.auditar('usuarios', 'reactivar', `Usuario "${userName}"${extraTxt} reactivado`, { uid: userId, correo: datos.correo || null, dni: datos.dni || null });
                     showAlert(`Usuario ${userName} reactivado con éxito.`, 'success');
                     loadUsersIntoTable();
                 } catch (error) {
@@ -442,9 +462,32 @@ function setupUserActionHandlers() {
         }
 
         try {
+            const beforeDoc = await db.collection('usuarios').doc(userId).get();
+            const before = beforeDoc.exists ? beforeDoc.data() : {};
             await db.collection('usuarios').doc(userId).update(updatedData);
             editUserModal.hide();
-            if (window.auditar) window.auditar('usuarios', 'editar', `Usuario "${updatedData.nombre}" editado`);
+
+            const nombreCompleto = nombreCompletoUsuario({ ...before, ...updatedData, id: userId });
+            const extra = [];
+            if (before.correo) extra.push(before.correo);
+            if (before.dni) extra.push(`DNI ${before.dni}`);
+            const extraTxt = extra.length ? ` (${extra.join(', ')})` : '';
+
+            const cambios = [];
+            if (before.nombre !== updatedData.nombre || before.apellidos !== updatedData.apellidos) cambios.push('datos personales');
+            if ((before.telefono || null) !== updatedData.telefono) cambios.push('teléfono');
+            if (before.isSocio !== isSocio) cambios.push(isSocio ? 'rol socio añadido' : 'rol socio quitado');
+            if (before.isColaborador !== updatedData.isColaborador) cambios.push(updatedData.isColaborador ? 'rol colaborador añadido' : 'rol colaborador quitado');
+            if (before.isAdmin !== isAdmin) cambios.push(isAdmin ? 'rol admin añadido' : 'rol admin quitado');
+            const cambiosTxt = cambios.length ? `: ${cambios.join(', ')}` : '';
+
+            if (window.auditar) window.auditar('usuarios', 'editar', `Usuario "${nombreCompleto}"${extraTxt} editado${cambiosTxt}`, {
+                uid: userId,
+                correo: before.correo || null,
+                dni: before.dni || null,
+                antes: { nombre: before.nombre, apellidos: before.apellidos, telefono: before.telefono, isSocio: before.isSocio, isColaborador: before.isColaborador, isAdmin: before.isAdmin },
+                nuevo: { nombre: updatedData.nombre, apellidos: updatedData.apellidos, telefono: updatedData.telefono, isSocio, isColaborador: updatedData.isColaborador, isAdmin }
+            });
             showAlert('Usuario actualizado con éxito.', 'success');
             loadUsersIntoTable();
         } catch (error) {
@@ -579,17 +622,21 @@ function handleExportarCsv() {
 async function handleRoleToggle(button, role) {
     const db = firebase.firestore();
     const userId = $(button).data('id');
-    const userName = $(button).data('name');
     const userDocRef = db.collection('usuarios').doc(userId);
 
     try {
         const doc = await userDocRef.get();
         if (!doc.exists) return;
 
-        const currentRoleState = doc.data()[role] || false;
-        const actionText = currentRoleState ? `quitar rol de ${role.substring(2).toLowerCase()} a` : `hacer ${role.substring(2).toLowerCase()} a`;
+        const userData = doc.data();
+        const nombreCompleto = nombreCompletoUsuario({ ...userData, id: userId });
+        const extraTxt = datosExtraUsuario(userData);
+        const rolLabels = { isSocio: 'socio', isColaborador: 'colaborador', isAdmin: 'admin' };
+        const rolLabel = rolLabels[role] || role.substring(2).toLowerCase();
+        const currentRoleState = userData[role] || false;
+        const actionText = currentRoleState ? `quitar rol de ${rolLabel} a` : `hacer ${rolLabel} a`;
 
-        showConfirmationModal(`Confirmar Rol`, `¿Seguro que quieres ${actionText} ${userName}?`, async () => {
+        showConfirmationModal(`Confirmar Rol`, `¿Seguro que quieres ${actionText} ${nombreCompleto}?`, async () => {
             try {
                 const updates = {};
                 updates[role] = !currentRoleState;
@@ -598,14 +645,18 @@ async function handleRoleToggle(button, role) {
                     updates['isColaborador'] = false;
                 }
 
-                if (role === 'isColaborador' && !currentRoleState && !doc.data().isSocio) {
+                if (role === 'isColaborador' && !currentRoleState && !userData.isSocio) {
                     showAlert('No se puede hacer colaborador a un usuario que no es socio.', 'warning');
                     return;
                 }
 
                 await userDocRef.update(updates);
-                if (window.auditar) window.auditar('usuarios', 'cambio_rol', `Rol de "${userName}" actualizado`);
-                showAlert(`Rol de ${userName} actualizado.`, 'success');
+                let cambioTexto = currentRoleState ? `rol ${rolLabel} quitado` : `rol ${rolLabel} añadido`;
+                if (role === 'isSocio' && currentRoleState === true && userData.isColaborador) {
+                    cambioTexto += ' (también rol colaborador quitado)';
+                }
+                if (window.auditar) window.auditar('usuarios', 'cambio_rol', `Usuario "${nombreCompleto}"${extraTxt}: ${cambioTexto}`, { uid: userId, correo: userData.correo || null, dni: userData.dni || null, rol: rolLabel, activo: !currentRoleState });
+                showAlert(`Rol de ${nombreCompleto} actualizado.`, 'success');
                 loadUsersIntoTable();
             } catch (error) {
                 showAlert('Error al actualizar el rol.', 'danger');
